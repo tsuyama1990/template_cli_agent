@@ -1,7 +1,8 @@
-import subprocess
 import logging
-from rich.logging import RichHandler
+import subprocess
+
 from rich.console import Console
+from rich.logging import RichHandler
 
 console = Console()
 

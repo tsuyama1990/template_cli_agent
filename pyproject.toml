@@ -38,7 +38,7 @@ line-length = 100
 fix = true
 
 [tool.ruff.lint]
-select = ["E", "F", "I"]
+select = ["E", "F", "I", "B", "S", "UP"]
 ignore = []
 
 [tool.pytest.ini_options]

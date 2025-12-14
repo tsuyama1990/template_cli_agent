@@ -1,15 +1,17 @@
+import os
 import shutil
-import typer
 from pathlib import Path
+
+import typer
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
-import os
-from dotenv import load_dotenv
+
+from ac_cdd.config import settings
 
 # Import Orchestrator from the new package location
 from ac_cdd.orchestrator import CycleOrchestrator
-from ac_cdd.config import settings
 
 load_dotenv()
 

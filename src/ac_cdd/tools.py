@@ -1,6 +1,5 @@
 import shutil
 import subprocess
-from typing import List
 
 from .utils import logger
 
@@ -16,7 +15,7 @@ class ToolWrapper:
 
     def run(
         self,
-        args: List[str],
+        args: list[str],
         capture_output: bool = False,
         check: bool = True,
         text: bool = True
