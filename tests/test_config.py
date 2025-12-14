@@ -1,5 +1,6 @@
 from ac_cdd.config import settings
 
+
 def test_config_agents_loaded():
     """Test that agents configuration is loaded correctly from ac_cdd.toml"""
     assert settings.agents.architect is not None
