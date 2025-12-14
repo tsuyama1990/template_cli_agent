@@ -1,34 +1,47 @@
-from typing import Dict, Any
-from pathlib import Path
-from pydantic_settings import BaseSettings, SettingsConfigDict
 import tomllib
+from pathlib import Path
+
+from pydantic import ConfigDict
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class PathsConfig(BaseSettings):
+    model_config = ConfigDict(extra="ignore")
     documents_dir: str = "documents"
     contracts_dir: str = "src/ac_cdd/contracts"
     sessions_dir: str = ".jules/sessions"
+    src: str = "src"
+    tests: str = "tests"
+    templates: str = "templates"
 
 class ToolsConfig(BaseSettings):
+    model_config = ConfigDict(extra="ignore")
     jules_cmd: str = "jules"
     gh_cmd: str = "gh"
     audit_cmd: str = "bandit"
     uv_cmd: str = "uv"
     mypy_cmd: str = "mypy"
     gemini_cmd: str = "gemini"
+    jules_base_url: str = "https://jules.googleapis.com/v1alpha"
+
+class AgentsConfig(BaseSettings):
+    model_config = ConfigDict(extra="ignore")
+    architect: str = "DEFAULT_ARCHITECT_PROMPT"
+    coder: str = "DEFAULT_CODER_PROMPT"
+    tester: str = "DEFAULT_TESTER_PROMPT"
+    auditor: str = "DEFAULT_AUDITOR_PROMPT"
 
 class PromptsConfig(BaseSettings):
-    auditor_system: str
-    property_test_template: str
+    model_config = ConfigDict(extra="ignore")
+    property_test_template: str = "DEFAULT_TEST_PROMPT"
 
 class Settings(BaseSettings):
     MAX_RETRIES: int = 10
 
     paths: PathsConfig = PathsConfig()
     tools: ToolsConfig = ToolsConfig()
-    prompts: PromptsConfig = PromptsConfig(
-        auditor_system="DEFAULT_AUDITOR_PROMPT",
-        property_test_template="DEFAULT_TEST_PROMPT"
-    )
+    agents: AgentsConfig = AgentsConfig()
+    prompts: PromptsConfig = PromptsConfig()
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -55,6 +68,8 @@ class Settings(BaseSettings):
                 settings.paths = PathsConfig(**data["paths"])
             if "tools" in data:
                 settings.tools = ToolsConfig(**data["tools"])
+            if "agents" in data:
+                settings.agents = AgentsConfig(**data["agents"])
             if "prompts" in data:
                 settings.prompts = PromptsConfig(**data["prompts"])
 

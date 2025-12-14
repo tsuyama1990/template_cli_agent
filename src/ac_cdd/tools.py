@@ -1,6 +1,5 @@
 import shutil
 import subprocess
-from typing import List
 
 from .utils import logger
 
@@ -16,7 +15,7 @@ class ToolWrapper:
 
     def run(
         self,
-        args: List[str],
+        args: list[str],
         capture_output: bool = False,
         check: bool = True,
         text: bool = True
@@ -24,7 +23,9 @@ class ToolWrapper:
         full_cmd = [self.command] + args
         logger.debug(f"Running command: {' '.join(full_cmd)}")
         try:
-            return subprocess.run(full_cmd, capture_output=capture_output, check=check, text=text)
+            return subprocess.run(  # noqa: S603
+                full_cmd, capture_output=capture_output, check=check, text=text
+            )
         except subprocess.CalledProcessError as e:
             logger.error(f"Command failed: {e}")
             raise

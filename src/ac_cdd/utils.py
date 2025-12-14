@@ -1,7 +1,8 @@
-import subprocess
 import logging
-from rich.logging import RichHandler
+import subprocess
+
 from rich.console import Console
+from rich.logging import RichHandler
 
 console = Console()
 
@@ -24,7 +25,7 @@ def run_command(command: list[str], cwd=None, env=None):
     logger.info(f"Running: {cmd_str}")
 
     try:
-        process = subprocess.Popen(
+        process = subprocess.Popen(  # noqa: S603
             command,
             cwd=cwd,
             env=env,

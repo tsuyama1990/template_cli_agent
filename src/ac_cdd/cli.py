@@ -1,15 +1,17 @@
+import os
 import shutil
-import typer
 from pathlib import Path
+
+import typer
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
-import os
-from dotenv import load_dotenv
+
+from ac_cdd.config import settings
 
 # Import Orchestrator from the new package location
 from ac_cdd.orchestrator import CycleOrchestrator
-from ac_cdd.config import settings
 
 load_dotenv()
 
@@ -38,10 +40,14 @@ def init():
             console.print(f"[green]✔ {cmd} が見つかりました。[/green]")
 
     if not Path(".env").exists():
-        console.print("[yellow]⚠ .env ファイルが見つかりません。.env.example から作成します...[/yellow]")
+        console.print(
+            "[yellow]⚠ .env ファイルが見つかりません。.env.example から作成します...[/yellow]"
+        )
         if Path(".env.example").exists():
             shutil.copy(".env.example", ".env")
-            console.print("[green]✔ .env を作成しました。APIキーなどを入力してください。[/green]")
+            console.print(
+                "[green]✔ .env を作成しました。APIキーなどを入力してください。[/green]"
+            )
         else:
             console.print("[red]✖ .env.example が見つかりません。[/red]")
             all_pass = False
@@ -51,7 +57,9 @@ def init():
     if all_pass:
         console.print(Panel("初期化完了！開発を開始できます。", style="bold green"))
     else:
-        console.print(Panel("初期化に失敗しました。上記のエラーを確認してください。", style="bold red"))
+        console.print(
+            Panel("初期化に失敗しました。上記のエラーを確認してください。", style="bold red")
+        )
         raise typer.Exit(code=1)
 
 @app.command(name="new-cycle")
@@ -96,7 +104,7 @@ def start_cycle(cycle_id: str, dry_run: bool = False):
             console.print(Panel(f"サイクル {cycle_id} が正常に完了しました！", style="bold green"))
         except Exception as e:
             console.print(Panel(f"サイクル失敗: {str(e)}", style="bold red"))
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from e
 
 @app.command()
 def doctor():
