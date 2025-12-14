@@ -17,6 +17,8 @@ dev = [
     "pytest-cov",
     "ruff",
     "vcrpy",
+    "typer",
+    "shellingham",
 ]
 
 [tool.ruff]
