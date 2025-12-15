@@ -29,3 +29,18 @@ class ToolWrapper:
         except subprocess.CalledProcessError as e:
             logger.error(f"Command failed: {e}")
             raise
+
+class GitClient:
+    """Git操作を行うクライアント"""
+    def __init__(self) -> None:
+        self.git = ToolWrapper("git")
+
+    def get_diff(self, target: str = "HEAD") -> str:
+        """Git差分を取得"""
+        try:
+            # capture_output=True to get stdout
+            result = self.git.run(["diff", target], capture_output=True, check=True)
+            return result.stdout.strip()
+        except subprocess.CalledProcessError:
+            # git diffのエラー（差分なし等）は空文字として扱う場合
+            return ""
