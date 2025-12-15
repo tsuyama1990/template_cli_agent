@@ -18,9 +18,10 @@ class CycleOrchestrator:
     実装、テスト、監査、UATの各フェーズをオーケストレーションする。
     """
 
-    def __init__(self, cycle_id: str, dry_run: bool = False) -> None:
+    def __init__(self, cycle_id: str, dry_run: bool = False, auto_next: bool = False) -> None:
         self.cycle_id = cycle_id
         self.dry_run = dry_run
+        self.auto_next = auto_next
 
         # Use paths from config
         self.documents_dir = Path(settings.paths.documents_dir)
@@ -580,6 +581,7 @@ class CycleOrchestrator:
     def run_uat_phase(self) -> None:
         """
         Phase 3.5: UATの生成と実行
+        Includes Result Analysis and Reporting.
         """
         if self.dry_run:
             logger.info("[DRY-RUN] Generating UAT with Playwright and running pytest...")
@@ -587,9 +589,15 @@ class CycleOrchestrator:
 
         # 1. Generate UAT Code
         uat_path = f"{settings.paths.documents_dir}/CYCLE{self.cycle_id}/UAT.md"
-        description = f"Create Playwright tests in tests/e2e/ based on {uat_path}"
+        description = (
+            f"Create Playwright tests in tests/e2e/ based on {uat_path}.\n"
+            "REQUIREMENTS:\n"
+            "- Use `unittest.mock`, `pytest-mock`, or `vcrpy` to mock ALL external connections.\n"
+            "- Focus purely on logic and UI behavior verification.\n"
+            "- ELIMINATE FLAKINESS: Do not depend on live environments.\n"
+            "- Output valid Python code."
+        )
 
-        # Use 'tester' role? Or 'coder'? Usually UAT is written by Tester/QA.
         full_prompt = self._construct_prompt(settings.agents.tester, description)
 
         self.jules_client.start_task(
@@ -597,13 +605,76 @@ class CycleOrchestrator:
             session_name=f"Cycle{self.cycle_id}_UAT"
         )
 
-        # 2. Run Tests
-        test_args = ["run", "pytest", "tests/e2e/"]
+        # 2. Run Tests & Capture Output
+        uv_path = shutil.which("uv")
+        if not uv_path:
+            raise ToolNotFoundError("uv not found")
+
+        cmd = [uv_path, "run", "pytest", "tests/e2e/"]
+
+        success = False
+        logs = ""
+
         try:
-            self.uv.run(test_args)
-        except Exception:
-            self._trigger_fix("UAT Tests Failed. Please fix implementation or tests.")
-            raise Exception("UAT Phase Failed") from None
+            # Capture output instead of using ToolWrapper which might print to stdout
+            result = subprocess.run( # noqa: S603
+                cmd,
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            logs = result.stdout + "\n" + result.stderr
+            if result.returncode == 0:
+                success = True
+                logger.info("UAT Tests Passed.")
+            else:
+                logger.warning("UAT Tests Failed.")
+
+        except Exception as e:
+            logs = str(e)
+            logger.error(f"UAT Execution Error: {e}")
+
+        # 3. Analyze Results & Generate Report
+        self._analyze_uat_results(logs, success)
+
+        if not success:
+            self._trigger_fix(f"UAT Tests Failed. Logs:\n{logs[-2000:]}")
+            raise Exception("UAT Phase Failed")
+
+    def _analyze_uat_results(self, logs: str, success: bool) -> None:
+        """
+        Analyzes UAT logs using AI and generates a report.
+        """
+        logger.info("Analyzing UAT Results...")
+
+        verdict = "PASS" if success else "FAIL"
+
+        user_task = (
+            f"Analyze the following pytest logs for UAT (User Acceptance Testing).\n"
+            f"Verdict: {verdict}\n\n"
+            f"Logs:\n{logs[-10000:]}\n\n" # Send last 10k chars
+            "Task:\n"
+            "1. Summarize executed tests.\n"
+            "2. Provide insights on system behavior against requirements.\n"
+            "3. If failed, explain why.\n"
+            "4. Output strictly in Markdown format."
+        )
+
+        full_prompt = self._construct_prompt(settings.agents.qa_analyst, user_task)
+
+        try:
+            # Using Gemini for analysis as it is good at summarization
+            response = self.gemini_client.start_task(prompt=full_prompt)
+
+            report_path = self.cycle_dir / "UAT_RESULT.md"
+            with open(report_path, "w") as f:
+                f.write(f"# UAT Result: {verdict}\n\n")
+                f.write(response)
+
+            logger.info(f"UAT Report saved to {report_path}")
+
+        except Exception as e:
+            logger.warning(f"Failed to generate UAT Report: {e}")
 
     def finalize_cycle(self) -> None:
         """
@@ -611,8 +682,67 @@ class CycleOrchestrator:
         """
         if self.dry_run:
             logger.info("[DRY-RUN] Merging PR via gh CLI...")
+        else:
+            # gh pr merge
+            args = ["pr", "merge", "--squash", "--delete-branch", "--admin"]
+            self.gh.run(args)
+
+        if self.auto_next:
+            self.prepare_next_cycle()
+
+    def prepare_next_cycle(self) -> None:
+        """
+        Auto-Next: Scaffolds and starts planning for the next cycle.
+        """
+        logger.info(f"Auto-Next enabled: Preparing next cycle after CYCLE{self.cycle_id}...")
+
+        # 1. Calculate Next ID
+        try:
+            current_int = int(self.cycle_id)
+            next_id = f"{current_int + 1:02d}"
+        except ValueError:
+            logger.warning(f"Could not parse cycle ID {self.cycle_id} as int. Skipping Auto-Next.")
             return
 
-        # gh pr merge
-        args = ["pr", "merge", "--squash", "--delete-branch", "--admin"]
-        self.gh.run(args)
+        # 2. Scaffold (Reusing logic similar to new-cycle CLI but programmatic)
+        next_cycle_dir = self.documents_dir / f"CYCLE{next_id}"
+        if next_cycle_dir.exists():
+            logger.warning(
+                f"Next cycle directory {next_cycle_dir} already exists. Skipping scaffolding."
+            )
+        else:
+            logger.info(f"Scaffolding CYCLE{next_id}...")
+            next_cycle_dir.mkdir(parents=True)
+            templates_dir = Path(settings.paths.templates) / "cycle"
+
+            # Copy templates
+            for item in ["SPEC.md", "UAT.md", "schema.py"]:
+                src = templates_dir / item
+                dst = next_cycle_dir / item
+                if src.exists():
+                    shutil.copy(src, dst)
+                else:
+                    logger.warning(f"Template {src} not found.")
+
+        # 3. Start Planning for Next Cycle
+        logger.info(f"Triggering Planning Phase for CYCLE{next_id}...")
+
+        # Create a new orchestrator instance for the next cycle
+        # We don't chain auto_next recursively to prevent infinite loops, or we could.
+        # Let's set auto_next=False for the next one for safety, or keep it?
+        # User said "Continuous Cycle", implying it continues.
+        # But infinite loop risk is high. Let's keep it True but user can stop via Ctrl+C.
+
+        # However, calling execute_all() here would recurse.
+        # The prompt says "prepare (scaffolding) OR start".
+        # And "4. (if possible) ... auto start planning phase".
+        # I will instantiate and call ONLY plan_cycle() to set it up.
+
+        next_orchestrator = CycleOrchestrator(
+            next_id, dry_run=self.dry_run, auto_next=self.auto_next
+        )
+        next_orchestrator.plan_cycle()
+
+        logger.info(
+            f"CYCLE{next_id} Planning Complete. Please review artifacts in {next_cycle_dir}"
+        )

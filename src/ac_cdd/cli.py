@@ -99,7 +99,7 @@ def new_cycle(name: str):
     console.print(f"[bold]{base_path}[/bold] 内のファイルを編集してください。")
 
 @app.command(name="start-cycle")
-def start_cycle(names: list[str], dry_run: bool = False):
+def start_cycle(names: list[str], dry_run: bool = False, auto_next: bool = False):
     """サイクルの自動実装・監査ループを開始します (複数ID指定可)"""
     # For concurrent execution in future (as per Task 5 requirement to accept multiple IDs)
     # currently running sequentially.
@@ -115,7 +115,7 @@ def start_cycle(names: list[str], dry_run: bool = False):
                 "[yellow][DRY-RUN MODE] 実際のAPI呼び出しやコミットは行われません。[/yellow]"
             )
 
-        orchestrator = CycleOrchestrator(cycle_id, dry_run=dry_run)
+        orchestrator = CycleOrchestrator(cycle_id, dry_run=dry_run, auto_next=auto_next)
 
         with Progress(
             SpinnerColumn(),
