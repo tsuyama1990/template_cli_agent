@@ -12,6 +12,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from ac_cdd.agents import auditor_agent, coder_agent
 from ac_cdd.config import settings
+from ac_cdd.domain_models import AuditResult, FileChange
 from ac_cdd.orchestrator import CycleOrchestrator
 
 load_dotenv()
@@ -46,25 +47,33 @@ def init() -> None:
 
     if not Path(".env").exists():
         console.print(
-            "[yellow]⚠ .env ファイルが見つかりません。.env.example から作成します...[/yellow]"
+            "[yellow]⚠ .env ファイルが見つかりません。セットアップを開始します...[/yellow]"
         )
-        if Path(".env.example").exists():
-            shutil.copy(".env.example", ".env")
-            console.print(
-                "[green]✔ .env を作成しました。APIキーなどを入力してください。[/green]"
-            )
-        else:
-            # Fallback to templates
+
+        env_content = ""
+        env_template = Path(".env.example")
+        if not env_template.exists():
             env_template = Path(settings.paths.templates) / ".env.example"
-            if env_template.exists():
-                shutil.copy(env_template, ".env")
-                console.print(
-                    "[green]✔ .env を作成しました(テンプレートから)。"
-                    "APIキーなどを入力してください。[/green]"
-                )
-            else:
-                console.print("[red]✖ .env.example が見つかりません。[/red]")
-                all_pass = False
+
+        if env_template.exists():
+            # Parse keys from template
+            with open(env_template, encoding="utf-8") as f:
+                for line in f:
+                    if line.strip() and not line.startswith("#"):
+                        key = line.split("=")[0].strip()
+                        # Ask user
+                        default_val = line.split("=")[1].strip() if "=" in line else ""
+                        value = typer.prompt(f"Enter value for {key}", default=default_val)
+                        env_content += f"{key}={value}\n"
+                    else:
+                        env_content += line
+
+            with open(".env", "w", encoding="utf-8") as f:
+                f.write(env_content)
+            console.print("[green]✔ .env を作成しました。[/green]")
+        else:
+             console.print("[red]✖ .env.example が見つかりません。[/red]")
+             all_pass = False
     else:
         console.print("[green]✔ .env ファイルを確認しました。[/green]")
 
@@ -103,11 +112,18 @@ def new_cycle(name: str) -> None:
     console.print(f"[bold]{base_path}[/bold] 内のファイルを編集してください。")
 
 @app.command(name="start-cycle")
-def start_cycle(names: list[str], dry_run: bool = False, auto_next: bool = False) -> None:
+def start_cycle(
+    names: list[str],
+    dry_run: bool = False,
+    auto_next: bool = False,
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompts"),
+) -> None:
     """サイクルの自動実装・監査ループを開始します (複数ID指定可)"""
-    asyncio.run(_start_cycle_async(names, dry_run, auto_next))
+    asyncio.run(_start_cycle_async(names, dry_run, auto_next, yes))
 
-async def _start_cycle_async(names: list[str], dry_run: bool, auto_next: bool) -> None:
+async def _start_cycle_async(
+    names: list[str], dry_run: bool, auto_next: bool, auto_approve: bool
+) -> None:
     if not names:
         console.print("[red]少なくとも1つのサイクルIDを指定してください (例: 01)[/red]")
         raise typer.Exit(code=1)
@@ -119,7 +135,9 @@ async def _start_cycle_async(names: list[str], dry_run: bool, auto_next: bool) -
                 "[yellow][DRY-RUN MODE] 実際のAPI呼び出しやコミットは行われません。[/yellow]"
             )
 
-        orchestrator = CycleOrchestrator(cycle_id, dry_run=dry_run, auto_next=auto_next)
+        orchestrator = CycleOrchestrator(
+            cycle_id, dry_run=dry_run, auto_next=auto_next, auto_approve=auto_approve
+        )
 
         with Progress(
             SpinnerColumn(),
@@ -170,12 +188,10 @@ async def _audit_async(repo: str) -> None:
             f"Git Diff:\n{diff_output}"
         )
 
-        # Import AuditResult here
-        from ac_cdd.domain_models import AuditResult
         # We enforce structured output even for ad-hoc audit
         result_typed = await auditor_agent.run(prompt, result_type=AuditResult)
 
-        data: AuditResult = result_typed.data
+        data: AuditResult = result_typed.output
         review_instruction = data.critical_issues + data.suggestions
 
         review_text = "\n".join(review_instruction)
@@ -186,7 +202,23 @@ async def _audit_async(repo: str) -> None:
         coder_result = await coder_agent.run(coder_prompt)
 
         typer.secho("✅ Audit complete. Fix task assigned to Coder!", fg=typer.colors.GREEN)
-        typer.echo(coder_result.data)
+
+        # Display the proposed changes
+        changes: list[FileChange] = coder_result.output
+        for change in changes:
+            typer.echo(f"Proposed change for: {change.path}")
+            # Optionally print content or a snippet
+            typer.echo("---")
+
+        # In ad-hoc mode, we might want to apply them too?
+        # For now, let's apply them as the command implies action.
+        typer.secho("Applying changes...", fg=typer.colors.CYAN)
+        for change in changes:
+             p = Path(change.path)
+             p.parent.mkdir(parents=True, exist_ok=True)
+             p.write_text(change.content, encoding="utf-8")
+             typer.echo(f"Applied to {p}")
+
 
     except Exception as e:
         typer.secho(str(e), fg=typer.colors.RED)
@@ -229,7 +261,13 @@ async def _fix_async() -> None:
         )
         result = await coder_agent.run(prompt)
         typer.secho("✅ Fix task assigned to Coder.", fg=typer.colors.GREEN)
-        typer.echo(result.data)
+
+        changes: list[FileChange] = result.output
+        for change in changes:
+             p = Path(change.path)
+             p.parent.mkdir(parents=True, exist_ok=True)
+             p.write_text(change.content, encoding="utf-8")
+             typer.echo(f"Applied fix to {p}")
 
     except Exception as e:
         typer.secho(str(e), fg=typer.colors.RED)
@@ -265,5 +303,16 @@ def doctor() -> None:
         typer.secho("\n⚠️  Please install missing tools to proceed.", fg=typer.colors.YELLOW)
         raise typer.Exit(1)
 
+def friendly_error_handler() -> None:
+    try:
+        app()
+    except Exception as e:
+        console.print(Panel(f"An unexpected error occurred: {str(e)}", style="bold red"))
+        if settings.debug:
+            console.print_exception()
+        else:
+            console.print("Run with DEBUG=1 environment variable to see full traceback.")
+        raise typer.Exit(code=1) from e
+
 if __name__ == "__main__":
-    app()
+    friendly_error_handler()
