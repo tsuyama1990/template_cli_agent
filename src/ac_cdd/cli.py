@@ -1,240 +1,249 @@
-import shutil
-import subprocess
-from pathlib import Path
+import asyncio
+import os
+import sys
 
+import logfire
 import typer
-from dotenv import load_dotenv
 from rich.console import Console
-from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from ac_cdd.config import settings
-from ac_cdd.orchestrator import CycleOrchestrator
+from .config import settings
+from .orchestrator import CycleOrchestrator
+from .tools import ToolWrapper, ToolNotFoundError
+from .agents import AgentDeps, auditor_agent, coder_agent
+from .domain_models import AuditResult, FileArtifact
+from .utils import logger
 
-from .clients import GeminiClient, GitClient, JulesClient, ToolError
+# Initialize Logfire
+# We should only configure if we want it to send data, usually needs a token.
+# If no token, it might warn or default to console.
+# Ideally we load this conditionally, but the requirement was "import logfire; logfire.configure()"
+# We suppress the error if not authenticated to allow local usage without logfire auth
+try:
+    logfire.configure()
+except Exception as e:
+    # Fallback or silent ignore if strict requirements say "ensure observability" but don't want to crash.
+    # The error is LogfireConfigError.
+    # We can try to configure with send_to_logfire=False to just get console logs if that's the intent
+    # or just suppress it.
+    # Let's try to configure for console only or just pass.
+    # logfire.configure(send_to_logfire='if-token-present') seems better if available,
+    # but based on docs or common pattern:
+    import logging
+    logging.getLogger("ac_cdd").warning(f"Logfire not configured: {e}")
 
-load_dotenv()
-
-app = typer.Typer(help="AC-CDD: AI-Native Cycle-Based Development Orchestrator")
+app = typer.Typer(
+    name="AC-CDD CLI",
+    help="Autonomous Cycle-Based Contract-Driven Development Environment",
+    add_completion=False,
+)
 console = Console()
 
-# クライアントのインスタンス化
-gemini = GeminiClient()
-jules = JulesClient()
-git = GitClient()
 
 @app.command()
-def init():
-    """プロジェクトの初期化と依存関係チェック"""
-    console.print(Panel("AC-CDD環境の初期化中...", style="bold blue"))
+def new_cycle(cycle_id: str = typer.Argument(..., help="Cycle ID (e.g. '01')")):
+    """
+    Creates a new cycle directory and scaffolds files.
+    """
+    import shutil
+    from pathlib import Path
 
-    # Use tools from config
-    checks = [
-        (settings.tools.uv_cmd, "パッケージ管理には uv が必要です。"),
-        (settings.tools.gh_cmd, "PR管理には GitHub CLI (gh) が必要です。"),
-        (settings.tools.jules_cmd, "AIコーディングには Jules CLI が必要です。"),
-        (settings.tools.gemini_cmd, "監査には Gemini CLI が必要です。"),
-    ]
+    base_dir = Path(settings.paths.documents_dir)
+    cycle_dir = base_dir / f"CYCLE{cycle_id}"
 
-    all_pass = True
-    for cmd, msg in checks:
-        if not shutil.which(cmd):
-            console.print(f"[red]✖ {cmd} が見つかりません。[/red] {msg}")
-            all_pass = False
-        else:
-            console.print(f"[green]✔ {cmd} が見つかりました。[/green]")
-
-    if not Path(".env").exists():
-        console.print(
-            "[yellow]⚠ .env ファイルが見つかりません。.env.example から作成します...[/yellow]"
-        )
-        if Path(".env.example").exists():
-            shutil.copy(".env.example", ".env")
-            console.print(
-                "[green]✔ .env を作成しました。APIキーなどを入力してください。[/green]"
-            )
-        else:
-            # Fallback to templates
-            env_template = Path(settings.paths.templates) / ".env.example"
-            if env_template.exists():
-                shutil.copy(env_template, ".env")
-                console.print(
-                    "[green]✔ .env を作成しました(テンプレートから)。"
-                    "APIキーなどを入力してください。[/green]"
-                )
-            else:
-                console.print("[red]✖ .env.example が見つかりません。[/red]")
-                all_pass = False
-    else:
-        console.print("[green]✔ .env ファイルを確認しました。[/green]")
-
-    if all_pass:
-        console.print(Panel("初期化完了！開発を開始できます。", style="bold green"))
-    else:
-        console.print(
-            Panel("初期化に失敗しました。上記のエラーを確認してください。", style="bold red")
-        )
+    if cycle_dir.exists():
+        console.print(f"[bold red]Error:[/bold red] {cycle_dir} already exists.")
         raise typer.Exit(code=1)
 
-# --- Cycle Workflow ---
+    cycle_dir.mkdir(parents=True)
+    console.print(f"[green]Created {cycle_dir}[/green]")
 
-@app.command(name="new-cycle")
-def new_cycle(name: str):
-    """新しい開発サイクルを作成します (例: 01, 02)"""
-    # Assuming 'name' corresponds to cycle_id like '01'
-    cycle_id = name
-    base_path = Path(settings.paths.documents_dir) / f"CYCLE{cycle_id}"
-    if base_path.exists():
-        console.print(f"[red]サイクル {cycle_id} は既に存在します！[/red]")
-        raise typer.Exit(code=1)
-
-    base_path.mkdir(parents=True)
+    # Copy templates if they exist
     templates_dir = Path(settings.paths.templates) / "cycle"
+    if templates_dir.exists():
+        for item in ["SPEC.md", "UAT.md", "schema.py"]:
+            src = templates_dir / item
+            dst = cycle_dir / item
+            if src.exists():
+                shutil.copy(src, dst)
+                console.print(f"  - Copied {item}")
+    else:
+        # Create empty files if templates don't exist
+        for item in ["SPEC.md", "UAT.md", "schema.py"]:
+            (cycle_dir / item).touch()
+            console.print(f"  - Created empty {item}")
 
-    # Copy templates
-    shutil.copy(templates_dir / "SPEC.md", base_path / "SPEC.md")
-    shutil.copy(templates_dir / "UAT.md", base_path / "UAT.md")
-    shutil.copy(templates_dir / "schema.py", base_path / "schema.py")
-
-    console.print(f"[green]新しいサイクルを作成しました: CYCLE{cycle_id}[/green]")
-    console.print(f"[bold]{base_path}[/bold] 内のファイルを編集してください。")
-
-@app.command(name="start-cycle")
-def start_cycle(names: list[str], dry_run: bool = False, auto_next: bool = False):
-    """サイクルの自動実装・監査ループを開始します (複数ID指定可)"""
-    # For concurrent execution in future (as per Task 5 requirement to accept multiple IDs)
-    # currently running sequentially.
-
-    if not names:
-        console.print("[red]少なくとも1つのサイクルIDを指定してください (例: 01)[/red]")
-        raise typer.Exit(code=1)
-
-    for cycle_id in names:
-        console.print(Panel(f"サイクル {cycle_id} の自動化を開始します", style="bold magenta"))
-        if dry_run:
-            console.print(
-                "[yellow][DRY-RUN MODE] 実際のAPI呼び出しやコミットは行われません。[/yellow]"
-            )
-
-        orchestrator = CycleOrchestrator(cycle_id, dry_run=dry_run, auto_next=auto_next)
-
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console
-        ) as progress:
-            task = progress.add_task(f"[cyan]Cycle {cycle_id} 実行中...", total=None)
-
-            try:
-                orchestrator.execute_all(progress_task=task, progress_obj=progress)
-                console.print(
-                    Panel(f"サイクル {cycle_id} が正常に完了しました！", style="bold green")
-                )
-            except Exception as e:
-                console.print(Panel(f"サイクル {cycle_id} 失敗: {str(e)}", style="bold red"))
-                # If one cycle fails, should we stop or continue?
-                # Usually we might want to stop to investigate.
-                raise typer.Exit(code=1) from e
-
-# --- Ad-hoc Workflow ---
 
 @app.command()
-def audit(repo: str = typer.Option(None, help="Target repository")):
+def start_cycle(
+    cycle_ids: list[str] = typer.Argument(..., help="List of Cycle IDs to execute"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Simulate execution"),
+    auto_next: bool = typer.Option(False, "--auto-next", help="Automatically prepare next cycle"),
+):
     """
-    [Strict Review] Gitの差分をGeminiに激辛レビューさせ、Julesに修正指示を出します。
+    Starts the AC-CDD automation cycle for the given ID(s).
     """
-    typer.echo("🔍 Fetching git diff...")
-    try:
-        diff_output = git.get_diff("HEAD")
-        if not diff_output:
-            typer.secho("No changes detected to audit.", fg=typer.colors.YELLOW)
+    async def _run():
+        for cycle_id in cycle_ids:
+            console.print(f"[bold blue]=== Starting Cycle {cycle_id} ===[/bold blue]")
+            orchestrator = CycleOrchestrator(cycle_id, dry_run=dry_run, auto_next=auto_next)
+
+            # Simple progress reporting could be added here
+            await orchestrator.execute_all()
+
+            console.print(f"[bold green]=== Cycle {cycle_id} Completed ===[/bold green]")
+
+    asyncio.run(_run())
+
+
+@app.command()
+def audit(
+    target: str = typer.Option("HEAD", "--target", help="Git ref or file path to audit"),
+    fix: bool = typer.Option(False, "--fix", help="Auto-apply fixes"),
+):
+    """
+    Audits the current changes using Gemini (via Auditor Agent).
+    """
+    async def _run_audit():
+        from pathlib import Path
+        from .tools import GitClient
+
+        console.print(f"[bold]Auditing target: {target}[/bold]")
+
+        # 1. Get Diff or Content
+        content_to_audit = ""
+        if Path(target).exists():
+            content_to_audit = Path(target).read_text()
+        else:
+            # Assume git ref
+            try:
+                git = GitClient()
+                content_to_audit = git.get_diff(target)
+            except Exception as e:
+                console.print(f"[red]Failed to get diff: {e}[/red]")
+                raise typer.Exit(1)
+
+        if not content_to_audit.strip():
+            console.print("[yellow]No content to audit.[/yellow]")
             return
 
-        typer.echo("🧠 Gemini is thinking (Strict Review Mode)...")
-        prompt = (
-            "You are a Staff Engineer at Google. Conduct a 'Strict Review' of the input diff "
-            "focusing on Security, Performance, and Readability. "
-            "Output ONLY specific, actionable instructions for an AI coder (Jules) as a bulleted "
-            "list.\n\nGit Diff:\n"
-        )
+        # 2. Call Auditor Agent
+        console.print("[cyan]Sending to Auditor Agent...[/cyan]")
+        deps = AgentDeps(documents_dir=Path(settings.paths.documents_dir))
 
-        # クライアント経由で実行
-        review_instruction = gemini.generate_content(prompt + diff_output)
+        # We wrap content in a prompt
+        user_task = f"Audit the following code/diff:\n\n{content_to_audit}"
 
-        typer.echo("🤖 Jules is taking over...")
-        result = jules.create_session(review_instruction, repo=repo)
+        try:
+            result = await auditor_agent.run(user_task, deps=deps)
+            audit_res: AuditResult = result.data
 
-        typer.secho("✅ Audit complete. Fix task assigned to Jules!", fg=typer.colors.GREEN)
-        typer.echo(result)
+            if audit_res.is_approved:
+                console.print("[bold green]Audit Passed![/bold green]")
+            else:
+                console.print("[bold red]Audit Failed[/bold red]")
+                for issue in audit_res.critical_issues:
+                    console.print(f"- [Red]Issue[/Red]: {issue}")
+                for sug in audit_res.suggestions:
+                    console.print(f"- [Blue]Suggestion[/Blue]: {sug}")
 
-    except ToolError as e:
-        typer.secho(str(e), fg=typer.colors.RED)
-        raise typer.Exit(1) from e
+                if fix:
+                    console.print("[bold blue]Applying Fixes...[/bold blue]")
+                    fix_instructions = (
+                        f"Fix the following issues in the code:\n" +
+                        "\n".join(audit_res.critical_issues + audit_res.suggestions) +
+                        f"\n\nOriginal Code/Diff:\n{content_to_audit}"
+                    )
+                    fix_result = await coder_agent.run(fix_instructions, deps=deps)
+                    files: list[FileArtifact] = fix_result.data
+                    for f in files:
+                        p = Path(f.path)
+                        p.parent.mkdir(parents=True, exist_ok=True)
+                        p.write_text(f.content)
+                        console.print(f"  - Updated {p}")
+
+        except Exception as e:
+            console.print(f"[bold red]Error during audit: {e}[/bold red]")
+            raise typer.Exit(1)
+
+    asyncio.run(_run_audit())
+
 
 @app.command()
-def fix():
+def fix(
+    prompt: str = typer.Argument(..., help="Instructions for the fix"),
+    file: str = typer.Option(None, "--file", help="Specific file context"),
+):
     """
-    [Auto Fix] テストを実行し、失敗した場合にJulesに修正させます。
+    Applies a fix using the Coder Agent.
     """
-    typer.echo("🧪 Running tests with pytest...")
-    # NOTE: テストランナーもClient化しても良いが、一旦subprocessで実行
+    async def _run_fix():
+        from pathlib import Path
 
-    # S603: subprocess call safe because args are hardcoded
-    # S607: Use shutil.which to resolve 'uv' full path
-    uv_path = shutil.which("uv")
-    if not uv_path:
-        typer.secho("Error: 'uv' not found.", fg=typer.colors.RED)
-        raise typer.Exit(1)
+        context = ""
+        if file and Path(file).exists():
+            context = f"\n\nTarget File ({file}):\n{Path(file).read_text()}"
 
-    result = subprocess.run([uv_path, "run", "pytest"], capture_output=True, text=True) # noqa: S603
+        full_prompt = prompt + context
+        deps = AgentDeps(documents_dir=Path(settings.paths.documents_dir))
 
-    if result.returncode == 0:
-        typer.secho("✨ All tests passed! Nothing to fix.", fg=typer.colors.GREEN)
-        return
+        console.print("[cyan]Asking Coder Agent to fix...[/cyan]")
+        try:
+            result = await coder_agent.run(full_prompt, deps=deps)
+            files: list[FileArtifact] = result.data
 
-    typer.secho("💥 Tests failed! Invoking Jules for repairs...", fg=typer.colors.RED)
+            for f in files:
+                p = Path(f.path)
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text(f.content)
+                console.print(f"[green]Applied fix to {p}[/green]")
 
-    try:
-        prompt = (
-            f"Tests failed. Analyze the logs and fix the code in src/.\n\n"
-            f"Logs:\n{result.stdout}\n{result.stderr}"
-        )
-        jules.create_session(prompt)
-        typer.secho("✅ Fix task assigned to Jules.", fg=typer.colors.GREEN)
-    except ToolError as e:
-        typer.secho(str(e), fg=typer.colors.RED)
-        raise typer.Exit(1) from e
+        except Exception as e:
+            console.print(f"[red]Fix failed: {e}[/red]")
+            raise typer.Exit(1)
+
+    asyncio.run(_run_fix())
+
 
 @app.command()
 def doctor():
-    """環境チェック（Interactive Doctorへの改善）"""
+    """
+    Checks the environment for required tools.
+    """
+    active_tools = [
+        settings.tools.gh_cmd,
+        settings.tools.audit_cmd,
+        settings.tools.uv_cmd,
+        settings.tools.mypy_cmd,
+        "ruff"
+    ]
 
-    # ツールとインストールガイドの辞書
-    tools = {
-        "git": "Install Git from https://git-scm.com/",
-        "uv": "Install uv: curl -LsSf https://astral.sh/uv/install.sh | sh",
-        "gh": "Install GitHub CLI: https://cli.github.com/",
-        "jules": "Install Jules CLI (Internal Tool)",
-        "gemini": "Install Gemini CLI (Internal Tool)"
-    }
-
+    console.print("[bold]Checking Environment...[/bold]")
     all_ok = True
-    typer.echo("Checking development environment...\n")
+    import shutil
 
-    for tool, instruction in tools.items():
-        path = shutil.which(tool)
-        if path:
-            typer.secho(f"✅ {tool:<10}: Found at {path}", fg=typer.colors.GREEN)
+    for tool in active_tools:
+        if shutil.which(tool):
+            console.print(f"[green]✔ {tool} found[/green]")
         else:
-            typer.secho(f"❌ {tool:<10}: MISSING", fg=typer.colors.RED)
-            typer.echo(f"   Action: {instruction}")
+            console.print(f"[red]✘ {tool} NOT found[/red]")
             all_ok = False
 
-    if all_ok:
-        typer.secho("\n✨ System is ready for AI-Native Development.", fg=typer.colors.GREEN)
+    # Check API Key
+    if "GEMINI_API_KEY" not in os.environ:
+        console.print("[red]✘ GEMINI_API_KEY not set[/red]")
+        all_ok = False
     else:
-        typer.secho("\n⚠️  Please install missing tools to proceed.", fg=typer.colors.YELLOW)
+        console.print("[green]✔ GEMINI_API_KEY set[/green]")
+
+    if all_ok:
+        console.print("[bold green]System is healthy.[/bold green]")
+    else:
+        console.print("[bold red]System has issues. Please install missing tools.[/bold red]")
         raise typer.Exit(1)
 
-if __name__ == "__main__":
+
+def main():
     app()
+
+if __name__ == "__main__":
+    main()

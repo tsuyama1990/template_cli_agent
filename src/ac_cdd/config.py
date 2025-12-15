@@ -16,32 +16,32 @@ class PathsConfig(BaseSettings):
 
 class ToolsConfig(BaseSettings):
     model_config = ConfigDict(extra="ignore")
-    jules_cmd: str = "jules"
+    # Deprecated jules_cmd/gemini_cmd/jules_base_url but keeping struct if needed for compat
+    # or we can remove them. I'll remove deprecated ones to be clean.
     gh_cmd: str = "gh"
     audit_cmd: str = "bandit"
     uv_cmd: str = "uv"
     mypy_cmd: str = "mypy"
-    gemini_cmd: str = "gemini"
-    jules_base_url: str = "https://jules.googleapis.com/v1alpha"
 
 class AgentsConfig(BaseSettings):
+    # Agents are now defined in code (agents.py) but we might want to keep config for something?
+    # The requirement said "config.py から読み込むのではなく...".
+    # So we can remove the prompts from here.
     model_config = ConfigDict(extra="ignore")
-    architect: str = "DEFAULT_ARCHITECT_PROMPT"
-    coder: str = "DEFAULT_CODER_PROMPT"
-    tester: str = "DEFAULT_TESTER_PROMPT"
-    auditor: str = "DEFAULT_AUDITOR_PROMPT"
-    qa_analyst: str = "DEFAULT_QA_ANALYST_PROMPT"
+    # Keeping empty or removing entirely?
+    # The Settings class instantiates it, so let's keep it empty/flexible or remove field.
+    pass
 
 class PromptsConfig(BaseSettings):
     model_config = ConfigDict(extra="ignore")
-    property_test_template: str = "DEFAULT_TEST_PROMPT"
+    property_test_template: str = "実装は見ず、このPydanticスキーマ (contracts/) の制約が正しく機能するかを検証するHypothesisテストを作成せよ。出力先は tests/property/test_cycle{cycle_id}.py"
 
 class Settings(BaseSettings):
     MAX_RETRIES: int = 10
 
     paths: PathsConfig = PathsConfig()
     tools: ToolsConfig = ToolsConfig()
-    agents: AgentsConfig = AgentsConfig()
+    # agents: AgentsConfig = AgentsConfig() # Removing as unused
     prompts: PromptsConfig = PromptsConfig()
 
     model_config = SettingsConfigDict(
@@ -52,28 +52,18 @@ class Settings(BaseSettings):
 
     @classmethod
     def load_from_toml(cls, toml_path: str = "ac_cdd.toml") -> "Settings":
-        # Load from toml manually since pydantic-settings generic support
-        # is often via extra dependencies or specific source classes.
-        # Here we mix environment variables (default behavior) with TOML values.
-
-        # Initialize with defaults/env vars
         settings = cls()
-
         path = Path(toml_path)
         if path.exists():
             with open(path, "rb") as f:
                 data = tomllib.load(f)
-
-            # Update nested models if keys exist in TOML
             if "paths" in data:
                 settings.paths = PathsConfig(**data["paths"])
             if "tools" in data:
                 settings.tools = ToolsConfig(**data["tools"])
-            if "agents" in data:
-                settings.agents = AgentsConfig(**data["agents"])
+            # agents removed
             if "prompts" in data:
                 settings.prompts = PromptsConfig(**data["prompts"])
-
         return settings
 
 settings = Settings.load_from_toml()
