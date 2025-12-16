@@ -60,7 +60,7 @@ def planner_system_prompt(ctx: RunContext[Any]) -> str:
 
 # Coder Agent
 coder_agent: Agent[Any, list[FileOperation]] = Agent(
-    FAST_MODEL,
+    SMART_MODEL,
     system_prompt=(
         "You are Jules, a skilled Python Engineer. "
         "Implement high-quality code based on specifications and contracts. "

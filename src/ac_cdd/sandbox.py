@@ -1,4 +1,6 @@
+import io
 import os
+import tarfile
 from pathlib import Path
 
 from e2b_code_interpreter import Sandbox
@@ -77,41 +79,42 @@ class SandboxRunner:
 
     async def _sync_to_sandbox(self, sandbox: Sandbox) -> None:
         """
-        Uploads configured directories and files to the sandbox.
+        Uploads configured directories and files to the sandbox using a tarball for performance.
         """
         root = Path.cwd()
+        tar_buffer = io.BytesIO()
 
-        # Sync individual files first
-        for filename in settings.sandbox.files_to_sync:
-            file_path = root / filename
-            if file_path.exists():
-                remote_path = f"{self.cwd}/{filename}"
-                with open(file_path, "rb") as f:
-                    try:
-                        await sandbox.files.write(remote_path, f)
-                    except Exception as e:
-                        logger.warning(f"Failed to sync {filename}: {e}")
+        with tarfile.open(fileobj=tar_buffer, mode="w:gz") as tar:
+            # Sync individual files
+            for filename in settings.sandbox.files_to_sync:
+                file_path = root / filename
+                if file_path.exists():
+                    tar.add(file_path, arcname=filename)
 
-        # Sync directories
-        for folder in settings.sandbox.dirs_to_sync:
-            local_folder = root / folder
-            if not local_folder.exists():
-                continue
+            # Sync directories
+            for folder in settings.sandbox.dirs_to_sync:
+                local_folder = root / folder
+                if not local_folder.exists():
+                    continue
 
-            for file_path in local_folder.rglob("*"):
-                if file_path.is_file():
-                    # Filter generic ignored
-                    if "__pycache__" in str(file_path) or ".git" in str(file_path):
-                        continue
+                for file_path in local_folder.rglob("*"):
+                    if file_path.is_file():
+                        # Filter generic ignored
+                        if "__pycache__" in str(file_path) or ".git" in str(file_path):
+                            continue
 
-                    rel_path = file_path.relative_to(root)
-                    remote_path = f"{self.cwd}/{rel_path}"
+                        rel_path = file_path.relative_to(root)
+                        tar.add(file_path, arcname=str(rel_path))
 
-                    try:
-                        with open(file_path, "rb") as f:
-                            await sandbox.files.write(remote_path, f)
-                    except Exception as e:
-                        logger.warning(f"Failed to sync {rel_path}: {e}")
+        tar_buffer.seek(0)
+
+        # Upload the tarball
+        remote_tar_path = f"{self.cwd}/bundle.tar.gz"
+        await sandbox.files.write(remote_tar_path, tar_buffer)
+
+        # Extract
+        await sandbox.commands.run(f"tar -xzf bundle.tar.gz -C {self.cwd}")
+        logger.info("Synced files to sandbox via tarball.")
 
     async def close(self) -> None:
         if self.sandbox:
