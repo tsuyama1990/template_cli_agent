@@ -19,3 +19,4 @@ class CycleState(TypedDict):
     error: str | None
     dry_run: bool
     interactive: bool
+    goal: str | None

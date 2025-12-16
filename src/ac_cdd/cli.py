@@ -1,12 +1,13 @@
 import asyncio
 import os
 import shutil
+import sqlite3
 from pathlib import Path
 
 import logfire
 import typer
 from dotenv import load_dotenv
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -115,17 +116,27 @@ def start_cycle(
     auto_next: bool = False,
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompts"),
     interactive: bool = typer.Option(True, help="Enable interactive approval of file changes"),
+    goal: str = typer.Option(None, "--goal", help="Specific goal or instruction for this cycle"),
 ) -> None:
     """サイクルの自動実装・監査ループを開始します (LangGraph使用)"""
-    asyncio.run(_start_cycle_async(names, dry_run, auto_next, yes, interactive))
+    asyncio.run(_start_cycle_async(names, dry_run, auto_next, yes, interactive, goal))
 
 
-async def _run_graph(graph_builder, initial_state: dict, title: str) -> None:
+async def _get_checkpointer(cycle_id: str) -> SqliteSaver:
+    """Get a configured SqliteSaver for the given cycle."""
+    db_path = Path(".jules/checkpoints.sqlite")
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    conn = sqlite3.connect(db_path, check_same_thread=False)
+    return SqliteSaver(conn)
+
+
+async def _run_graph(graph_builder, initial_state: dict, title: str, thread_id: str) -> None:
     """Generic graph runner with progress UI."""
-    memory = MemorySaver()
-    graph = graph_builder.compile(checkpointer=memory)
+    checkpointer = await _get_checkpointer(thread_id)
+    graph = graph_builder.compile(checkpointer=checkpointer)
 
-    config = {"configurable": {"thread_id": f"session-{initial_state.get('cycle_id', 'adhoc')}"}}
+    config = {"configurable": {"thread_id": thread_id}}
 
     console.print(Panel(f"Running: {title}", style="bold magenta"))
 
@@ -152,7 +163,12 @@ async def _run_graph(graph_builder, initial_state: dict, title: str) -> None:
 
 
 async def _start_cycle_async(
-    names: list[str], dry_run: bool, auto_next: bool, auto_approve: bool, interactive: bool
+    names: list[str],
+    dry_run: bool,
+    auto_next: bool,
+    auto_approve: bool,
+    interactive: bool,
+    goal: str | None,
 ) -> None:
     if not names:
         console.print("[red]少なくとも1つのサイクルIDを指定してください (例: 01)[/red]")
@@ -176,8 +192,9 @@ async def _start_cycle_async(
             "sandbox_id": None,
             "dry_run": dry_run,
             "interactive": interactive,
+            "goal": goal,
         }
-        await _run_graph(build_graph(), initial_state, f"Cycle {cycle_id}")
+        await _run_graph(build_graph(), initial_state, f"Cycle {cycle_id}", f"cycle-{cycle_id}")
 
 
 # --- Ad-hoc Workflow (Graph Based) ---
@@ -200,8 +217,9 @@ async def _audit_async() -> None:
         "sandbox_id": None,
         "dry_run": False,
         "interactive": True,
+        "goal": None,
     }
-    await _run_graph(build_audit_graph(), initial_state, "Ad-hoc Audit")
+    await _run_graph(build_audit_graph(), initial_state, "Ad-hoc Audit", "audit-session")
 
 
 @app.command()
@@ -221,8 +239,9 @@ async def _fix_async() -> None:
         "sandbox_id": None,
         "dry_run": False,
         "interactive": True,
+        "goal": None,
     }
-    await _run_graph(build_fix_graph(), initial_state, "Ad-hoc Fix")
+    await _run_graph(build_fix_graph(), initial_state, "Ad-hoc Fix", "fix-session")
 
 
 @app.command()

@@ -47,6 +47,9 @@ async def planner_node(state: CycleState) -> dict:
 
     user_task = f"{base_prompt}\n\nFocus specifically on generating artifacts for CYCLE{cycle_id}."
 
+    if state.get("goal"):
+        user_task += f"\n\nUSER GOAL/INSTRUCTION: {state['goal']}"
+
     if state.get("error"):
         user_task += f"\n\nPREVIOUS ERROR/FEEDBACK: {state['error']}"
 
@@ -61,12 +64,21 @@ async def planner_node(state: CycleState) -> dict:
 async def spec_writer_node(state: CycleState) -> dict:
     """
     Phase 3.1: Align Contracts (Sync Schema)
-    Phase 3.2: Generate Property Tests
     """
     cycle_id = state["cycle_id"]
     logger.info(f"Phase: Spec Writer (Cycle {cycle_id})")
 
     contract_manager.align_contracts(cycle_id)
+
+    return {"current_phase": "contracts_aligned"}
+
+
+async def test_generator_node(state: CycleState) -> dict:
+    """
+    Phase 3.2: Generate Property Tests
+    """
+    cycle_id = state["cycle_id"]
+    logger.info(f"Phase: Test Generator (Cycle {cycle_id})")
 
     user_task = settings.prompts.property_test_template.format(cycle_id=cycle_id)
 
@@ -78,20 +90,18 @@ async def spec_writer_node(state: CycleState) -> dict:
     result = await coder_agent.run(prompt_with_role)
 
     # Logic for interaction
-    # 1. Preview changes (dry_run=True)
     preview_results = file_patcher.apply_changes(result.output, dry_run=True)
 
     should_apply = True
     if state.get("interactive", False):
         should_apply = presenter.review_and_confirm(preview_results)
     else:
-        # Just show what's happening
         presenter.print_patch_results(preview_results)
 
     if should_apply and not state.get("dry_run", False):
         file_patcher.apply_changes(result.output, dry_run=False)
 
-    return {"current_phase": "spec_written"}
+    return {"current_phase": "tests_generated"}
 
 
 async def coder_node(state: CycleState) -> dict:
@@ -349,6 +359,7 @@ def build_graph() -> StateGraph[CycleState]:
     # Add Nodes
     workflow.add_node("planner", planner_node)
     workflow.add_node("spec_writer", spec_writer_node)
+    workflow.add_node("test_generator", test_generator_node)
     workflow.add_node("coder", coder_node)
     workflow.add_node("tester", tester_node)
     workflow.add_node("auditor", auditor_node)
@@ -357,7 +368,8 @@ def build_graph() -> StateGraph[CycleState]:
     # Define Edges
     workflow.set_entry_point("planner")
     workflow.add_edge("planner", "spec_writer")
-    workflow.add_edge("spec_writer", "coder")
+    workflow.add_edge("spec_writer", "test_generator")
+    workflow.add_edge("test_generator", "coder")
     workflow.add_edge("coder", "tester")
 
     # Conditional Edges
