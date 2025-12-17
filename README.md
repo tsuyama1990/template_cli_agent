@@ -96,4 +96,4 @@ uv run manage.py new-cycle 02
 
 ## Development Flow
 
-See [DEV_FLOW.md](./DEV_FLOW.md) for architecture diagrams and [DESIGN_FLOW.md](./DESIGN_FLOW.md) for the detailed philosophical and structural design (Constitution).
+See [DEV_FLOW.md](./DEV_FLOW.md) for detailed architecture diagrams and the philosophical "Constitution" of the project.
