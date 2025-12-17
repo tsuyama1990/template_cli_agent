@@ -4,12 +4,15 @@ from typing import Any
 from pydantic_ai import Agent, RunContext
 
 from src.ac_cdd.config import settings
-from src.ac_cdd.domain_models import AuditResult, CyclePlan, FileOperation, UatAnalysis, StructuredSpec
+from src.ac_cdd.domain_models import (
+    AuditResult,
+    CyclePlan,
+    FileOperation,
+    StructuredSpec,
+    SystemArchitecture,
+    UatAnalysis,
+)
 from src.ac_cdd.tools import semantic_code_search
-
-# Model Definition
-FAST_MODEL = "gemini-2.5-flash"
-SMART_MODEL = "gemini-2.5-pro"
 
 
 def _load_file_content(filepath: str) -> str:
@@ -46,9 +49,26 @@ def _get_system_context() -> str:
 
 # --- Agents ---
 
+# Structurer Agent (New)
+structurer_agent: Agent[Any, SystemArchitecture] = Agent(
+    settings.agents.structurer_model,
+    system_prompt=(
+        "You are an Expert System Architect. "
+        "Your goal is to analyze raw/unstructured requirements and transform them "
+        "into a comprehensive System Architecture Design. "
+        "Focus on clarity, feasibility, and alignment with modern best practices."
+    ),
+)
+
+
+@structurer_agent.system_prompt
+def structurer_system_prompt(ctx: RunContext[Any]) -> str:
+    return _get_system_context()
+
+
 # Planner Agent
 planner_agent: Agent[Any, CyclePlan] = Agent(
-    SMART_MODEL,
+    settings.agents.planner_model,
     system_prompt=(
         "You are a Senior Software Architect. "
         "Define robust and scalable design specifications based on requirements.\n"
@@ -66,7 +86,7 @@ def planner_system_prompt(ctx: RunContext[Any]) -> str:
 
 # Coder Agent
 coder_agent: Agent[Any, list[FileOperation]] = Agent(
-    SMART_MODEL,
+    settings.agents.coder_model,
     system_prompt=(
         "You are Jules, a skilled Python Engineer. "
         "Implement high-quality code based on specifications and contracts. "
@@ -91,7 +111,7 @@ def coder_system_prompt(ctx: RunContext[Any]) -> str:
 
 # Auditor Agent
 auditor_agent: Agent[Any, AuditResult] = Agent(
-    SMART_MODEL,
+    settings.agents.auditor_model,
     system_prompt=(
         "You are the world's strictest Code Auditor (Gemini). "
         "Review code thoroughly for Pydantic contract violations, "
@@ -109,7 +129,7 @@ def auditor_system_prompt(ctx: RunContext[Any]) -> str:
 
 # QA Analyst Agent
 qa_analyst_agent: Agent[Any, UatAnalysis] = Agent(
-    FAST_MODEL,
+    settings.agents.qa_analyst_model,
     system_prompt=(
         "You are a QA Manager. "
         "Analyze test logs and report on conformity to requirements and behavior in Markdown."
@@ -124,7 +144,7 @@ def qa_analyst_system_prompt(ctx: RunContext[Any]) -> str:
 
 # Architect Agent (Spec Refiner)
 architect_agent: Agent[Any, StructuredSpec] = Agent(
-    SMART_MODEL,
+    settings.agents.architect_model,
     system_prompt=(
         "You are a Chief Systems Architect. "
         "Your role is to formalize raw requirements into a structured specification. "
@@ -133,4 +153,3 @@ architect_agent: Agent[Any, StructuredSpec] = Agent(
         "Ensure terminology is consistent and features are atomic."
     ),
 )
-
