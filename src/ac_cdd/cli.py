@@ -13,7 +13,9 @@ from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from ac_cdd.config import settings
-from ac_cdd.graph import build_audit_graph, build_fix_graph, build_graph
+from ac_cdd.graph import GraphBuilder
+from ac_cdd.service_container import ServiceContainer
+from ac_cdd.services.project import ProjectManager
 
 load_dotenv()
 
@@ -23,6 +25,10 @@ if os.getenv("LOGFIRE_TOKEN"):
 
 app = typer.Typer(help="AC-CDD: AI-Native Cycle-Based Development Orchestrator")
 console = Console()
+
+# Instantiate global services (CLI is the entry point)
+services = ServiceContainer.default()
+project_manager = ProjectManager()
 
 
 @app.command()
@@ -89,24 +95,12 @@ def init() -> None:
 @app.command(name="new-cycle")
 def new_cycle(name: str) -> None:
     """新しい開発サイクルを作成します (例: 01, 02)"""
-    cycle_id = name
-    base_path = Path(settings.paths.documents_dir) / f"CYCLE{cycle_id}"
-    if base_path.exists():
-        console.print(f"[red]サイクル {cycle_id} は既に存在します！[/red]")
+    success, msg = project_manager.create_new_cycle(name)
+    if success:
+        console.print(f"[green]{msg}[/green]")
+    else:
+        console.print(f"[red]{msg}[/red]")
         raise typer.Exit(code=1)
-
-    base_path.mkdir(parents=True)
-    templates_dir = Path(settings.paths.templates) / "cycle"
-
-    for item in ["SPEC.md", "UAT.md", "schema.py"]:
-        src = templates_dir / item
-        if src.exists():
-            shutil.copy(src, base_path / item)
-        else:
-            console.print(f"[yellow]⚠ Template {item} missing.[/yellow]")
-
-    console.print(f"[green]新しいサイクルを作成しました: CYCLE{cycle_id}[/green]")
-    console.print(f"[bold]{base_path}[/bold] 内のファイルを編集してください。")
 
 
 @app.command(name="start-cycle")
@@ -131,10 +125,15 @@ async def _get_checkpointer(cycle_id: str) -> SqliteSaver:
     return SqliteSaver(conn)
 
 
-async def _run_graph(graph_builder, initial_state: dict, title: str, thread_id: str) -> None:
+async def _run_graph(graph, initial_state: dict, title: str, thread_id: str) -> None:
     """Generic graph runner with progress UI."""
     checkpointer = await _get_checkpointer(thread_id)
-    graph = graph_builder.compile(checkpointer=checkpointer)
+    # The graph is already compiled if passed from outside?
+    # No, GraphBuilder returns StateGraph, which needs compile().
+    # Let's fix _run_graph to accept StateGraph and compile it.
+
+    # Wait, GraphBuilder.build_main_graph returns StateGraph.
+    app = graph.compile(checkpointer=checkpointer)
 
     config = {"configurable": {"thread_id": thread_id}}
 
@@ -146,7 +145,7 @@ async def _run_graph(graph_builder, initial_state: dict, title: str, thread_id: 
         task_id = progress.add_task("[cyan]Executing...[/cyan]", total=None)
 
         try:
-            async for event in graph.astream(initial_state, config=config):
+            async for event in app.astream(initial_state, config=config):
                 for node_name, state_update in event.items():
                     phase = state_update.get("current_phase", node_name)
                     progress.update(
@@ -183,6 +182,9 @@ async def _start_cycle_async(
         except Exception as e:
             console.print(f"[yellow]Warning: Indexing failed: {e}[/yellow]")
 
+    graph_builder = GraphBuilder(services)
+    main_graph = graph_builder.build_main_graph()
+
     for cycle_id in names:
         initial_state = {
             "cycle_id": cycle_id,
@@ -194,7 +196,7 @@ async def _start_cycle_async(
             "interactive": interactive,
             "goal": goal,
         }
-        await _run_graph(build_graph(), initial_state, f"Cycle {cycle_id}", f"cycle-{cycle_id}")
+        await _run_graph(main_graph, initial_state, f"Cycle {cycle_id}", f"cycle-{cycle_id}")
 
 
 # --- Ad-hoc Workflow (Graph Based) ---
@@ -219,7 +221,9 @@ async def _audit_async() -> None:
         "interactive": True,
         "goal": None,
     }
-    await _run_graph(build_audit_graph(), initial_state, "Ad-hoc Audit", "audit-session")
+    graph_builder = GraphBuilder(services)
+    audit_graph = graph_builder.build_audit_graph()
+    await _run_graph(audit_graph, initial_state, "Ad-hoc Audit", "audit-session")
 
 
 @app.command()
@@ -241,7 +245,9 @@ async def _fix_async() -> None:
         "interactive": True,
         "goal": None,
     }
-    await _run_graph(build_fix_graph(), initial_state, "Ad-hoc Fix", "fix-session")
+    graph_builder = GraphBuilder(services)
+    fix_graph = graph_builder.build_fix_graph()
+    await _run_graph(fix_graph, initial_state, "Ad-hoc Fix", "fix-session")
 
 
 @app.command()
