@@ -49,15 +49,10 @@ def _get_system_context() -> str:
 
 # --- Agents ---
 
-# Structurer Agent (New)
+# Structurer Agent
 structurer_agent: Agent[Any, SystemArchitecture] = Agent(
     settings.agents.structurer_model,
-    system_prompt=(
-        "You are an Expert System Architect. "
-        "Your goal is to analyze raw/unstructured requirements and transform them "
-        "into a comprehensive System Architecture Design. "
-        "Focus on clarity, feasibility, and alignment with modern best practices."
-    ),
+    system_prompt=settings.agents.structurer,
 )
 
 
@@ -69,12 +64,7 @@ def structurer_system_prompt(ctx: RunContext[Any]) -> str:
 # Planner Agent
 planner_agent: Agent[Any, CyclePlan] = Agent(
     settings.agents.planner_model,
-    system_prompt=(
-        "You are a Senior Software Architect. "
-        "Define robust and scalable design specifications based on requirements.\n"
-        "You have access to 'semantic_code_search'. "
-        "Before proposing changes, search for relevant existing code to understand dependencies."
-    ),
+    system_prompt=settings.agents.planner,
     tools=[semantic_code_search],
 )
 
@@ -87,19 +77,7 @@ def planner_system_prompt(ctx: RunContext[Any]) -> str:
 # Coder Agent
 coder_agent: Agent[Any, list[FileOperation]] = Agent(
     settings.agents.coder_model,
-    system_prompt=(
-        "You are Jules, a skilled Python Engineer. "
-        "Implement high-quality code based on specifications and contracts. "
-        "Return a list of FileOperation (create or patch)."
-        "When modifying existing files, YOU MUST USE 'patch' operation."
-        "For 'patch', providing the exact 'search_block' from the original file "
-        "(including all whitespace/indentation) and the 'replace_block'. "
-        "DO NOT return the full file content for existing files."
-        "Always explain your thought process.\n"
-        "You have access to 'semantic_code_search'. "
-        "If you are modifying code, use this tool to find the definitions and usages "
-        "of relevant functions/classes to ensure you don't break dependencies."
-    ),
+    system_prompt=settings.agents.coder,
     tools=[semantic_code_search],
 )
 
@@ -112,11 +90,7 @@ def coder_system_prompt(ctx: RunContext[Any]) -> str:
 # Auditor Agent
 auditor_agent: Agent[Any, AuditResult] = Agent(
     settings.agents.auditor_model,
-    system_prompt=(
-        "You are the world's strictest Code Auditor (Gemini). "
-        "Review code thoroughly for Pydantic contract violations, "
-        "security issues, and design principles."
-    ),
+    system_prompt=settings.agents.auditor,
     # Auditor typically receives file content in prompt, but search helps for cross-file checks
     tools=[semantic_code_search],
 )
@@ -130,10 +104,7 @@ def auditor_system_prompt(ctx: RunContext[Any]) -> str:
 # QA Analyst Agent
 qa_analyst_agent: Agent[Any, UatAnalysis] = Agent(
     settings.agents.qa_analyst_model,
-    system_prompt=(
-        "You are a QA Manager. "
-        "Analyze test logs and report on conformity to requirements and behavior in Markdown."
-    ),
+    system_prompt=settings.agents.qa_analyst,
 )
 
 
@@ -145,11 +116,5 @@ def qa_analyst_system_prompt(ctx: RunContext[Any]) -> str:
 # Architect Agent (Spec Refiner)
 architect_agent: Agent[Any, StructuredSpec] = Agent(
     settings.agents.architect_model,
-    system_prompt=(
-        "You are a Chief Systems Architect. "
-        "Your role is to formalize raw requirements into a structured specification. "
-        "Analyze the input text, fill in missing technical gaps using industry best practices, "
-        "and output a strictly typed StructuredSpec object. "
-        "Ensure terminology is consistent and features are atomic."
-    ),
+    system_prompt=settings.agents.architect,
 )
