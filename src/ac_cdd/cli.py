@@ -147,14 +147,18 @@ async def _run_graph(graph, initial_state: dict, title: str, thread_id: str) -> 
             # We run the graph until it finishes or hits an interrupt
             # We use a progress bar for the active execution phase
             with Progress(
-                SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console,
             ) as progress:
                 task_id = progress.add_task("[cyan]Executing...[/cyan]", total=None)
                 
                 # If we are resuming, passing None resumes from the checkpoint state.
                 # However, if it's the *first* run, we pass initial_state.
-                # After the first run, resume_input should be None (unless we are providing new input, which update_state handles differently).
-                # Actually, for resuming after interrupt, passing Command(resume=value) or just None (if logic is in state) works.
+                # After the first run, resume_input should be None (unless we are providing
+                # new input, which update_state handles differently).
+                # Actually, for resuming after interrupt, passing Command(resume=value)
+                # or just None (if logic is in state) works.
                 # Here we updated state via update_state, so we pass None to resume.
                 
                 input_to_stream = resume_input if resume_input == initial_state else None
@@ -188,7 +192,9 @@ async def _run_graph(graph, initial_state: dict, title: str, thread_id: str) -> 
                 
                 if not interactive:
                     # Auto-approve in non-interactive mode
-                    console.print(f"[yellow]Auto-approving {next_step} (Non-interactive mode)[/yellow]")
+                    console.print(
+                        f"[yellow]Auto-approving {next_step} (Non-interactive mode)[/yellow]"
+                    )
                     app.update_state(config, {"approved": True, "error": None})
                 else:
                     # Show diff and ask for approval
@@ -206,7 +212,9 @@ async def _run_graph(graph, initial_state: dict, title: str, thread_id: str) -> 
                     else:
                         feedback = typing_prompt("Enter feedback/rejection reason:")
                         console.print("[red]Rejected. Looping back to agent...[/red]")
-                        app.update_state(config, {"approved": False, "error": f"User Rejected: {feedback}"})
+                        app.update_state(
+                            config, {"approved": False, "error": f"User Rejected: {feedback}"}
+                        )
                 
                 # Prepared to resume
                 resume_input = None 

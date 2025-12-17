@@ -543,7 +543,9 @@ class GraphBuilder:
             return "test_generator" # Loop back on rejection with feedback in 'error'
         
         workflow.add_conditional_edges(
-            "test_generator", check_test_approval, {"apply_test": "apply_test", "test_generator": "test_generator"}
+            "test_generator",
+            check_test_approval,
+            {"apply_test": "apply_test", "test_generator": "test_generator"},
         )
         workflow.add_edge("apply_test", "coder")
 
@@ -581,7 +583,9 @@ class GraphBuilder:
             return "uat_generator"
 
         workflow.add_conditional_edges(
-            "auditor", check_audit_result, {"uat_generator": "uat_generator", "coder": "coder", "end": END}
+            "auditor",
+            check_audit_result,
+            {"uat_generator": "uat_generator", "coder": "coder", "end": END},
         )
         
         # UAT Flow
@@ -604,7 +608,9 @@ class GraphBuilder:
                 return "coder"
             return "end"
 
-        workflow.add_conditional_edges("uat_evaluator", check_uat_result, {"end": END, "coder": "coder"})
+        workflow.add_conditional_edges(
+            "uat_evaluator", check_uat_result, {"end": END, "coder": "coder"}
+        )
 
         return workflow
 
