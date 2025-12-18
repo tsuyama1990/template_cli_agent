@@ -3,8 +3,8 @@ from typing import Any
 
 from pydantic_ai import Agent, RunContext
 
-from src.ac_cdd.config import settings
-from src.ac_cdd.domain_models import (
+from src.ac_cdd_core.config import settings
+from src.ac_cdd_core.domain_models import (
     AuditResult,
     CyclePlan,
     FileOperation,
@@ -12,7 +12,7 @@ from src.ac_cdd.domain_models import (
     SystemArchitecture,
     UatAnalysis,
 )
-from src.ac_cdd.tools import semantic_code_search
+from src.ac_cdd_core.tools import semantic_code_search
 
 
 def _load_file_content(filepath: str) -> str:

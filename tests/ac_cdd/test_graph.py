@@ -1,10 +1,9 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
-from ac_cdd.domain_models import CyclePlan, FileArtifact
-from ac_cdd.graph import GraphBuilder
-from ac_cdd.state import CycleState
+from ac_cdd_core.domain_models import CyclePlan, FileArtifact
+from ac_cdd_core.graph import GraphBuilder
+from ac_cdd_core.state import CycleState
 
 
 @pytest.mark.asyncio
@@ -40,11 +39,11 @@ async def test_planner_node_generation(mock_services, mock_agent_result):
         spec_file=FileArtifact(path="SPEC.md", content="spec content"),
         schema_file=FileArtifact(path="schema.py", content="schema content", language="python"),
         uat_file=FileArtifact(path="UAT.md", content="uat content"),
-        thought_process="My thought process"
+        thought_process="My thought process",
     )
 
     # Mock agent
-    with patch("ac_cdd.graph.planner_agent.run", new_callable=AsyncMock) as mock_run:
+    with patch("ac_cdd_core.graph.planner_agent.run", new_callable=AsyncMock) as mock_run:
         mock_run.return_value = mock_agent_result(plan)
 
         # We need to control Path.exists to force generation

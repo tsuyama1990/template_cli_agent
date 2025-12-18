@@ -1,13 +1,9 @@
 import difflib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from ..domain_models import FileCreate, FileOperation, FilePatch
 from ..utils import logger
-
-if TYPE_CHECKING:
-    from ..domain_models import FileOperation
 
 
 @dataclass
@@ -15,7 +11,7 @@ class PatchResult:
     success: bool
     file_path: str
     diff_text: str  # 適用された差分
-    message: str    # エラーメッセージ等
+    message: str  # エラーメッセージ等
     operation: str  # create or patch
 
 
@@ -66,13 +62,15 @@ class FilePatcher:
             elif isinstance(op, FilePatch):
                 if not p.exists():
                     logger.error(f"Cannot patch non-existent file: {p}")
-                    results.append(PatchResult(
-                        success=False,
-                        file_path=str(p),
-                        diff_text="",
-                        message="Cannot patch non-existent file",
-                        operation=op.operation
-                    ))
+                    results.append(
+                        PatchResult(
+                            success=False,
+                            file_path=str(p),
+                            diff_text="",
+                            message="Cannot patch non-existent file",
+                            operation=op.operation,
+                        )
+                    )
                     continue
 
                 original_content = p.read_text(encoding="utf-8")
@@ -82,13 +80,15 @@ class FilePatcher:
                     logger.error(
                         f"Patch failed for {p}: search_block not found (Exact match required)."
                     )
-                    results.append(PatchResult(
-                        success=False,
-                        file_path=str(p),
-                        diff_text="",
-                        message="Patch failed: search_block not found",
-                        operation=op.operation
-                    ))
+                    results.append(
+                        PatchResult(
+                            success=False,
+                            file_path=str(p),
+                            diff_text="",
+                            message="Patch failed: search_block not found",
+                            operation=op.operation,
+                        )
+                    )
                     continue
 
                 new_content = (
@@ -119,13 +119,15 @@ class FilePatcher:
             elif success and dry_run:
                 logger.info(f"[DRY-RUN] Would apply {op.operation} to {p}")
 
-            results.append(PatchResult(
-                success=success,
-                file_path=str(p),
-                diff_text=diff_text,
-                message=message,
-                operation=op.operation
-            ))
+            results.append(
+                PatchResult(
+                    success=success,
+                    file_path=str(p),
+                    diff_text=diff_text,
+                    message=message,
+                    operation=op.operation,
+                )
+            )
 
         return results
 

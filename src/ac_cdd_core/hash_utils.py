@@ -20,7 +20,7 @@ def calculate_directory_hash(root: Path, files: list[str], dirs: list[str]) -> s
         if p.exists():
             for file_path in sorted(p.rglob("*")):
                 if file_path.is_file():
-                     # Simple filter
+                    # Simple filter
                     if "__pycache__" in str(file_path) or ".git" in str(file_path):
                         continue
                     hasher.update(str(file_path.relative_to(root)).encode())

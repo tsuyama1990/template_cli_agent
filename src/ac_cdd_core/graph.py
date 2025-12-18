@@ -335,9 +335,7 @@ class GraphBuilder:
 
         files_content = self.services.file_patcher.read_src_files(settings.paths.src)
 
-        user_task = (
-            f"Audit the code in {settings.paths.src}/ for Pydantic contracts and security."
-        )
+        user_task = f"Audit the code in {settings.paths.src}/ for Pydantic contracts and security."
 
         if errors:
             user_task += (
@@ -410,11 +408,7 @@ class GraphBuilder:
         )
         result = await coder_agent.run(description)
 
-        return {
-            "code_changes": result.output,
-            "current_phase": "uat_generated",
-            "error": None
-        }
+        return {"code_changes": result.output, "current_phase": "uat_generated", "error": None}
 
     async def apply_uat_code_node(self, state: CycleState) -> dict[str, Any]:
         """Apply UAT code changes."""
@@ -446,9 +440,7 @@ class GraphBuilder:
         analysis: UatAnalysis = res.output
 
         # Save report
-        report_path = (
-            Path(settings.paths.documents_dir) / f"CYCLE{cycle_id}" / "UAT_RESULT.md"
-        )
+        report_path = Path(settings.paths.documents_dir) / f"CYCLE{cycle_id}" / "UAT_RESULT.md"
         report_path.write_text(
             f"# UAT {verdict}\n\n{analysis.summary}\n{analysis.behavior_analysis}",
             encoding="utf-8",
@@ -505,19 +497,19 @@ class GraphBuilder:
         workflow.add_node("structurer", self.structurer_node)
         workflow.add_node("planner", self.planner_node)
         workflow.add_node("spec_writer", self.spec_writer_node)
-        
+
         workflow.add_node("test_generator", self.test_generator_node)
         workflow.add_node("apply_test", self.apply_test_code_node)
-        
+
         workflow.add_node("coder", self.coder_node)
         workflow.add_node("apply_impl", self.apply_impl_code_node)
-        
+
         workflow.add_node("tester", self.tester_node)
         workflow.add_node("auditor", self.auditor_node)
-        
+
         workflow.add_node("uat_generator", self.uat_generator_node)
         workflow.add_node("apply_uat", self.apply_uat_code_node)
-        workflow.add_node("uat_evaluator", self.uat_evaluator_node)
+        workflow.add_node("uat", self.uat_evaluator_node)
 
         # Define Edges
         # Conditional Entry Point
@@ -535,13 +527,13 @@ class GraphBuilder:
         workflow.add_edge("structurer", "planner")
         workflow.add_edge("planner", "spec_writer")
         workflow.add_edge("spec_writer", "test_generator")
-        
+
         # Test Gen -> Approval -> Apply
         def check_test_approval(state: CycleState) -> Literal["apply_test", "test_generator"]:
             if state.get("approved"):
                 return "apply_test"
-            return "test_generator" # Loop back on rejection with feedback in 'error'
-        
+            return "test_generator"  # Loop back on rejection with feedback in 'error'
+
         workflow.add_conditional_edges(
             "test_generator",
             check_test_approval,
@@ -554,12 +546,12 @@ class GraphBuilder:
             if state.get("approved"):
                 return "apply_impl"
             return "coder"
-            
+
         workflow.add_conditional_edges(
             "coder", check_impl_approval, {"apply_impl": "apply_impl", "coder": "coder"}
         )
         workflow.add_edge("apply_impl", "tester")
-        
+
         # Testing Loop
         def check_test_result(state: CycleState) -> Literal["auditor", "coder", "end"]:
             if state.get("error"):
@@ -587,18 +579,19 @@ class GraphBuilder:
             check_audit_result,
             {"uat_generator": "uat_generator", "coder": "coder", "end": END},
         )
-        
+
         # UAT Flow
         def check_uat_approval(state: CycleState) -> Literal["apply_uat", "uat_generator"]:
             if state.get("approved"):
                 return "apply_uat"
             return "uat_generator"
-            
+
         workflow.add_conditional_edges(
-            "uat_generator", check_uat_approval,
-            {"apply_uat": "apply_uat", "uat_generator": "uat_generator"}
+            "uat_generator",
+            check_uat_approval,
+            {"apply_uat": "apply_uat", "uat_generator": "uat_generator"},
         )
-        workflow.add_edge("apply_uat", "uat_evaluator")
+        workflow.add_edge("apply_uat", "uat")
 
         def check_uat_result(state: CycleState) -> Literal["end", "coder"]:
             if state.get("error"):
@@ -608,9 +601,7 @@ class GraphBuilder:
                 return "coder"
             return "end"
 
-        workflow.add_conditional_edges(
-            "uat_evaluator", check_uat_result, {"end": END, "coder": "coder"}
-        )
+        workflow.add_conditional_edges("uat", check_uat_result, {"end": END, "coder": "coder"})
 
         return workflow
 
@@ -627,9 +618,7 @@ class GraphBuilder:
                 return "coder"
             return "end"
 
-        workflow.add_conditional_edges(
-            "diff_auditor", check_audit, {"coder": "coder", "end": END}
-        )
+        workflow.add_conditional_edges("diff_auditor", check_audit, {"coder": "coder", "end": END})
         workflow.add_edge("coder", END)  # One-shot fix for audit
         return workflow
 

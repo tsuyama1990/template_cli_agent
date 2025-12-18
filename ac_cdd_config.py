@@ -14,11 +14,11 @@ def _detect_package_dir() -> str:
         for p in src_path.iterdir():
             if p.is_dir() and (p / "__init__.py").exists():
                 return str(p)
-    return "src/ac_cdd"
+    return "src/ac_cdd_core"
 
 
 def _read_prompt(filename: str, default: str) -> str:
-    p = Path("src/ac_cdd/prompts") / filename
+    p = Path("src/ac_cdd_core/prompts") / filename
     if p.exists():
         return p.read_text(encoding="utf-8").strip()
     return default
@@ -37,7 +37,7 @@ class PathsConfig(BaseSettings):
     unit_tests: str = "tests/unit"
     e2e_tests: str = "tests/e2e"
     # New: Prompts directory path
-    prompts_dir: str = "src/ac_cdd/prompts"
+    prompts_dir: str = "src/ac_cdd_core/prompts"
 
     @model_validator(mode="after")
     def _set_dependent_paths(self) -> "PathsConfig":
@@ -60,6 +60,7 @@ class ToolsConfig(BaseSettings):
 
 class SandboxConfig(BaseSettings):
     """Configuration for E2B Sandbox execution"""
+
     model_config = SettingsConfigDict(extra="ignore")
     template: str | None = None  # None uses default (base)
     timeout: int = 300  # Default timeout in seconds
@@ -84,16 +85,12 @@ class AgentsConfig(BaseSettings):
     qa_analyst_model: str = "gemini-2.5-flash"
     planner_model: str = "gemini-2.5-pro"
 
-    # Prompts
+    # Prompts (Content loaded via _read_prompt)
     architect: str = Field(
         default_factory=lambda: _read_prompt("architect.md", "DEFAULT_ARCHITECT_PROMPT")
     )
-    coder: str = Field(
-        default_factory=lambda: _read_prompt("coder.md", "DEFAULT_CODER_PROMPT")
-    )
-    tester: str = Field(
-        default_factory=lambda: _read_prompt("tester.md", "DEFAULT_TESTER_PROMPT")
-    )
+    coder: str = Field(default_factory=lambda: _read_prompt("coder.md", "DEFAULT_CODER_PROMPT"))
+    tester: str = Field(default_factory=lambda: _read_prompt("tester.md", "DEFAULT_TESTER_PROMPT"))
     auditor: str = Field(
         default_factory=lambda: _read_prompt("auditor.md", "DEFAULT_AUDITOR_PROMPT")
     )
@@ -113,6 +110,8 @@ class PromptsConfig(BaseSettings):
     property_test_template: str = Field(
         default_factory=lambda: _read_prompt("property_test_template.md", "DEFAULT_TEST_PROMPT")
     )
+    # Explicit file path reference as requested
+    structurer: str = "ac_cdd_core/prompts/structurer.md"
 
 
 class Settings(BaseSettings):

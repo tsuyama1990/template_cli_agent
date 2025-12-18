@@ -1,8 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
-
-from ac_cdd.service_container import ServiceContainer
+from ac_cdd_core.service_container import ServiceContainer
 
 
 @pytest.fixture
@@ -28,9 +27,7 @@ def mock_presenter():
 
 
 @pytest.fixture
-def mock_services(
-    mock_file_patcher, mock_contract_manager, mock_artifact_manager, mock_presenter
-):
+def mock_services(mock_file_patcher, mock_contract_manager, mock_artifact_manager, mock_presenter):
     return ServiceContainer(
         file_patcher=mock_file_patcher,
         contract_manager=mock_contract_manager,
@@ -45,4 +42,5 @@ def mock_agent_result():
         result = MagicMock()
         result.output = output_data
         return result
+
     return _create_result
