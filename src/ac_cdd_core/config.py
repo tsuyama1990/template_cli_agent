@@ -6,6 +6,7 @@ sys.path.append(str(Path(__file__).parents[2]))
 
 try:
     from ac_cdd_config import config as _root_config
+
     # Re-export config
     config = _root_config
     settings = _root_config

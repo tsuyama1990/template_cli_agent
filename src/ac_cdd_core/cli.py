@@ -6,16 +6,15 @@ from pathlib import Path
 
 import logfire
 import typer
+from ac_cdd_core.config import settings
+from ac_cdd_core.graph import GraphBuilder
+from ac_cdd_core.service_container import ServiceContainer
+from ac_cdd_core.services.project import ProjectManager
 from dotenv import load_dotenv
 from langgraph.checkpoint.sqlite import SqliteSaver
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
-
-from ac_cdd.config import settings
-from ac_cdd.graph import GraphBuilder
-from ac_cdd.service_container import ServiceContainer
-from ac_cdd.services.project import ProjectManager
 
 load_dotenv()
 
@@ -128,18 +127,17 @@ async def _get_checkpointer(cycle_id: str) -> SqliteSaver:
 async def _run_graph(graph, initial_state: dict, title: str, thread_id: str) -> None:
     """Generic graph runner with progress UI and human-in-the-loop support."""
     checkpointer = await _get_checkpointer(thread_id)
-    
+
     # Compile with interrupts for human review
     app = graph.compile(
-        checkpointer=checkpointer,
-        interrupt_before=["apply_test", "apply_impl", "apply_uat"]
+        checkpointer=checkpointer, interrupt_before=["apply_test", "apply_impl", "apply_uat"]
     )
 
     config = {"configurable": {"thread_id": thread_id}}
-    
+
     # State for the runner loop
     resume_input = initial_state
-    
+
     console.print(Panel(f"Running: {title}", style="bold magenta"))
 
     while True:
@@ -152,7 +150,7 @@ async def _run_graph(graph, initial_state: dict, title: str, thread_id: str) -> 
                 console=console,
             ) as progress:
                 task_id = progress.add_task("[cyan]Executing...[/cyan]", total=None)
-                
+
                 # If we are resuming, passing None resumes from the checkpoint state.
                 # However, if it's the *first* run, we pass initial_state.
                 # After the first run, resume_input should be None (unless we are providing
@@ -160,7 +158,7 @@ async def _run_graph(graph, initial_state: dict, title: str, thread_id: str) -> 
                 # Actually, for resuming after interrupt, passing Command(resume=value)
                 # or just None (if logic is in state) works.
                 # Here we updated state via update_state, so we pass None to resume.
-                
+
                 input_to_stream = resume_input if resume_input == initial_state else None
 
                 async for event in app.astream(input_to_stream, config=config):
@@ -175,21 +173,21 @@ async def _run_graph(graph, initial_state: dict, title: str, thread_id: str) -> 
 
             # Check execution status
             snapshot = app.get_state(config)
-            
+
             if not snapshot.next:
                 # Execution finished
                 console.print(Panel("完了しました！", style="bold green"))
                 break
-                
+
             # If we are here, we are likely at an interruption point
             next_step = snapshot.next[0]
-            
+
             if next_step in ["apply_test", "apply_impl", "apply_uat"]:
                 # --- Human-in-the-loop Interaction ---
                 state_values = snapshot.values
                 code_changes = state_values.get("code_changes", [])
                 interactive = state_values.get("interactive", False)
-                
+
                 if not interactive:
                     # Auto-approve in non-interactive mode
                     console.print(
@@ -199,13 +197,13 @@ async def _run_graph(graph, initial_state: dict, title: str, thread_id: str) -> 
                 else:
                     # Show diff and ask for approval
                     console.print(Panel(f"Review Required for {next_step}", style="bold yellow"))
-                    
+
                     # Generate preview (dry-run)
                     preview = services.file_patcher.apply_changes(code_changes, dry_run=True)
-                    
+
                     # Use Presenter to confirm
                     approved = services.presenter.review_and_confirm(preview)
-                    
+
                     if approved:
                         console.print("[green]Approved. Applying changes...[/green]")
                         app.update_state(config, {"approved": True, "error": None})
@@ -215,11 +213,11 @@ async def _run_graph(graph, initial_state: dict, title: str, thread_id: str) -> 
                         app.update_state(
                             config, {"approved": False, "error": f"User Rejected: {feedback}"}
                         )
-                
+
                 # Prepared to resume
-                resume_input = None 
+                resume_input = None
                 # continue the loop to resume execution
-                
+
             else:
                 # Stopped for some other reason? Should not happen with current config.
                 console.print(f"[yellow]Paused at {next_step}. Resuming...[/yellow]")
@@ -229,6 +227,7 @@ async def _run_graph(graph, initial_state: dict, title: str, thread_id: str) -> 
             console.print(Panel(f"失敗: {str(e)}", style="bold red"))
             # Depending on severity, we might want to break or continue
             break
+
 
 def typing_prompt(text: str) -> str:
     """Helper for typed input"""
@@ -249,7 +248,8 @@ async def _start_cycle_async(
 
     if not dry_run:
         try:
-            from ac_cdd.rag.indexer import CodeIndexer
+            from ac_cdd_core.rag.indexer import CodeIndexer
+
             console.print("[cyan]Indexing codebase for RAG...[/cyan]")
             CodeIndexer().index()
             console.print("[green]Index updated.[/green]")
@@ -333,8 +333,8 @@ def refine_spec() -> None:
 
 
 async def _refine_spec_async() -> None:
-    from ac_cdd.agents import architect_agent
-    
+    from ac_cdd_core.agents import architect_agent
+
     spec_path = Path(settings.paths.documents_dir) / "ALL_SPEC.md"
     if not spec_path.exists():
         console.print(
@@ -342,19 +342,19 @@ async def _refine_spec_async() -> None:
             "Run 'copy dev_documents/templates/ALL_SPEC.md dev_documents/' first.[/red]"
         )
         raise typer.Exit(1)
-        
+
     console.print(Panel("Refining Specification into Structured Format...", style="bold blue"))
-    
+
     raw_content = spec_path.read_text(encoding="utf-8")
-    
+
     # Run Agent
     try:
         result = await architect_agent.run(f"Refine this specification:\n\n{raw_content}")
         structured_spec = result.output
-        
+
         # Save output
         out_path = Path(settings.paths.documents_dir) / "ALL_SPEC_STRUCTURED.md"
-        
+
         # Convert to rigorous Markdown using the Pydantic model
         md_content = f"""# Structured Project Specification
 
@@ -373,8 +373,7 @@ async def _refine_spec_async() -> None:
 """
         for f in structured_spec.features:
             md_content += (
-                f"### {f.name} ({f.priority})\n"
-                f"{f.description}\n\n**Acceptance Criteria:**\n"
+                f"### {f.name} ({f.priority})\n" f"{f.description}\n\n**Acceptance Criteria:**\n"
             )
             md_content += "\n".join(f"- {ac}" for ac in f.acceptance_criteria) + "\n\n"
 
@@ -382,18 +381,18 @@ async def _refine_spec_async() -> None:
         md_content += "\n".join(
             f"- **{c.category}**: {c.description}" for c in structured_spec.constraints
         )
-        
+
         # Also save raw JSON for downstream tools
         (Path(settings.paths.documents_dir) / "ALL_SPEC_STRUCTURED.json").write_text(
             structured_spec.model_dump_json(indent=2), encoding="utf-8"
         )
-        
+
         out_path.write_text(md_content, encoding="utf-8")
-        
+
         console.print(f"[green]✔ Generated {out_path}[/green]")
         console.print(f"[green]✔ Generated {out_path.with_suffix('.json')}[/green]")
         console.print("Please review these files before starting a cycle.")
-        
+
     except Exception as e:
         console.print(f"[red]Failed to refine spec: {e}[/red]")
 

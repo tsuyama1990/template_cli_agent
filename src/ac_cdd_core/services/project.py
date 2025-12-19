@@ -1,7 +1,7 @@
 import shutil
 from pathlib import Path
 
-from ac_cdd.config import settings
+from ac_cdd_core.config import settings
 
 
 class ProjectManager:

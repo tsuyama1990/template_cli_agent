@@ -10,6 +10,7 @@ class ConsolePresenter:
     """
     Handles presentation of file operations to the console using rich.
     """
+
     def __init__(self) -> None:
         self.console = Console()
 
