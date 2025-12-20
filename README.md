@@ -1,99 +1,116 @@
 # Autonomous Development Environment (AC-CDD)
 
-An AI-native development environment implementing **Cycle-based Contract-Driven Development**.
-Powered by **LangGraph** and **E2B Code Interpreter**.
+An AI-Native Cycle-Based Contract-Driven Development Environment.
 
-## Architecture
+This repository is a template for creating AI-powered software development projects. It separates the agent orchestration logic from the user's product code.
 
-This project uses a State Graph to orchestrate AI agents for planning, coding, testing, and auditing.
+## Directory Structure
 
-```mermaid
-graph TD
-    Structurer --> Planner
-    Planner --> SpecWriter
-    SpecWriter --> Coder
-    Coder --> Tester
-    Tester -- Fail --> Coder
-    Tester -- Pass --> UAT
-    UAT -- Fail --> Coder
-    UAT -- Pass --> Auditor
-    Auditor -- Fail --> Coder
-    Auditor -- Pass x3 --> Commit
+*   `dev_src/`: **Agent Core Code.** The source code for the AC-CDD CLI and agents (`ac_cdd_core`).
+*   `src/`: **User Product Code.** This is where YOUR project's source code resides. The agents will read and write code here.
+*   `dev_documents/`: **Documentation & Artifacts.** Stores design docs (`ALL_SPEC.md`, `SYSTEM_ARCHITECTURE.md`), cycle artifacts (`CYCLE{xx}/`), and templates.
+*   `tests/`: Tests for the AC-CDD core logic (you can add your own tests in `src/tests` or similar if you wish, but usually `tests/` here is for the tool itself if you are forking). *Note: The agents will generate tests for YOUR code in `tests/` or as configured.*
+
+## Getting Started
+
+### Prerequisites
+
+*   Python 3.12+
+*   `uv` (Universal Python Package Manager)
+*   `git`
+*   `gh` (GitHub CLI)
+
+### Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/your-org/autonomous-dev-env.git
+    cd autonomous-dev-env
+    ```
+
+2.  **Install dependencies:**
+    ```bash
+    uv sync
+    ```
+
+3.  **Setup Environment:**
+    Run the initialization wizard to generate your `.env` file.
+    ```bash
+    uv run manage.py init
+    ```
+
+### Configuration
+
+The system is configured via `.env` and `ac_cdd_config.py`.
+
+#### API Keys
+
+You must provide the following keys in your `.env` file:
+
+*   `JULES_API_KEY`: Required for the Jules autonomous agent interface.
+*   `GEMINI_API_KEY` or `GOOGLE_API_KEY`: Required for Gemini models (Auditor, QA Analyst).
+*   `OPENROUTER_API_KEY`: (Optional) Required if you use OpenRouter models.
+
+#### Multi-Model Configuration
+
+You can configure different models for different agents to optimize for cost and intelligence.
+
+**Example `.env` configuration (Hybrid):**
+
+```env
+# Smart model for auditing (Gemini Pro)
+SMART_MODEL=gemini-2.5-pro
+
+# Fast model for QA analysis (Gemini Flash)
+FAST_MODEL=gemini-2.5-flash
+
+# Use OpenRouter for other agents if configured
+OPENROUTER_API_KEY=sk-or-v1-...
 ```
-
-### Components
-
-- **LangGraph**: Manages state and flow control (`src/ac_cdd/graph.py`, `src/ac_cdd/state.py`).
-- **E2B Code Interpreter**: Safely executes tests and audits in a cloud sandbox (`src/ac_cdd/sandbox.py`).
-- **Pydantic AI**: Provides structured agent outputs (`src/ac_cdd/agents.py`).
-
-## Setup
-
-1. **Install uv**:
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   uv sync
-   ```
-
-3. **Configure Environment**:
-   Copy `.env.example` to `.env` and set your API keys.
-   ```bash
-   cp dev_documents/templates/.env.example .env
-   ```
-
-   **Required Keys:**
-   - `GEMINI_API_KEY`: For AI Agents.
-   - `E2B_API_KEY`: For Sandbox execution (Get one at [e2b.dev](https://e2b.dev)).
-   - `LOGFIRE_TOKEN`: (Optional) For observability.
-
-4. **Configuration (Optional)**:
-   You can customize agent models and paths in `ac_cdd_config.py` in the root directory.
 
 ## Usage
 
-### 0. Define Grand Design (Critical)
-Before running any automation, you must define **what** you are building.
-The agents use `dev_documents/ALL_SPEC.md` as the "Constitution" of your project.
+### Architecture Phase
 
-1. **Initialize the Spec**:
-   Copy the template if it doesn't exist:
-   ```bash
-   cp dev_documents/templates/ALL_SPEC.md dev_documents/ALL_SPEC.md
-   ```
-2. **Write your Requirements**:
-   Edit `dev_documents/ALL_SPEC.md`. Describe the project goal, architecture, and feature backlog.
-   *The Structurer Agent will read this to generate the System Architecture.*
+Generate the system architecture and specifications from your `ARCHITECT_INSTRUCTION.md` template.
 
-### 1. Start Development Cycle
 ```bash
-uv run manage.py start-cycle 01
+uv run manage.py gen-cycles
 ```
 
-**What happens:**
-1. **Structurer Phase**: If `dev_documents/SYSTEM_ARCHITECTURE.md` does not exist, the **Structurer Agent** reads `ALL_SPEC.md` and generates a comprehensive architecture design.
-2. **Planning Phase**: The **Planner Agent** reads the architecture and generates artifacts for the current cycle (`SPEC.md`, `schema.py`, `UAT.md`).
-3. **Implementation Loop**:
-   - Generate property tests.
-   - Implement code.
-   - Run tests in E2B Sandbox.
-   - Run UAT in E2B Sandbox.
-   - **Strict Audit**: The Auditor reviews code 3 times consecutively (Triple Check) before passing.
+This will:
+1.  Create a `design/architecture` branch.
+2.  Run the Architect Session using Jules.
+3.  Generate `ALL_SPEC.md` and `SYSTEM_ARCHITECTURE.md`.
 
-### Create a New Cycle
+### Development Cycles
+
+Run a development cycle to implement features.
+
 ```bash
-uv run manage.py new-cycle 02
+# Run Cycle 01
+uv run manage.py run-cycle --id 01
+
+# Run automatically (no manual confirmation)
+uv run manage.py run-cycle --id 01 --auto
 ```
 
-### Ad-hoc Commands
-- **Audit**: `uv run manage.py audit` (Review git diffs)
-- **Fix**: `uv run manage.py fix` (Fix failed tests)
-- **Refine Spec**: `uv run manage.py refine-spec` (Manually trigger structured spec generation)
-- **Check Env**: `uv run manage.py doctor`
+This will:
+1.  Checkout `feat/cycle01`.
+2.  Run the Coder Session (Implementation).
+3.  Run Tests (`pytest`).
+4.  Perform UAT Evaluation (QA Analyst).
+5.  Perform Strict Auditing (Auditor).
+6.  Commit if successful.
 
-## Development Flow
+## Development (of this tool)
 
-See [DEV_FLOW.md](./AGENT_DOCS/DEV_FLOW.md) for detailed architecture diagrams and the philosophical "Constitution" of the project.
+If you are contributing to the AC-CDD core itself:
+
+*   The core logic is in `dev_src/ac_cdd_core`.
+*   Run tests using: `uv run pytest tests/`
+*   Linting: `uv run ruff check dev_src/`
+
+## License
+
+[License Name]
