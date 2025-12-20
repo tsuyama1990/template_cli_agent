@@ -6,19 +6,19 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 def _detect_package_dir() -> str:
     """
-    Detects the main package directory under src/.
+    Detects the main package directory under dev_src/.
     Looks for the first directory containing __init__.py.
     """
-    src_path = Path("src")
+    src_path = Path("dev_src")
     if src_path.exists():
         for p in src_path.iterdir():
             if p.is_dir() and (p / "__init__.py").exists():
                 return str(p)
-    return "src/ac_cdd_core"
+    return "dev_src/ac_cdd_core"
 
 
 def _read_prompt(filename: str, default: str) -> str:
-    p = Path("src/ac_cdd_core/prompts") / filename
+    p = Path("dev_src/ac_cdd_core/prompts") / filename
     if p.exists():
         return p.read_text(encoding="utf-8").strip()
     return default
@@ -37,7 +37,7 @@ class PathsConfig(BaseSettings):
     unit_tests: str = "tests/unit"
     e2e_tests: str = "tests/e2e"
     # New: Prompts directory path
-    prompts_dir: str = "src/ac_cdd_core/prompts"
+    prompts_dir: str = "dev_src/ac_cdd_core/prompts"
 
     @model_validator(mode="after")
     def _set_dependent_paths(self) -> "PathsConfig":
@@ -47,8 +47,8 @@ class PathsConfig(BaseSettings):
 
 class JulesConfig(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
-    # Point to the mock script by default for this environment
-    executable: str = str(Path("tests/mock_jules.py").absolute())
+    # Default to regular command name 'jules'
+    executable: str = "jules"
     timeout_seconds: int = 600
     polling_interval_seconds: int = 5
 
@@ -72,7 +72,7 @@ class SandboxConfig(BaseSettings):
     template: str | None = None  # None uses default (base)
     timeout: int = 300  # Default timeout in seconds
     cwd: str = "/home/user"
-    dirs_to_sync: list[str] = ["src", "tests", "contracts", "dev_documents"]
+    dirs_to_sync: list[str] = ["src", "tests", "contracts", "dev_documents", "dev_src"]
     files_to_sync: list[str] = ["pyproject.toml", "uv.lock", ".auditignore"]
     install_cmd: str = "pip install uv"
     test_cmd: list[str] = ["uv", "run", "pytest"]

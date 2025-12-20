@@ -1,15 +1,14 @@
 from pathlib import Path
 from typing import Any
 
-from pydantic_ai import Agent, RunContext
-from pydantic_ai.models.openai import OpenAIModel
-
-from src.ac_cdd_core.config import settings
-from src.ac_cdd_core.domain_models import (
+from ac_cdd_core.config import settings
+from ac_cdd_core.domain_models import (
     AuditResult,
     UatAnalysis,
 )
-from src.ac_cdd_core.tools import semantic_code_search
+from ac_cdd_core.tools import semantic_code_search
+from pydantic_ai import Agent, RunContext
+from pydantic_ai.models.openai import OpenAIModel
 
 
 def _load_file_content(filepath: str) -> str:

@@ -5,12 +5,11 @@ import time
 from pathlib import Path
 from typing import Any
 
-from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
-
 from ac_cdd_core.config import settings
 from ac_cdd_core.process_runner import ProcessRunner
 from ac_cdd_core.utils import logger
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
 console = Console()
 
