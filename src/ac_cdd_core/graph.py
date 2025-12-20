@@ -92,8 +92,10 @@ class GraphBuilder:
         instruction = base_instruction.replace("{{cycle_id}}", cycle_id)
 
         files = [str(template_path), str(arch_file)]
-        if spec_file.exists(): files.append(str(spec_file))
-        if uat_file.exists(): files.append(str(uat_file))
+        if spec_file.exists():
+            files.append(str(spec_file))
+        if uat_file.exists():
+            files.append(str(uat_file))
 
         signal_file = cycle_dir / "session_report.json"
 
@@ -129,7 +131,9 @@ class GraphBuilder:
         cycle_dir = Path(settings.paths.documents_dir) / f"CYCLE{cycle_id}"
         uat_file = cycle_dir / "UAT.md"
 
-        uat_content = uat_file.read_text(encoding="utf-8") if uat_file.exists() else "No UAT Definition."
+        uat_content = (
+            uat_file.read_text(encoding="utf-8") if uat_file.exists() else "No UAT Definition."
+        )
         logs = state.get("test_logs", "No logs.")
 
         prompt = (
@@ -143,7 +147,11 @@ class GraphBuilder:
         result = await qa_analyst_agent.run(prompt)
         analysis: UatAnalysis = result.output
 
-        verdict = "PASS" if "pass" in analysis.summary.lower() and state.get("test_exit_code") == 0 else "FAIL"
+        verdict = (
+            "PASS"
+            if "pass" in analysis.summary.lower() and state.get("test_exit_code") == 0
+            else "FAIL"
+        )
 
         if verdict == "FAIL":
             return {"error": f"UAT Failed: {analysis.summary}", "current_phase": "uat_failed"}
@@ -169,10 +177,13 @@ class GraphBuilder:
         workflow.add_edge("init_branch", "architect_session")
 
         def check_architect(state: CycleState) -> Literal["commit", "end"]:
-            if state.get("error"): return "end"
+            if state.get("error"):
+                return "end"
             return "commit"
 
-        workflow.add_conditional_edges("architect_session", check_architect, {"commit": "commit", "end": END})
+        workflow.add_conditional_edges(
+            "architect_session", check_architect, {"commit": "commit", "end": END}
+        )
         workflow.add_edge("commit", END)
 
         return workflow
@@ -189,14 +200,18 @@ class GraphBuilder:
         workflow.add_edge("checkout_branch", "coder_session")
 
         def check_coder(state: CycleState) -> Literal["run_tests", "end"]:
-            if state.get("error"): return "end"
+            if state.get("error"):
+                return "end"
             return "run_tests"
 
-        workflow.add_conditional_edges("coder_session", check_coder, {"run_tests": "run_tests", "end": END})
+        workflow.add_conditional_edges(
+            "coder_session", check_coder, {"run_tests": "run_tests", "end": END}
+        )
         workflow.add_edge("run_tests", "uat_evaluate")
 
         def check_uat(state: CycleState) -> Literal["commit", "end"]:
-            if state.get("error"): return "end"
+            if state.get("error"):
+                return "end"
             return "commit"
 
         workflow.add_conditional_edges("uat_evaluate", check_uat, {"commit": "commit", "end": END})

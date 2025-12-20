@@ -1,15 +1,16 @@
-import json
-import time
-import subprocess
 import asyncio
+import json
+import subprocess
+import time
 from pathlib import Path
-from typing import Optional, List, Any
+from typing import Any
+
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
 from ac_cdd_core.config import settings
-from ac_cdd_core.utils import logger
 from ac_cdd_core.process_runner import ProcessRunner
+from ac_cdd_core.utils import logger
 
 console = Console()
 
@@ -38,9 +39,9 @@ class JulesClient:
         self,
         session_id: str,
         prompt: str,
-        files: List[str],
+        files: list[str],
         completion_signal_file: Path,
-        timeout_override: Optional[int] = None
+        timeout_override: int | None = None
     ) -> dict[str, Any]:
         """
         Starts a Jules session and waits for the completion signal file.
@@ -82,7 +83,9 @@ class JulesClient:
             # Using run_in_executor to avoid blocking event loop
             await asyncio.get_event_loop().run_in_executor(
                 None,
-                lambda: subprocess.run(cmd, check=True, capture_output=True, text=True)
+                lambda: subprocess.run(
+                    cmd, check=True, capture_output=True, text=True
+                )
             )
         except subprocess.CalledProcessError as e:
             logger.error(f"Jules CLI failed: {e.stderr}")
@@ -117,7 +120,9 @@ class JulesClient:
         except Exception as e:
             logger.warning(f"File sync error: {e}")
 
-    async def _wait_for_completion(self, signal_file: Path, timeout: int, task_name: str) -> dict[str, Any]:
+    async def _wait_for_completion(
+        self, signal_file: Path, timeout: int, task_name: str
+    ) -> dict[str, Any]:
         """
         Polls for the existence of the signal file.
         """
@@ -146,10 +151,11 @@ class JulesClient:
                         if content.strip():
                             data = json.loads(content)
                             progress.update(task, description=f"{task_name} Completed!")
-                            return data # type: ignore
+                            return data  # type: ignore
                     except json.JSONDecodeError:
                         logger.warning(
-                            f"Signal file {signal_file} found but contains invalid JSON. Retrying..."
+                            f"Signal file {signal_file} found but contains invalid JSON."
+                            " Retrying..."
                         )
                     except Exception as e:
                         logger.warning(f"Error reading signal file: {e}")

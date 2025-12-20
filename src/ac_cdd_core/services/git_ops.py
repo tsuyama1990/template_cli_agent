@@ -1,9 +1,7 @@
-import shutil
-from pathlib import Path
-from typing import Optional
+from ac_cdd_core.config import settings
 from ac_cdd_core.process_runner import ProcessRunner
 from ac_cdd_core.utils import logger
-from ac_cdd_core.config import settings
+
 
 class GitManager:
     """

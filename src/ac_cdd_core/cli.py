@@ -2,21 +2,19 @@ import asyncio
 import json
 import os
 import shutil
-import sqlite3
 from pathlib import Path
-from typing import Optional
 
 import logfire
 import typer
-from ac_cdd_core.config import settings
-from ac_cdd_core.graph import GraphBuilder
-from ac_cdd_core.service_container import ServiceContainer
-from ac_cdd_core.services.project import ProjectManager
 from dotenv import load_dotenv
 from langgraph.checkpoint.memory import MemorySaver
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
+
+from ac_cdd_core.config import settings
+from ac_cdd_core.graph import GraphBuilder
+from ac_cdd_core.service_container import ServiceContainer
+from ac_cdd_core.services.project import ProjectManager
 
 load_dotenv()
 
@@ -92,7 +90,7 @@ async def _gen_cycles_async() -> None:
 
 @app.command(name="run-cycle")
 def run_cycle(
-    cycle_id: Optional[str] = typer.Argument(None, help="Target Cycle ID (e.g. 01)"),
+    cycle_id: str | None = typer.Argument(None, help="Target Cycle ID (e.g. 01)"),
     auto: bool = typer.Option(False, "--auto", help="Run all cycles sequentially from plan"),
 ) -> None:
     """
@@ -104,7 +102,7 @@ def run_cycle(
 
     asyncio.run(_run_cycle_async(cycle_id, auto))
 
-async def _run_cycle_async(cycle_id: Optional[str], auto: bool) -> None:
+async def _run_cycle_async(cycle_id: str | None, auto: bool) -> None:
     graph_builder = GraphBuilder(services)
     coder_graph = graph_builder.build_coder_graph()
 
@@ -139,7 +137,9 @@ async def _run_cycle_async(cycle_id: Optional[str], auto: bool) -> None:
         # Use unique thread ID per cycle to prevent state pollution
         thread_id = f"coder-{cid}"
 
-        result_state = await _run_graph(coder_graph, initial_state, f"Coder Session (Cycle {cid})", thread_id)
+        result_state = await _run_graph(
+            coder_graph, initial_state, f"Coder Session (Cycle {cid})", thread_id
+        )
 
         if result_state.get("error"):
             console.print(f"[red]Cycle {cid} Failed: {result_state['error']}[/red]")
