@@ -100,6 +100,14 @@ class JulesApiClient:
         }
         return self._request("POST", "sessions", payload)
 
+    def approve_plan(self, session_id: str) -> Dict[str, Any]:
+        """Approves the current plan in the session, triggering PR creation."""
+        # Note: The endpoint uses a colon verb syntax
+        endpoint = f"{session_id}:approvePlan"
+        # Endpoint takes an empty body or specific approval options if needed
+        # Documentation implies simple POST is enough for default approval
+        return self._request("POST", endpoint, {})
+
     def list_activities(self, session_id_path: str) -> List[Dict[str, Any]]:
         try:
             resp = self._request("GET", f"{session_id_path}/activities?pageSize=50")
@@ -182,7 +190,21 @@ class JulesClient:
             # RESTORED: Explicitly print the URL for the user
             self.console.print(f"[bold green]Jules Session Active[/bold green]: https://jules.google/sessions/{session_name.split('/')[-1]}")
             
-            return await self._poll_activities(session_name, completion_signal_file, timeout_override or self.timeout)
+            # 3. Poll for completion
+            result = await self._poll_activities(session_name, completion_signal_file, timeout_override or self.timeout)
+            
+            # 4. Approve Plan (Trigger PR)
+            logger.info("Session completed successfully. Approving plan to trigger PR...")
+            try:
+                await asyncio.get_event_loop().run_in_executor(
+                    None,
+                    lambda: self.api_client.approve_plan(session_name)
+                )
+                self.console.print("[bold green]Plan Approved! PR should be created shortly.[/bold green]")
+            except Exception as e:
+                logger.warning(f"Failed to auto-approve plan (PR might strictly need manual approval): {e}")
+
+            return result
 
         except JulesApiError as e:
             raise JulesSessionError(f"Jules API failed: {e}") from e
