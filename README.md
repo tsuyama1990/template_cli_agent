@@ -23,9 +23,15 @@ graph TD
 
 ### Components
 
-- **LangGraph**: Manages state and flow control (`src/ac_cdd/graph.py`, `src/ac_cdd/state.py`).
-- **E2B Code Interpreter**: Safely executes tests and audits in a cloud sandbox (`src/ac_cdd/sandbox.py`).
-- **Pydantic AI**: Provides structured agent outputs (`src/ac_cdd/agents.py`).
+- **LangGraph**: Manages state and flow control (`dev_src/ac_cdd_core/graph.py`, `dev_src/ac_cdd_core/state.py`).
+- **E2B Code Interpreter**: Safely executes tests and audits in a cloud sandbox (`dev_src/ac_cdd_core/sandbox.py`).
+- **Pydantic AI**: Provides structured agent outputs (`dev_src/ac_cdd_core/agents.py`).
+
+### Directory Structure
+
+- `dev_src/`: **The Agent Core**. Source code for the AC-CDD environment itself.
+- `src/`: **User Space**. Your product code goes here.
+- `dev_documents/`: **Context**. Specifications, templates, and logs.
 
 ## Setup
 
@@ -46,9 +52,15 @@ graph TD
    ```
 
    **Required Keys:**
-   - `GEMINI_API_KEY`: For AI Agents.
+   - `GEMINI_API_KEY`: For AI Agents (via Google Generative AI).
+   - `JULES_API_KEY`: For the Jules Coding Agent.
    - `E2B_API_KEY`: For Sandbox execution (Get one at [e2b.dev](https://e2b.dev)).
    - `LOGFIRE_TOKEN`: (Optional) For observability.
+
+   **Optional (OpenRouter/Multi-Model):**
+   - `OPENROUTER_API_KEY`: If using OpenRouter models.
+   - `SMART_MODEL`: Model for Audit/Architect (e.g., `gemini-2.5-pro` or `openrouter/anthropic/claude-3.5-sonnet`).
+   - `FAST_MODEL`: Model for QA/UAT (e.g., `gemini-2.5-flash`).
 
 4. **Configuration (Optional)**:
    You can customize agent models and paths in `ac_cdd_config.py` in the root directory.

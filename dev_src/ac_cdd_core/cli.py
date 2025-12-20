@@ -6,15 +6,14 @@ from pathlib import Path
 
 import logfire
 import typer
-from dotenv import load_dotenv
-from langgraph.checkpoint.memory import MemorySaver
-from rich.console import Console
-from rich.panel import Panel
-
 from ac_cdd_core.config import settings
 from ac_cdd_core.graph import GraphBuilder
 from ac_cdd_core.service_container import ServiceContainer
 from ac_cdd_core.services.project import ProjectManager
+from dotenv import load_dotenv
+from langgraph.checkpoint.memory import MemorySaver
+from rich.console import Console
+from rich.panel import Panel
 
 load_dotenv()
 
