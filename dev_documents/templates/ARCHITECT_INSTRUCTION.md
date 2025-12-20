@@ -8,12 +8,18 @@ Your goal is to analyze the raw requirements in `ALL_SPEC.md` and generate a com
 
 ## Outputs
 You must generate the following files. Ensure you write them to the disk.
+**DO NOT TOUCH THE OTHER FILES OTHER THAN THE ONES MENTIONED HERE**
+List to be generated:
+- `dev_documents/SYSTEM_ARCHITECTURE.md`
+- `dev_documents/CYCLE{xx}/SPEC.md` (For EACH Cycle)
+- `dev_documents/CYCLE{xx}/UAT.md` (For EACH Cycle)
+- `dev_documents/plan_status.json`
 
 ### 1. `dev_documents/SYSTEM_ARCHITECTURE.md`
 A comprehensive architectural document.
 **Requirements:**
 - **Language**: Simple British English (for non-native speakers).
-- **Format**: Markdown.
+- **Format**: Markdown. Change the lines appropriately.
 
 **Sections & Word Counts (Minimum):**
 1. **Summary** (Min 500 words)
@@ -25,7 +31,7 @@ A comprehensive architectural document.
 4. **Design Architecture** (Min 500 words)
    - File structure, class/function definitions overview, data models.
 5. **Implementation Plan** (Min 500 words per cycle)
-   - Break down the project into Cycles (CYCLE01, CYCLE02, ...).
+   - Decompose the project into logical, self-contained units and assign them to sequential cycles (CYCLE01, CYCLE02, ...).
    - Detail exactly what features belong to each cycle.
 6. **Test Strategy** (Min 500 words per cycle)
    - How each cycle will be tested.
@@ -34,6 +40,7 @@ A comprehensive architectural document.
 Detailed specification for a specific development cycle.
 **Requirements:**
 - **Language**: Simple British English.
+- **Format**: Markdown. Change the lines appropriately.
 
 **Sections:**
 1. **Summary** (Min 500 words)
@@ -51,6 +58,7 @@ Detailed specification for a specific development cycle.
 User Acceptance Testing plan.
 **Requirements:**
 - **Language**: Simple British English.
+- **Format**: Markdown. Change the lines appropriately.
 
 **Sections:**
 1. **Test Scenarios** (Min 300 words per Scenario ID)
@@ -64,7 +72,7 @@ Format:
 ```json
 {
   "status": "completed",
-  "cycles": ["01", "02", "03"]
+  "cycles": ["01", "02", "03", "..."]
 }
 ```
 This file MUST be written last, after all other documents are successfully generated.
