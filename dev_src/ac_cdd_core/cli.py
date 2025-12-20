@@ -6,7 +6,7 @@ from rich.console import Console
 from rich.panel import Panel
 
 from .config import settings
-from .graph import build_architect_graph, build_coder_graph
+# from .graph import build_architect_graph, build_coder_graph
 from .service_container import ServiceContainer
 from .state import CycleState
 from .utils import logger
@@ -29,7 +29,7 @@ def init() -> None:
     """
     from .services.project import ProjectManager
 
-    manager = ProjectManager(settings.paths.documents_dir)
+    manager = ProjectManager()
     try:
         manager.initialize_project(settings.paths.templates)
         console.print("[green]Project initialized successfully![/green]")
@@ -55,6 +55,7 @@ def gen_cycles(
         console.rule("[bold blue]Architect Phase: Generating Cycles[/bold blue]")
 
         services = ServiceContainer()
+        from .graph import build_architect_graph
         graph = build_architect_graph(services)
 
         # Initialize state
@@ -97,6 +98,7 @@ def run_cycle(
         console.rule(f"[bold green]Running Cycle {cycle_id}[/bold green]")
 
         services = ServiceContainer()
+        from .graph import build_coder_graph
         graph = build_coder_graph(services)
 
         # Initialize state

@@ -35,5 +35,26 @@ class ProjectManager:
                 msg += f"\nWarning: Missing templates: {', '.join(missing_templates)}"
 
             return True, msg
+            return True, msg
         except Exception as e:
             return False, f"Failed to create cycle: {e}"
+
+    def initialize_project(self, templates_path: str) -> None:
+        """
+        Initializes the project structure.
+        """
+        docs_dir = Path(settings.paths.documents_dir)
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Ensure templates directory exists
+        templates_dest = Path(templates_path)
+        templates_dest.mkdir(parents=True, exist_ok=True)
+        
+        # Create ARCHITECT_INSTRUCTION.md if not exists
+        arch_instr = templates_dest / "ARCHITECT_INSTRUCTION.md"
+        if not arch_instr.exists():
+            arch_instr.write_text("# Architect Instruction\n\nDefine your system architecture here.", encoding="utf-8")
+
+        # Create other necessary dirs
+        (docs_dir / "contracts").mkdir(exist_ok=True)
+
