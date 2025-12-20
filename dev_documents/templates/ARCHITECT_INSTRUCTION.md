@@ -74,11 +74,27 @@ User Acceptance Testing plan.
 
 ### 4. `dev_documents/plan_status.json`
 **CRITICAL**: This is the completion signal.
-Format:
+
+### 5. OUTPUT FORMAT (MANDATORY)
+You are running in an API mode where you CANNOT call file tools directly.
+You MUST output the content of EVERY file in the following Markdown format:
+
+FILENAME: dev_documents/path/to/file.md
+```markdown
+[File Content Here]
+```
+
+Example:
+FILENAME: dev_documents/plan_status.json
 ```json
 {
   "status": "completed",
-  "cycles": ["01", "02", "03", "..."]
+  "cycles": ["01", "02"]
 }
 ```
-This file MUST be written last, after all other documents are successfully generated.
+
+**Instruction:**
+1. Generate `SYSTEM_ARCHITECTURE.md`.
+2. Generate `SPEC.md` and `UAT.md` for ALL cycles (01, 02...).
+3. FINALLY, generate `plan_status.json` using the format above.
+4. DO NOT just say "I have completed". You MUST output the file contents in code blocks as shown.
