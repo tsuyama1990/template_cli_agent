@@ -125,23 +125,31 @@ class JulesClient:
     def _parse_and_save(self, text: str) -> None:
         r"""
         Parses text for FILENAME blocks and writes them to disk.
-        Regex: FILENAME:\s*([^\n]+)\n```\w*\n(.*?)```
+        Robust Regex allows:
+        - Spaces around filename
+        - Any or no language identifier after ```
         """
-        pattern = re.compile(r"FILENAME:\s*([^\n]+)\n```\w*\n(.*?)```", re.DOTALL)
+        # Improved Regex
+        pattern = re.compile(r"FILENAME:\s*([^\n]+)\s*\n\s*```[^\n]*\n(.*?)```", re.DOTALL)
 
         matches = pattern.findall(text)
         if not matches:
-            logger.info("No file blocks found in output.")
+            # Log level info (sometimes output is just thinking process)
+            logger.info("No file blocks found in output this turn.")
             return
 
         for filename, content in matches:
             filename = filename.strip()
+            # Security check (optional but recommended)
+            if ".." in filename or filename.startswith("/"):
+                logger.warning(f"[Security] Skipped unsafe path: {filename}")
+                continue
+
             file_path = Path(filename)
 
             # Ensure directory exists
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-
             try:
+                file_path.parent.mkdir(parents=True, exist_ok=True)
                 file_path.write_text(content, encoding="utf-8")
                 logger.info(f"[System] Saved: {filename}")
             except Exception as e:
