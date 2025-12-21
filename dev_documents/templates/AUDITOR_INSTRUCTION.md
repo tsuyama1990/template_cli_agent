@@ -15,3 +15,11 @@ Evaluate focusing heavily on the following 4 points:
 Output your result.
 - If CRITICAL issues exist -> Reject.
 - If only Minor improvements exist -> Approve (but list the improvements clearly).
+
+Output your final report in the following format ONLY:
+
+=== AUDIT REPORT START ===
+- [Critical] Hardcoded path found in main.py
+- [Suggestion] Use Pydantic for validation in schema.py
+...
+=== AUDIT REPORT END ===

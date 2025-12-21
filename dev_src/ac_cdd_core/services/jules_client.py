@@ -4,7 +4,7 @@ import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from ac_cdd_core.config import settings
 from ac_cdd_core.process_runner import ProcessRunner
@@ -13,17 +13,20 @@ from rich.console import Console
 
 console = Console()
 
+
 class JulesSessionError(Exception):
     pass
+
 
 class JulesTimeoutError(JulesSessionError):
     pass
 
+
 @dataclass
 class JulesActivity:
     type: str
-    content: Optional[str] = None
-    tool_name: Optional[str] = None
+    content: str | None = None
+    tool_name: str | None = None
     requires_response: bool = False
 
     @classmethod
@@ -34,6 +37,7 @@ class JulesActivity:
             tool_name=data.get("tool_name"),
             requires_response=data.get("requires_response", False),
         )
+
 
 class JulesClient:
     """
@@ -56,7 +60,7 @@ class JulesClient:
         prompt: str,
         files: list[str],
         completion_signal_file: Path,
-        timeout_override: int | None = None
+        timeout_override: int | None = None,
     ) -> dict[str, Any]:
         """
         Starts a Jules session and enters an event loop to monitor progress.
@@ -128,7 +132,9 @@ class JulesClient:
                     # Ensure we process any files in the message content before asking
                     if latest.content:
                         self._parse_and_save(latest.content)
-                        self.console.print(f"\n[bold magenta]Jules asks:[/bold magenta] {latest.content}")
+                        self.console.print(
+                            f"\n[bold magenta]Jules asks:[/bold magenta] {latest.content}"
+                        )
 
                     # Get User Input
                     user_response = await asyncio.get_event_loop().run_in_executor(
@@ -147,23 +153,38 @@ class JulesClient:
 
                     # Update status message if tool name is available
                     if latest.tool_name:
-                         status_context.update(f"[bold green]Jules is using {latest.tool_name}...")
+                        status_context.update(f"[bold green]Jules is using {latest.tool_name}...")
 
                     await asyncio.sleep(self.poll_interval)
 
                 elif latest.type in ("session_completed", "pr_created"):
-                    # Should be handled by file check, but this is a secondary check
+                    # Status check logic modified for robustness
                     status_context.stop()
                     logger.info(f"Session completed via activity: {latest.type}")
+
                     # Give it a moment for file to appear/sync
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(5)
+
                     if completion_signal_file.exists():
-                         continue # Loop will catch it at top
+                        status_context.start()  # Restart status if we loop back (though unlikely if file exists)
+                        continue
                     else:
-                        # Fallback if file missing but API says done
-                        logger.warning("API reports completion but signal file missing.")
-                        # Depending on robustness, we might want to return here or wait more
-                        pass
+                        # Fallback: API says done, but file is missing.
+                        # Auto-reply to force file generation.
+                        logger.warning(
+                            "API reports completion but signal file missing. Sending auto-reply."
+                        )
+
+                        auto_msg = (
+                            "API says completed, but completion_signal_file is missing. "
+                            "Please output the json file in the FILENAME format immediately."
+                        )
+                        await self._send_user_response(session_id, auto_msg)
+
+                        # Resume status and continue loop to wait for the file
+                        status_context.start()
+                        await asyncio.sleep(self.poll_interval)
+                        continue
 
                 else:
                     # Unknown or generic activity
@@ -190,22 +211,22 @@ class JulesClient:
         try:
             result = await asyncio.get_event_loop().run_in_executor(
                 None,
-                lambda: subprocess.run(
-                    cmd, check=True, capture_output=True, text=True
-                ),
+                lambda: subprocess.run(cmd, check=True, capture_output=True, text=True),
             )
             data = json.loads(result.stdout)
             # transform to objects
             return [JulesActivity.from_dict(item) for item in data]
-        except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
+        except (subprocess.CalledProcessError, json.JSONDecodeError):
             # If CLI fails or returns non-JSON, log and return empty list to keep polling
             # logger.debug(f"Fetch activities failed: {e}") # Debug log to reduce noise
             return []
         except FileNotFoundError:
-             # Logic for when 'jules' executable is missing (e.g. in tests not mocking it)
-             return []
+            # Logic for when 'jules' executable is missing (e.g. in tests not mocking it)
+            return []
 
-    async def _send_user_response(self, session_id: str, message: str, files: list[str] = None) -> None:
+    async def _send_user_response(
+        self, session_id: str, message: str, files: list[str] = None
+    ) -> None:
         """
         Sends a message (or prompt) to the agent.
         """
@@ -220,11 +241,9 @@ class JulesClient:
         cmd.append(message)
 
         try:
-             await asyncio.get_event_loop().run_in_executor(
+            await asyncio.get_event_loop().run_in_executor(
                 None,
-                lambda: subprocess.run(
-                    cmd, check=True, capture_output=True, text=True
-                ),
+                lambda: subprocess.run(cmd, check=True, capture_output=True, text=True),
             )
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to send message: {e.stderr}")
