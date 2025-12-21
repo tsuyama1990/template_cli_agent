@@ -7,7 +7,6 @@ from langgraph.graph.state import CompiledStateGraph
 from .agents import qa_analyst_agent
 from .config import settings
 from .domain_models import AuditResult, UatAnalysis
-from .process_runner import ProcessRunner
 from .service_container import ServiceContainer
 from .services.git_ops import GitManager
 from .services.jules_client import JulesClient
@@ -172,11 +171,18 @@ class GraphBuilder:
         """Run tests to capture logs for UAT analysis."""
         logger.info("Phase: Run Tests")
 
-        runner = ProcessRunner()
-
-        # Try running tests
+        # Try running tests in sandbox
         cmd = ["uv", "run", "pytest", "tests/"]
-        stdout, stderr, code = await runner.run_command(cmd, check=False)
+        try:
+            stdout, stderr, code = await self.services.sandbox.run_command(cmd, check=False)
+        except Exception as e:
+            # Fallback or error handling if sandbox fails to connect/run
+            logger.error(f"Sandbox test execution failed: {e}")
+            return {
+                "test_logs": f"Execution Failed: {e}",
+                "test_exit_code": -1,
+                "current_phase": "tests_failed_exec"
+            }
 
         logs = f"STDOUT:\n{stdout}\n\nSTDERR:\n{stderr}"
         return {"test_logs": logs, "test_exit_code": code, "current_phase": "tests_run"}
