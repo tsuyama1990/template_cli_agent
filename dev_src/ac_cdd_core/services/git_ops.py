@@ -26,7 +26,7 @@ class GitManager:
         status = await self._run_git(["status", "--porcelain"])
         if status:
             logger.warning("Working directory is not clean. Stashing changes...")
-            await self._run_git(["stash", "push", "-m", "Auto-stash before Jules run"])
+            await self._run_git(["stash", "push", "-u", "-m", "Auto-stash before Jules run"])
 
     async def create_working_branch(self, prefix: str, id: str) -> str:
         """
