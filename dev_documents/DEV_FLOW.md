@@ -39,14 +39,14 @@ graph TD
     Checkout --> InitSandbox[Init Shared Sandbox]
     InitSandbox --> Loop{Iteration Loop}
 
-    Loop -->|Iter = 1| Jules[Jules (Initial Implementation)]
-    Loop -->|Iter > 1| AiderFix[Aider (Remote Fixer)]
+    Loop -->|Iter = 1| Jules["Jules (Initial Implementation)"]
+    Loop -->|Iter > 1| AiderFix["Aider (Remote Fixer)"]
 
-    Jules --> RunTests[Run Tests (Remote)]
+    Jules --> RunTests["Run Tests (Remote)"]
     AiderFix --> RunTests
 
-    RunTests --> UATEval[UAT Evaluation (Gemini)]
-    UATEval --> StrictAudit[Strict Audit (Remote Aider)]
+    RunTests --> UATEval["UAT Evaluation (Gemini)"]
+    UATEval --> StrictAudit["Strict Audit (Remote Aider)"]
 
     StrictAudit -->|Feedback| Loop
 
