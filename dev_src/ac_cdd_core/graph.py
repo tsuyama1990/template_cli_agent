@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Any, Literal
+import re
 
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
@@ -43,7 +44,7 @@ class GraphBuilder:
         signal_file = Path(settings.paths.documents_dir) / "plan_status.json"
 
         if not spec_path.exists():
-             return {"error": "ALL_SPEC.md not found.", "current_phase": "architect_failed"}
+            return {"error": "ALL_SPEC.md not found.", "current_phase": "architect_failed"}
 
         # Input: user requirements (ALL_SPEC.md)
         files = [str(spec_path)]
@@ -55,7 +56,7 @@ class GraphBuilder:
                 session_id="architect-session",
                 prompt=instruction,
                 files=files,
-                completion_signal_file=signal_file
+                completion_signal_file=signal_file,
             )
         except Exception as e:
             logger.error(f"Architect session failed: {e}")
@@ -64,7 +65,7 @@ class GraphBuilder:
         return {
             "current_phase": "architect_complete",
             "planned_cycles": result.get("cycles", []),
-            "error": None
+            "error": None,
         }
 
     async def commit_architect_node(self, state: CycleState) -> dict[str, Any]:
@@ -85,7 +86,7 @@ class GraphBuilder:
         return {
             "current_phase": "branch_ready",
             "active_branch": branch,
-            "iteration_count": 0
+            "iteration_count": 0,
         }
 
     async def coder_session_node(self, state: CycleState) -> dict[str, Any]:
@@ -93,7 +94,9 @@ class GraphBuilder:
         cycle_id = state["cycle_id"]
         iteration_count = state.get("iteration_count", 0) + 1
 
-        logger.info(f"Phase: Coder Session (Cycle {cycle_id}) - Iteration {iteration_count}/{settings.MAX_ITERATIONS}")
+        logger.info(
+            f"Phase: Coder Session (Cycle {cycle_id}) - Iteration {iteration_count}/{settings.MAX_ITERATIONS}"
+        )
 
         template_path = Path(settings.paths.templates) / "CODER_INSTRUCTION.md"
         cycle_dir = Path(settings.paths.documents_dir) / f"CYCLE{cycle_id}"
@@ -107,11 +110,11 @@ class GraphBuilder:
             logger.info("Mode: Aider Fixer (Refinement/Repair)")
             audit_feedback = state.get("audit_feedback")
 
-            # Gather files to fix (simple heuristic: all files in src/ for now, or use git status?)
-            # Ideally Aider knows the repo map, so passing src/ might work if we list files.
-            # Let's list all python files in src/
+            # Gather files to fix
+            # TODO: In the future, use git status or Aider's repo map to narrow down context.
             src_files = list(Path(settings.paths.src).rglob("*.py"))
-            files_to_edit = [str(f) for f in src_files]
+            test_files = list(Path(settings.paths.tests).rglob("*.py"))
+            files_to_edit = [str(f) for f in src_files + test_files]
 
             # Instruction
             if audit_feedback:
@@ -123,17 +126,20 @@ class GraphBuilder:
                     f"Verify your changes with tests."
                 )
             else:
-                 instruction = (
-                    "You are the Lead Engineer. The previous audit passed, but you must now OPTIMIZE the code.\n"
+                instruction = (
+                    "You are the Lead Engineer. The previous audit passed, "
+                    "but you must now OPTIMIZE the code.\n"
                     "Refactor for performance, readability, and better typing."
                 )
 
             try:
-                result = await self.aider_client.run_fix(files=files_to_edit, instruction=instruction)
+                result = await self.aider_client.run_fix(
+                    files=files_to_edit, instruction=instruction
+                )
                 return {
                     "coder_report": {"tool": "aider", "output": result},
                     "current_phase": "coder_complete",
-                    "iteration_count": iteration_count
+                    "iteration_count": iteration_count,
                 }
             except Exception as e:
                 return {"error": str(e), "current_phase": "coder_failed"}
@@ -158,12 +164,12 @@ class GraphBuilder:
                     session_id=f"coder-{cycle_id}-iter{iteration_count}",
                     prompt=instruction,
                     files=files,
-                    completion_signal_file=signal_file
+                    completion_signal_file=signal_file,
                 )
                 return {
                     "coder_report": result,
                     "current_phase": "coder_complete",
-                    "iteration_count": iteration_count
+                    "iteration_count": iteration_count,
                 }
             except Exception as e:
                 return {"error": str(e), "current_phase": "coder_failed"}
@@ -223,10 +229,11 @@ class GraphBuilder:
         iteration_count = state.get("iteration_count", 1)
 
         # 1. Gather Context (Files)
-        # List changed files or all source files?
-        # Aider works best with all context, but we can limit to src/
+        # Include both src and tests for context
+        # TODO: In the future, use git status or Aider's repo map to narrow down context.
         src_files = list(Path(settings.paths.src).rglob("*.py"))
-        files_to_audit = [str(f) for f in src_files]
+        test_files = list(Path(settings.paths.tests).rglob("*.py"))
+        files_to_audit = [str(f) for f in src_files + test_files]
 
         # Load Instruction
         template_path = Path(settings.paths.templates) / "AUDITOR_INSTRUCTION.md"
@@ -242,27 +249,44 @@ class GraphBuilder:
 
         logger.info(f"Audit Round {iteration_count} Complete.")
 
-        # We store the raw text output as feedback.
-        # Since we are in a forced loop, we treat all output as 'feedback' to address.
-        # Construct a dummy AuditResult for type compatibility if needed, or just skip it.
-        # State definition says: audit_result: AuditResult | None.
-        # But we also have audit_feedback: list[str] | None.
+        # 3. Parse Output for Structured Report
+        # Look for content between markers
+        marker_start = "=== AUDIT REPORT START ==="
+        marker_end = "=== AUDIT REPORT END ==="
 
-        # Let's split output by lines for the feedback list
-        feedback_lines = [line.strip() for line in output.split('\n') if line.strip()]
+        extracted_text = ""
+        if marker_start in output and marker_end in output:
+            try:
+                start_idx = output.index(marker_start) + len(marker_start)
+                end_idx = output.index(marker_end)
+                extracted_text = output[start_idx:end_idx].strip()
+            except ValueError:
+                # Should not happen given the check, but safe fallback
+                extracted_text = ""
+
+        if not extracted_text:
+            # Fallback: take the last 20 lines or full output if short
+            lines = output.strip().split("\n")
+            if len(lines) > 20:
+                extracted_text = "\n".join(lines[-20:])
+            else:
+                extracted_text = output.strip()
+
+        # Split into lines for feedback
+        feedback_lines = [line.strip() for line in extracted_text.split("\n") if line.strip()]
 
         # Dummy result to satisfy type hints if strictly checked elsewhere
         dummy_result = AuditResult(
-            is_approved=False, # Always assume false/improve in fixed loop
+            is_approved=False,  # Always assume false/improve in fixed loop
             critical_issues=feedback_lines,
             minor_issues=[],
-            score=0
+            score=0,
         )
 
         return {
             "audit_result": dummy_result,
             "current_phase": "audit_complete",
-            "audit_feedback": feedback_lines
+            "audit_feedback": feedback_lines,
         }
 
     async def commit_coder_node(self, state: CycleState) -> dict[str, Any]:
@@ -327,7 +351,7 @@ class GraphBuilder:
 
         def check_audit(state: CycleState) -> Literal["commit", "coder_session"]:
             current_iter = state.get("iteration_count", 0)
-            max_iter = settings.MAX_ITERATIONS # default: 3
+            max_iter = settings.MAX_ITERATIONS  # default: 3
 
             if current_iter < max_iter:
                 logger.info(f"Iteration {current_iter}/{max_iter}: Proceeding to refinement loop.")
