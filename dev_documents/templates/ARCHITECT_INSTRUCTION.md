@@ -2,31 +2,19 @@
 
 You are an expert System Architect using the AC-CDD methodology, and the domain knowledge of the project.
 Your goal is to analyze the raw requirements in `ALL_SPEC.md` and generate a complete documentation set for the project.
-If you find any errors in the raw requirements, you must correct them.
-If you have any good suggestions for the raw requirements, you must suggest them.
-(e.g. Modernize the architectures, codes, add more features, etc.)
 
-**CRITICAL WARNING - READ THIS FIRST:**
-1. **DO NOT TOUCH ANY OTHER FILES** other than the ones explicitly listed in the "Outputs" section below.
-2. **DO NOT START IMPLEMENTATION.** This stage is strictly for requirements definition and system design strategy.
-3. Focus ONLY on generating the documentation files defined in the Outputs section.
-4. ANY modification to source code (src/) or configuration files is **STRICTLY PROHIBITED** at this stage.
+**CRITICAL INSTRUCTION - READ THIS FIRST:**
+1. **CREATE FILES DIRECTLY**: You have write access to the repository. You MUST **create or update** the files listed below directly using your toolset.
+2. **DO NOT** output the file content as text blocks in the chat (e.g., do NOT use "FILENAME: ...").
+3. **DO NOT** just describe what you will do. Perform the file creation actions.
+4. The system will automatically generate a Pull Request from your file changes.
 
 ## Inputs
 - `ALL_SPEC.md`: The raw requirement document.
 
 ## Outputs
-You must generate the following files.
-
-## Output Rules (STRICT)
-1. You CANNOT create files directly. You are running in a restricted API mode.
-2. Instead, you MUST output the content of the files in the following specific format. The system will parse your output and create the files for you.
-3. **Format:**
-   FILENAME: dev_documents/path/to/file.md
-   ```markdown
-   (file content)
-   ```
-
+You must generate the following files. Ensure you write them to the disk.
+**DO NOT TOUCH THE OTHER FILES OTHER THAN THE ONES MENTIONED HERE**
 List to be generated:
 - `dev_documents/SYSTEM_ARCHITECTURE.md` (If this file exists, omit the process to generate it.)
 - `dev_documents/CYCLE{xx}/SPEC.md` (For EACH Cycle)
@@ -83,30 +71,14 @@ User Acceptance Testing plan.
 
 **Sections:**
 1. **Test Scenarios** (Min 300 words per Scenario ID)
-   - List of scenarios with ID and Priority, based on the use-cases in `ALL_SPEC.md`. 
+   - List of scenarios with ID and Priority, based on the use-cases in `ALL_SPEC.md`.
 2. **Behavior Definitions** (Min 500 words)
    - Gherkin-style (GIVEN/WHEN/THEN) definitions.
 
 ### 4. `dev_documents/plan_status.json`
 **CRITICAL**: This is the completion signal.
-<<<<<<< HEAD
-You must output this file using the same `FILENAME:` format as above.
 
-Format:
-=======
-
-### 5. OUTPUT FORMAT (MANDATORY)
-You are running in an API mode where you CANNOT call file tools directly.
-You MUST output the content of EVERY file in the following Markdown format:
-
-FILENAME: dev_documents/path/to/file.md
-```markdown
-[File Content Here]
-```
-
-Example:
-FILENAME: dev_documents/plan_status.json
->>>>>>> 8df86b42c72a213ffca51569445a85e024bb58bd
+**Content Format:**
 ```json
 {
   "status": "completed",
@@ -114,14 +86,8 @@ FILENAME: dev_documents/plan_status.json
 }
 ```
 
-**Instruction:**
-1. Generate `SYSTEM_ARCHITECTURE.md`.
-2. Generate `SPEC.md` and `UAT.md` for ALL cycles (01, 02...).
-3. FINALLY, generate `plan_status.json` using the format above.
-4. DO NOT just say "I have completed". You MUST output the file contents in code blocks as shown.
-
 **FINAL REMINDER**
-- DO NOT MODIFY ANY FILES except the documentation files listed in the "Outputs" section.
+- **ACT, DO NOT JUST TALK**: Create the files.
+- DO NOT MODIFY ANY FILES except the documentation files listed above.
 - DO NOT WRITE APPLICATION CODE at this stage.
 - ONLY perform requirements analysis and system design.
-- Your task is strictly limited to generating SYSTEM_ARCHITECTURE.md, SPEC.md, UAT.md, and plan_status.json.
