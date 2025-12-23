@@ -13,23 +13,22 @@ Your goal is to analyze the raw requirements in `ALL_SPEC.md` and generate a com
 - `ALL_SPEC.md`: The raw requirement document.
 
 ## Outputs
-You must generate (create) the following files in the repository:
+You must generate the following files. Ensure you write them to the disk.
+**DO NOT TOUCH THE OTHER FILES OTHER THAN THE ONES MENTIONED HERE**
+List to be generated:
 - `dev_documents/SYSTEM_ARCHITECTURE.md` (If this file exists, omit the process to generate it.)
 - `dev_documents/CYCLE{xx}/SPEC.md` (For EACH Cycle)
 - `dev_documents/CYCLE{xx}/UAT.md` (For EACH Cycle)
 - `dev_documents/plan_status.json`
 
-### File Content Requirements
-
-#### 1. `dev_documents/SYSTEM_ARCHITECTURE.md`
+### 1. `dev_documents/SYSTEM_ARCHITECTURE.md`
 A comprehensive architectural document.
-If you find any errors in the `ALL_SPEC.md` file, you must correct them.
-If you have any good suggestions for the `ALL_SPEC.md` file, you must suggest them.
+If you find any errors in the  `ALL_SPEC.md` file, you must correct them.
+If you have any good suggestions for the  `ALL_SPEC.md` file, you must suggest them.
 (e.g. Modernize the architectures, codes, add more features, etc.)
-
 **Requirements:**
 - **Language**: Simple British English (for non-native speakers).
-- **Format**: Markdown.
+- **Format**: Markdown. Change the lines appropriately.
 
 **Sections & Word Counts (Minimum):**
 1. **Summary** (Min 500 words)
@@ -46,11 +45,11 @@ If you have any good suggestions for the `ALL_SPEC.md` file, you must suggest th
 6. **Test Strategy** (Min 500 words per cycle)
    - How each cycle will be tested.
 
-#### 2. `dev_documents/CYCLE{xx}/SPEC.md` (For EACH Cycle)
+### 2. `dev_documents/CYCLE{xx}/SPEC.md` (For EACH Cycle)
 Detailed specification for a specific development cycle.
 **Requirements:**
 - **Language**: Simple British English.
-- **Format**: Markdown.
+- **Format**: Markdown. Change the lines appropriately.
 
 **Sections:**
 1. **Summary** (Min 500 words)
@@ -64,11 +63,11 @@ Detailed specification for a specific development cycle.
    - Unit Testing Approach (Min 300 words).
    - Integration Testing Approach (Min 300 words).
 
-#### 3. `dev_documents/CYCLE{xx}/UAT.md` (For EACH Cycle)
+### 3. `dev_documents/CYCLE{xx}/UAT.md` (For EACH Cycle)
 User Acceptance Testing plan.
 **Requirements:**
 - **Language**: Simple British English.
-- **Format**: Markdown.
+- **Format**: Markdown. Change the lines appropriately.
 
 **Sections:**
 1. **Test Scenarios** (Min 300 words per Scenario ID)
@@ -76,7 +75,7 @@ User Acceptance Testing plan.
 2. **Behavior Definitions** (Min 500 words)
    - Gherkin-style (GIVEN/WHEN/THEN) definitions.
 
-#### 4. `dev_documents/plan_status.json`
+### 4. `dev_documents/plan_status.json`
 **CRITICAL**: This is the completion signal.
 
 **Content Format:**
