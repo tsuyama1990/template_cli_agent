@@ -26,14 +26,11 @@ Your goal is to implement and test the features for **CYCLE {{cycle_id}}**.
    - Fix any bugs found during testing.
 
 ## Output Rules (STRICT)
-1. You CANNOT create files directly.
-2. Instead, you MUST output the content of the files in the following specific format:
-   FILENAME: path/to/file
-   ```python
-   (content)
-   ```
-
-3. Finally, output `session_report.json` in this format to signal completion.
+1. **CREATE FILES DIRECTLY**: You have write access to the repository. You MUST **create** or **update** the files directly.
+2. **DO NOT** output file contents as text blocks in the chat.
+3. **DO NOT** use the `FILENAME:` format.
+4. The system will automatically create a Pull Request from your file changes.
+5. Finally, output `session_report.json` in this format to signal completion.
 
 `dev_documents/CYCLE{{cycle_id}}/session_report.json`
 
