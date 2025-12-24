@@ -34,7 +34,7 @@ class SandboxRunner:
         if self.sandbox_id:
             try:
                 logger.info(f"Connecting to existing sandbox: {self.sandbox_id}")
-                self.sandbox = await Sandbox.connect(self.sandbox_id, api_key=self.api_key)
+                self.sandbox = Sandbox.connect(self.sandbox_id, api_key=self.api_key)
                 return self.sandbox
             except Exception as e:
                 logger.warning(
@@ -42,13 +42,13 @@ class SandboxRunner:
                 )
 
         logger.info("Creating new E2B Sandbox...")
-        self.sandbox = await Sandbox.create(
+        self.sandbox = Sandbox.create(
             api_key=self.api_key, template=settings.sandbox.template
         )
 
         # Initial setup: install UV and sync files
         if settings.sandbox.install_cmd:
-            await self.sandbox.commands.run(
+            self.sandbox.commands.run(
                 settings.sandbox.install_cmd, timeout=settings.sandbox.timeout
             )
 
@@ -70,7 +70,7 @@ class SandboxRunner:
         command_str = " ".join(cmd)
         logger.info(f"[Sandbox] Running: {command_str}")
 
-        exec_result = await sandbox.commands.run(
+        exec_result = sandbox.commands.run(
             command_str, cwd=self.cwd, envs=env or {}, timeout=settings.sandbox.timeout
         )
 
@@ -127,68 +127,16 @@ class SandboxRunner:
 
         # Upload the tarball
         remote_tar_path = f"{self.cwd}/bundle.tar.gz"
-        await sandbox.files.write(remote_tar_path, tar_buffer)
+        sandbox.files.write(remote_tar_path, tar_buffer)
 
         # Extract
-        await sandbox.commands.run(
+        sandbox.commands.run(
             f"tar -xzf bundle.tar.gz -C {self.cwd}", timeout=settings.sandbox.timeout
         )
         logger.info("Synced files to sandbox via tarball.")
         self._last_sync_hash = current_hash
 
-    async def sync_from_sandbox(self) -> None:
-        """
-        Downloads changes from the sandbox back to the local file system.
-        Useful when remote tools (like Aider) modify code.
-        """
-        if not self.sandbox:
-            return
-
-        logger.info("Syncing files from sandbox to local...")
-
-        # We only sync back configured directories/files
-        dirs = settings.sandbox.dirs_to_sync
-        files = settings.sandbox.files_to_sync
-
-        # Create a tar of these on the remote
-        # We use a broad ignore to avoid syncing back huge artifacts if possible,
-        # but here we trust the specified dirs.
-        paths_str = " ".join([d for d in dirs] + [f for f in files])
-        remote_tar = f"download_bundle.tar.gz" # relative to cwd in run command
-
-        # Tar on remote
-        # We ignore errors (|| true) in case some files don't exist yet
-        cmd = f"tar -czf {remote_tar} {paths_str} || true"
-        await self.sandbox.commands.run(cmd, cwd=self.cwd, timeout=settings.sandbox.timeout)
-
-        # Download
-        try:
-            # sandbox.files.read returns bytes
-            content = await self.sandbox.files.read(f"{self.cwd}/{remote_tar}")
-
-            tar_buffer = io.BytesIO(content)
-
-            with tarfile.open(fileobj=tar_buffer, mode="r:gz") as tar:
-                # We extract to current working directory, overwriting local files.
-                # Filter to ensure we don't extract absolute paths or '..'
-
-                def is_safe_member(member):
-                    return not (member.name.startswith("/") or ".." in member.name)
-
-                safe_members = [m for m in tar.getmembers() if is_safe_member(m)]
-                tar.extractall(path=Path.cwd(), members=safe_members)
-
-            logger.info("Synced files from sandbox to local.")
-
-            # Update hash so we don't re-upload immediately if we run another command
-            self._last_sync_hash = calculate_directory_hash(
-                Path.cwd(), settings.sandbox.files_to_sync, settings.sandbox.dirs_to_sync
-            )
-
-        except Exception as e:
-            logger.error(f"Failed to sync from sandbox: {e}")
-
     async def close(self) -> None:
         if self.sandbox:
-            await self.sandbox.close()
+            self.sandbox.kill()
             self.sandbox = None
