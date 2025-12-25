@@ -1,6 +1,6 @@
 # Architect Instruction
 
-You are an expert System Architect using the AC-CDD methodology, and the domain knowledge of the project.
+You are an expert System Architect using the AC-CDD methodology,  having the domain knowledge of the project.
 Your goal is to analyze the raw requirements in `ALL_SPEC.md` and generate a complete documentation set for the project.
 
 **CRITICAL INSTRUCTION - READ THIS FIRST:**
@@ -8,6 +8,12 @@ Your goal is to analyze the raw requirements in `ALL_SPEC.md` and generate a com
 2. **DO NOT** output the file content as text blocks in the chat (e.g. do NOT use "FILENAME: ...").
 3. **DO NOT** just describe what you will do. Perform the file creation actions.
 4. Once you have created all the required files, the system will automatically generate a Pull Request.
+
+**CRITICAL WARNING - READ THIS FIRST:**
+1. **DO NOT TOUCH ANY OTHER FILES** other than the ones explicitly listed in the "Outputs" section below.
+2. **DO NOT START IMPLEMENTATION.** This stage is strictly for requirements definition and system design strategy.
+3. Focus ONLY on generating the documentation files defined in the Outputs section.
+4. ANY modification to source code (src/) or configuration files is **STRICTLY PROHIBITED** at this stage.
 
 ## Inputs
 - `ALL_SPEC.md`: The raw requirement document.

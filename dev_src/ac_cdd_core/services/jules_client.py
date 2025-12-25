@@ -15,12 +15,110 @@ from rich.console import Console
 
 console = Console()
 
+# --- Exception Classes ---
 class JulesSessionError(Exception):
     pass
 
 class JulesTimeoutError(JulesSessionError):
     pass
 
+class JulesApiError(Exception):
+    pass
+
+# --- API Client Implementation ---
+class JulesApiClient:
+    BASE_URL = "https://jules.googleapis.com/v1alpha"
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                pass
+            
+        if not self.api_key:
+             raise ValueError("API Key not found for Jules API.")
+
+        self.headers = {
+            "x-goog-api-key": self.api_key,
+            "Content-Type": "application/json"
+        }
+
+    def _request(self, method: str, endpoint: str, data: Optional[Dict] = None) -> Dict[str, Any]:
+        url = f"{self.BASE_URL}/{endpoint}"
+        body = json.dumps(data).encode("utf-8") if data else None
+        
+        req = urllib.request.Request(url, method=method, headers=self.headers, data=body)
+        
+        try:
+            with urllib.request.urlopen(req) as response:
+                resp_body = response.read().decode("utf-8")
+                if not resp_body:
+                    return {}
+                return json.loads(resp_body)
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                raise JulesApiError(f"404 Not Found: {url}")
+            err_msg = e.read().decode("utf-8")
+            logger.error(f"Jules API Error {e.code}: {err_msg}")
+            raise JulesApiError(f"API request failed: {e.code} {err_msg}") from e
+        except Exception as e:
+            logger.error(f"Network Error: {e}")
+            raise JulesApiError(f"Network request failed: {e}") from e
+
+    def list_sources(self) -> List[Dict[str, Any]]:
+        data = self._request("GET", "sources")
+        return data.get("sources", [])
+
+    def find_source_by_repo(self, repo_name: str) -> Optional[str]:
+        sources = self.list_sources()
+        for src in sources:
+            if repo_name in src.get("name", ""):
+                 return src["name"]
+        return None
+
+    def create_session(self, source: str, prompt: str) -> Dict[str, Any]:
+        payload = {
+            "prompt": prompt,
+            "sourceContext": {
+                "source": source,
+                "githubRepoContext": {
+                    "startingBranch": "main"
+                }
+            }
+        }
+        return self._request("POST", "sessions", payload)
+
+    def approve_plan(self, session_id: str) -> Dict[str, Any]:
+        """Approves the current plan in the session, triggering PR creation."""
+        # Note: The endpoint uses a colon verb syntax
+        endpoint = f"{session_id}:approvePlan"
+        # Endpoint takes an empty body or specific approval options if needed
+        # Documentation implies simple POST is enough for default approval
+        return self._request("POST", endpoint, {})
+
+    def list_activities(self, session_id_path: str) -> List[Dict[str, Any]]:
+        try:
+            resp = self._request("GET", f"{session_id_path}/activities?pageSize=50")
+            return resp.get("activities", [])
+        except JulesApiError as e:
+            if "404" in str(e):
+                return []
+            raise
+
+
+# --- Service Client Implementation ---
 class JulesClient:
     """
     Client for interacting with the Google Cloud Code Agents API (Jules API).
