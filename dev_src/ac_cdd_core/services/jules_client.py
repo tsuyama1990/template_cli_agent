@@ -290,6 +290,7 @@ class JulesClient:
                             return {"status": "success", "raw": data}
 
                         if state == "FAILED":
+                            logger.error(f"Full Session Data on Failure: {json.dumps(data, indent=2)}")
                             error_msg = data.get("error", {}).get("message", "Unknown error")
                             logger.error(f"Jules Session Failed: {error_msg}")
                             raise JulesSessionError(f"Jules Session Failed: {error_msg}")
@@ -325,6 +326,8 @@ class JulesClient:
 
                 except httpx.RequestError as e:
                     logger.warning(f"Polling loop network error (transient): {e}")
+                except JulesSessionError:
+                    raise
                 except JulesApiError as e: # Catch custom API errors if they are raised
                     logger.warning(f"Poll check failed (transient): {e}")
                 except Exception as e:
