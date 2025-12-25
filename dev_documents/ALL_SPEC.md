@@ -1,39 +1,148 @@
-機械学習ポテンシャル自動生成・解析パイプライン (MLIP-AutoPipe) システム仕様書Version: 1.5.0Status: Draft (Two-Tier Config Strategy Added)Target Audience: System Architects, Backend Engineers, Computational Materials Scientists1. イントロダクション1.1 背景と目的従来の原子スケールシミュレーション、特に第一原理計算（DFT）やそれを用いた第一原理分子動力学（AIMD）は、物質科学における強力なツールである一方で、その運用には高度な専門知識と膨大な計算リソースが必要です。現状では、学習データの生成において「どの温度・圧力条件で、どのような原子配置を計算すべきか」という判断は、経験豊富な研究者の直感や暗黙知に大きく依存しています。この属人性こそが、機械学習ポテンシャル（MLIP）構築の自動化を阻む最大のボトルネックとなっていました。本システムは、「人間（Expert）をループから排除する（removing the human expert from the loop）」 ことを設計思想の中核に据えます。物理則に基づくヒューリスティック（経験則のアルゴリズム化）と、機械学習モデル自身による不確実性定量化（Uncertainty Quantification）を組み合わせることで、初期構造生成から能動学習（Active Learning）、そして長時間スケールシミュレーション（kMC/MD）までを完全自動化するパイプラインを提供します。これにより、ユーザーは物質名と組成を入力するだけで、第一原理精度を持つポテンシャルを自律的に獲得し、複雑な相変態や反応ダイナミクスといった現象の解明に注力できる環境を実現します。1.2 スコープ本システムは以下の機能を包含し、従来の「AIMDに依存した非効率な学習」からの脱却と、計算コストの大幅な削減を目指します。物理的妥当性のある初期構造の自動生成: 合金、分子、イオン結晶、共有結合結晶の各特性に合わせ、高コストなAIMDを使わずに多様かつ物理的に妥当な原子配置を生成する手法（SQS, NMS, AIRSS等）を実装します。汎用ポテンシャルを用いた探索とDIRECTサンプリング: 既知の大規模データセットで学習された最新の基盤モデル（Foundation Models）を利用し、DFT計算なしで広範な位相空間を高速にスキャンする機能を提供します。これにより、DFT計算資源を「真に情報価値の高い構造」に集中させます。Quantum Espresso (QE) による全自動ラベリング: 収束パラメータ（k点、スメアリング等）や擬ポテンシャル設定を自動最適化し、専門家の介在なしに高精度かつロバストなForce/Stress/Energyラベルを取得するエンジンを構築します。Delta Learning を用いた MLポテンシャルの学習: 物理的な漸近挙動（近距離での斥力項など）を保証するために、参照ポテンシャル（LJ/ZBL）との残差学習を行うトレーニングパイプラインを整備します。On-the-fly (OTF) での推論と不確実性に基づく再学習: シミュレーション中にモデルが未知の領域（外挿領域）に踏み込んだことを検知し、その局所構造を切り出して再学習を行う自律的な改善ループ（Active Learning Loop）を実装します。長時間スケールの探索的シミュレーション (kMC/MD): レアイベント（拡散、反応）を効率的に探索するためのAdaptive kMCおよび探索的MDを実装し、ナノ秒からマイクロ秒、あるいはそれ以上の時間スケールでの現象解析を可能にします。2. システムアーキテクチャシステムは以下の5つの主要モジュールと、それらを統括する Workflow Orchestrator で構成されます。データの永続化とトレーサビリティの確保には ASE Database (SQLite/PostgreSQL) 等のモダンなデータベースインターフェースを使用し、すべての計算工程を記録します。2.1 環境構築と依存ソフトウェア管理本パイプラインは、レガシーな管理手法を廃し、モダンなPythonエコシステムと高速なツールチェーン、そして積極的なJITコンパイルによる数値計算最適化を全面的に採用します。Python環境と依存管理 (pyproject.toml & uv):プロジェクトの依存関係定義は、PEP 621に準拠した pyproject.toml に一元化します。パッケージ管理および仮想環境の構築には、Rust製の高速パッケージマネージャである uv を採用します。これにより、環境構築の再現性と速度を最大化します。計算高速化ライブラリ (High-Performance Computing Tools):Pythonの動的型付けに起因するオーバーヘッドを排除するため、Numba を積極的に導入します。特に、純粋なPythonで記述されるカスタムロジック（近接原子リストの構築、kMCのレート計算ループ、独自の記述子計算など）に対しては、@jit(nopython=True) デコレータを適用し、C/C++並みの実行速度を確保します。大規模な行列演算や自動微分が必要な箇所については、必要に応じて JAX の導入も検討し、ハードウェア（CPU/GPU）の性能を限界まで引き出します。Quantum Espresso (User Provided):DFTエンジンとして pw.x を使用します。ユーザーは設定ファイル内で並列実行コマンド（mpirun等）や並列数（デフォルト: 4コア）を指定するだけでよく、システムは指定されたパスの pw.x を呼び出します。LAMMPS & MLIP Extensions (Auto Build):MDおよびkMCエンジンとなる LAMMPS は、最新のMLポテンシャル（ACE等）や長期ダイナミクス拡張（EON等）との連携に必要なパッチやライブラリを含む必要があるため、システムセットアップ時に自動的にリポジトリからソースコードをダウンロードし、ビルドを行います。2.2 モジュール構成各モジュールは疎結合に設計し、将来的に新しいアルゴリズムやライブラリが登場した際にも容易に交換可能なアーキテクチャとします。Module A: Structure Generator (Initial Seeding) - 物理的ヒューリスティックに基づき、DFTを使わずに静的な初期構造を生成するモジュール。Module B: Explorer & Sampler (DIRECT & Active Learning) - 低コストなサロゲートモデルによる広域探索と、統計的な偏りを除去した情報理論に基づくサンプリングを行うモジュール。Module C: Labeling Engine (Automated DFT) - ロバストな自動DFT計算実行部。Module D: Training Engine (Delta Learning) - 残差学習を取り入れたMLIP学習部。Module E: Simulation Engine (OTF MD/kMC) - 不確実性監視機能付きの動力学シミュレーション実行部。3. 機能要件詳細3.1 Module A: Structure Generator (Initial Seeding)目的: ユーザーの最小限の入力から、物理的に妥当かつ多様性に富んだ初期学習データを生成します。ここでは、生成ロジック自体の高速化も要件に含まれます。要件:REQ-A-01 インプット解析とボンドタイプ判定:想定インプット:組成文字列 (例: "Fe2O3"): 構造未知の場合。初期構造ファイル (CIF/POSCAR等): 構造既知の場合。ボンドタイプ自動判定: 最新の材料解析ライブラリ（pymatgen, ase等）を活用し、電気陰性度、原子半径、トポロジー解析に基づいて、系を Alloy (合金), Molecule (分子), Ionic (イオン性), Covalent (共有結合) の4タイプに自動分類します。REQ-A-02 合金: 高速SQS生成と歪み印加:SQS (Special Quasirandom Structures): 有限スーパーセル内でランダム合金の相関関数を模倣します。最適化: SQS生成におけるモンテカルロ探索の評価関数（クラスター相関関数の計算）は計算負荷が高いため、icet などの既存ツールを利用しつつ、カスタム評価が必要な場合は Numba で高速化した目的関数を使用します。拡張: ターゲット組成だけでなく、意図的な組成変動（Off-stoichiometry）や格子歪み（Volume/Shear deformation）を加えた構造セットを生成し、化学ポテンシャル勾配や弾性特性を学習データに含めます。REQ-A-03 分子: Normal Mode Sampling (NMS):タイプがMoleculeの場合、基準振動モードに基づく Normal Mode Sampling (NMS) を実行します。Hessian行列の対角化とモード変位ベクトルの生成処理を最適化し、数千原子規模の系でも迅速に初期構造セットを生成できるようにします。高周波振動モードを含む多様な歪み構造を生成し、結合解離や振動スペクトルの記述精度を向上させます。REQ-A-04 イオン性: AIRSS & Polymorphs:タイプがIonicの場合、Ab Initio Random Structure Searching (AIRSS) 相当のランダム構造探索を行います。イオン半径と静電相互作用を考慮した配置を行い、後述のサロゲートモデルで事前緩和することで、安定相および準安定相（多形）を効率的に収集します。REQ-A-05 共有結合: Deep Rattling & Melt-Quench:タイプがCovalentの場合、原子位置に大きなランダムノイズを加える "Deep Rattling" や、サロゲートモデルを用いた Melt-Quench（溶融急冷） プロトコルを実行します。急冷プロセスのMD実行自体も、後述の高速サロゲートモデルを用いて行い、トポロジー的に多様なアモルファス/欠陥構造を生成します。3.2 Module B: Explorer & Sampler (Performance Critical)目的: DFTを使わずに広範な位相空間を探索し、学習効果の高い構造を選別します。ここは扱うデータ量が膨大になるため、計算効率が最重要視されます。要件:REQ-B-01 Universal Potential Surrogate:初期探索には、大規模データベースで学習済みの最新の Foundation Model（基盤モデル） を使用します。（例: MACE-MP, M3GNet, CHGNet, SevenNet 等から、その時点で最も性能が良いモデルを選択可能な設計とします）。GPUアクセラレーション: 探索フェーズにおいてGPUが利用可能な環境であれば、PyTorch等のモダンなバックエンドを活用し、自動的にGPU上で高速推論を実行します。REQ-B-02 DIRECT Sampling Optimized with Numba:サロゲートモデルを用いて、高温・高圧条件下での大規模MDトラジェクトリ（数百万フレーム）を生成します。高速記述子計算: 構造の類似性を判定するための局所構造記述子（SOAP, ACE等）や単純な幾何学的特徴量の計算において、既存ライブラリがボトルネックとなる場合は、Numba を用いて並列化・ベクトル化したカスタムカーネルを実装します。次元削減とクラスタリング: 次元削減（PCA/UMAP）およびクラスタリング（k-means/GMM）を行い、位相空間の被覆率を最大化します。ここでも大規模配列操作には最適化されたライブラリを用います。層化サンプリング: クラスタリング結果に基づき、平衡状態から遷移状態までをバランスよく抽出する層化サンプリング（Stratified Sampling）を適用し、バイアスのない学習データセットを構築します。3.3 Module C: Labeling Engine (Automated DFT)目的: 専門知識なしでQuantum Espresso (QE) を実行し、高品質なラベルを取得します。要件:REQ-C-01 Parameter Automation:SSSP Protocol: 擬ポテンシャルおよびCutoff設定には、標準的な高精度プロトコル（SSSP Precision等）を自動適用します。Robust Settings: k点メッシュの自動密度設定や、SCF収束を安定させるためのSmearing（Gaussian/Marzari-Vanderbilt）およびMixingパラメータの自動調整を行います。Magnetism: 磁性元素を含む場合、自動的にスピン分極計算（nspin=2）と初期磁気モーメントの設定を行い、収束性を高めます。REQ-C-02 Static Calculation Config:学習用データとして、構造最適化（Relaxation）を行わない固定点計算（Single Point Calculation）を実行し、原子にかかる力（Force）と応力（Stress）を出力します。精度の高いForceを取得するため、SCFの収束条件を厳格化します。REQ-C-03 Provenance & Error Recovery:計算結果だけでなく、入力パラメータやバージョン情報を含むメタデータをデータベースに記録し、完全な再現性を担保します。SCF収束エラーが発生した場合、自動的にパラメータ（Mixing beta等）を緩和して再実行する自己修復ロジックを実装します。3.4 Module D: Training Engine (Delta Learning)目的: 物理的制約を取り入れたロバストなMLポテンシャルを学習させます。要件:REQ-D-01 Delta Learning Base:物理ベースの参照ポテンシャル（Reference Potential）とDFT計算値との差分（残差）を学習する Delta Learning を採用します。参照ポテンシャルには、斥力項を記述するZBLや、分散力を記述するLJポテンシャル等を柔軟に選択・組み合わせ可能とします。REQ-D-02 Automated Physics Baselines:参照ポテンシャルのパラメータ（LJの$\sigma, \epsilon$等）が不明な場合、原子半径や分極率などの物理定数から自動推定するロジックを組み込みます。これにより、データが少ない領域でも物理的に破綻しない挙動（Core Repulsion等）を保証します。REQ-D-03 Training Framework:学習エンジンには、ACE (Atomic Cluster Expansion) などの記述子ベースの手法や、MACE/NequIPなどのGNNベースの手法のうち、プロジェクトの要件（速度 vs 精度）に合致したモダンなフレームワークを採用します。データ前処理（Neighbor list構築など）においてPythonループが発生する場合は、ここでも Numba による高速化を適用します。3.5 Module E: Simulation Engine (OTF & kMC)目的: 学習したポテンシャルを用いて、長時間・大規模な現象を探索し、能動学習ループを回します。要件:REQ-E-01 On-the-fly (OTF) Inference Loop:MDまたはkMC実行中に、モデルの予測不確実性（Uncertainty / Extrapolation Grade）をリアルタイムに監視します。不確実性が閾値を超えた構造を検出し、シミュレーションを一時停止して構造抽出プロセスへ移行します。REQ-E-02 Periodic Embedding Extraction:不確実領域の再計算において、クラスター切り出しによる表面効果を避けるため、周期境界条件を持つ小セル（Periodic Embedding） として構造を抽出します。学習時にはバッファ領域の力をマスクし、中心領域の力のみを教師データとして利用します。REQ-E-03 Advanced Sampling Integration with JIT:レア・イベント探索のために、Adaptive kMC (Kinetic Monte Carlo) や Saddle Point Search (NEB/Dimer) を実行可能な環境を構築します。kMC高速化: Adaptive kMCにおける「遷移状態探索」→「レート計算」→「イベント選択」のループにおいて、特にイベントリストの更新やレート定数の総和計算（KMC Step）はPythonオーバーヘッドが支配的になりがちです。この部分は Numba (@jit) を用いてコンパイルし、マイクロ秒オーダーでの実行を実現します。遷移状態探索中も不確実性監視を行い、反応経路上のエネルギー障壁精度を自律的に向上させます。4. ワークフロー制御とUI仕様4.1 設定ファイル設計: Two-Tier Configuration Strategy (新規)ユーザビリティと柔軟性を両立し、かつ「人間をループから排除する」という設計思想を具現化するために、設定ファイルは**「入力用（Minimal）」と「実行用（Full）」の2段階（Two-Tier）**で管理する戦略を採用します。Minimal Config (input.yaml):ユーザーが作成するファイル。物質情報と最低限の目的（温度範囲など）のみを記述します。デフォルト値で良い部分は記述不要とし、参入障壁を下げます。Config Expander (Heuristic Engine):システムは input.yaml を読み込むと、内蔵された物理ヒューリスティックエンジンを起動します。物質解析: 組成から結合タイプを判定。パラメータ推論: SSSPプロトコルに基づいたDFTカットオフ、ハードウェアリソースに応じた並列数、物質の融点予測に基づくMD温度ステップ、最適なサロゲートモデルの選択などを自動決定します。Full Config (exec_config_dump.yaml):ヒューリスティックエンジンによって全パラメータが埋められた完全な設定ファイルです。実際のシミュレーションはこのファイルに基づいて実行されます。再現性の保証: このファイルがログとして保存されることで、ユーザーは後から「具体的にどのDFTパラメータが使われたか」を確認でき、必要に応じてこのファイルを直接編集して再実行（Fine-tuning）することも可能です。設定ファイル例A. Minimal Config (input.yaml - User Provided)system:
-  elements: ["Fe", "Pt"]
-  composition: "FePt" # 組成式のみでOK
+# Autonomous Development Environment (AC-CDD)
+** README.md under root directory can be replaced by the one for actual development.
+The same contents can be found in dev_documents/README.md **
 
-simulation:
-  temperature: [300, 1000] # この範囲でポテンシャルを作りたい
-B. Full Config (exec_config_dump.yaml - System Generated)# AUTO-GENERATED FULL CONFIGURATION
-system:
-  elements: ["Fe", "Pt"]
-  composition: {"Fe": 0.5, "Pt": 0.5}
-  structure_type: "alloy" # Heuristic: Detected as Alloy
-  melting_point_guess: 1500 # Heuristic: Guess from phase diagram data
+An AI-Native Cycle-Based Contract-Driven Development Environment.
 
-simulation:
-  temperature_steps: [300, 650, 1000] # Interpolated steps
-  pressure: 0
-  active_learning:
-    strategy: "direct_then_active"
-    max_generations: 10
-    uncertainty_threshold: 5.0
-    md_steps_per_generation: 10000
+## Key Features
 
-dft_compute:
-  code: "quantum_espresso"
-  command: "mpirun -np 32 pw.x" # Auto-detected CPU cores
-  pseudopotentials: "SSSP_1.3_PBE_precision" # Auto-selected protocol
-  ecutwfc: 90.0 # Ry (Determined by max(Fe, Pt) in SSSP)
-  ecutrho: 720.0 # Ry
-  kpoints_density: 0.15 # 1/A
-  smearing: "mv"
-  degauss: 0.02
-  magnetism: "ferromagnetic" # Heuristic: Fe detected
+*   **🚀 Automated Rapid Application Design (Auto-RAD)**
+    *   Just define your raw requirements in `ALL_SPEC.md`.
+    *   The `gen-cycles` command automatically acts as an **Architect**, generating `SYSTEM_ARCHITECTURE.md`, detailed `SPEC.md`, and `UAT.md` (User Acceptance Tests) for every development cycle.
 
-mlip_training:
-  model_type: "ace"
-  r_cut: 5.5 # Angstrom (Heuristic based on atomic radii)
-  delta_learning: True
-  base_potential: "lj_auto"
-4.2 実行フロー詳細Initialize & Expansion:uv run mlip-pipe input.yaml を実行。システムは input.yaml を解析し、ヒューリスティックを用いて exec_config_dump.yaml を生成・保存。Surrogate Search:Full Configに基づき、Module Bで基盤モデル（GPU活用）を用いた高速探索。Numbaで最適化された記述子計算により、候補構造を選定。Initial Labeling:選定された構造に対し、Module C (QE) がFull Configのパラメータ（自動設定されたCutoff等）で計算を実行。Initial Training:Module D によるDelta Learning。OTF Loop:Module Eでシミュレーション実行 -> 不確実性検知 -> 構造抽出 -> QE計算 -> 再学習。kMC等のイベント探索ループではJITコンパイルされたカーネルを使用し、高速に時間発展させます。5. 実装ロードマップPhase 1 (Core): QE自動化(Module C)と学習エンジン(Module D)の連携。pyproject.toml ベースのモダンなプロジェクト構成の確立。Phase 2 (Generation & Expansion): SQS, NMS等の初期構造生成(Module A)の実装。Config Expander (Heuristic Engine) の開発（MinimalからFullへの変換ロジック）。uv による環境構築の整備。Phase 3 (Optimization): DIRECTサンプリング(Module B)とNumbaを用いたボトルネック関数の最適化。Phase 4 (OTF): LAMMPS/kMC(Module E)のビルド・統合と能動学習ループの実装。kMCエンジンの高速化チューニング。Phase 5 (UI): ユーザーインターフェースの実装とドキュメント整備。
+*   **🛡️ Committee of Code Auditors**
+    *   No more "LGTM" based on loose checks.
+    *   An automated **Committee of Auditors** (powered by Aider/Fast Model) performs strict, multi-pass code reviews.
+    *   The system iteratively fixes issues (using Aider/Smart Model) until the code passes strict quality gates.
+
+*   **🔒 Secure Sandboxed Execution**
+    *   **Fully Remote Architecture**: All code execution, testing, and AI-based fixing happens inside a secure, ephemeral **E2B Sandbox**.
+    *   Your local environment stays clean. No need to install complex dependencies locally.
+    *   The system automatically syncs changes back to your local machine.
+
+*   **✅ Integrated Behavior-Driven UAT**
+    *   Quality is not just about code style; it's about meeting requirements.
+    *   The system automatically executes tests and verifies them against the behavior definitions in `UAT.md` before any merge.
+
+*   **🤖 Hybrid Agent Orchestration**
+    *   Combines the best of breed:
+        *   **Google Jules**: For long-context architectural planning and initial implementation.
+        *   **Aider**: For precise, SOTA code editing and repository-aware auditing (Running remotely).
+        *   **LangGraph**: For robust state management and supervisor loops.
+
+This repository is a template for creating AI-powered software development projects. It separates the agent orchestration logic from the user's product code.
+
+## Directory Structure
+
+*   `dev_src/`: **Agent Core Code.** The source code for the AC-CDD CLI and agents (`ac_cdd_core`).
+*   `src/`: **User Product Code.** This is where YOUR project's source code resides. The agents will read and write code here.
+*   `dev_documents/`: **Documentation & Artifacts.** Stores design docs (`ALL_SPEC.md`, `SYSTEM_ARCHITECTURE.md`), cycle artifacts (`CYCLE{xx}/`), and templates.
+*   `tests/`: Tests for the AC-CDD core logic (you can add your own tests in `src/tests` or similar if you wish, but usually `tests/` here is for the tool itself if you are forking). *Note: The agents will generate tests for YOUR code in `tests/` or as configured.*
+
+## Getting Started
+
+### Prerequisites
+
+*   Python 3.12+
+*   `uv` (Universal Python Package Manager)
+*   `git`
+*   `gh` (GitHub CLI)
+*   *Note: `aider` and `jules` CLI tools are NO LONGER required locally. They are managed within the remote sandbox.*
+
+### Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/your-org/autonomous-dev-env.git
+    cd autonomous-dev-env
+    ```
+
+2.  **Install dependencies:**
+    ```bash
+    uv sync
+    ```
+
+3.  **Setup Environment:**
+    Run the initialization wizard to generate your `.env` file.
+    ```bash
+    uv run manage.py init
+    ```
+
+### Configuration
+
+The system is configured via `.env` and `ac_cdd_config.py`.
+
+#### API Keys
+
+You must provide the following keys in your `.env` file:
+
+*   `JULES_API_KEY`: Required for the Jules autonomous agent interface.
+*   `E2B_API_KEY`: Required for the secure sandbox environment.
+*   `GEMINI_API_KEY` or `GOOGLE_API_KEY`: Required for Gemini models (Auditor, QA Analyst).
+*   `ANTHROPIC_API_KEY`: Required for Claude models (Aider Fixer).
+*   `OPENROUTER_API_KEY`: (Optional) Required if you use OpenRouter models.
+
+#### Multi-Model Configuration
+
+You can configure different models for different agents to optimize for cost and intelligence.
+
+**Example `.env` configuration (Hybrid):**
+
+```env
+# Smart model for fixing (Claude 3.5 Sonnet)
+SMART_MODEL=claude-3-5-sonnet-20241022
+
+# Fast model for auditing & QA (Gemini Flash)
+FAST_MODEL=gemini-2.0-flash-exp
+
+# Sandbox
+E2B_API_KEY=e2b_...
+```
+
+## Usage
+
+### Architecture Phase
+
+Generate the system architecture and specifications from your `ARCHITECT_INSTRUCTION.md` template.
+
+```bash
+uv run manage.py gen-cycles
+```
+
+This will:
+1.  Create a `design/architecture` branch.
+2.  Run the Architect Session using Jules.
+3.  Generate `ALL_SPEC.md` and `SYSTEM_ARCHITECTURE.md`.
+
+### Development Cycles
+
+Run a development cycle to implement features.
+
+```bash
+# Run Cycle 01
+uv run manage.py run-cycle --id 01
+
+# Run automatically (no manual confirmation)
+uv run manage.py run-cycle --id 01 --auto
+```
+
+This will:
+1.  Checkout `feat/cycle01`.
+2.  Run the Coder Session (Implementation).
+3.  **Run Tests**: Executes in the secure E2B Sandbox.
+4.  **UAT Evaluation**: QA Analyst checks results.
+5.  **Strict Auditing**: Aider runs in the sandbox to audit code.
+6.  **Fixing**: If needed, Aider fixes code in the sandbox and syncs changes back to your local machine.
+7.  Commit if successful.
+
+## Development (of this tool)
+
+If you are contributing to the AC-CDD core itself:
+
+*   The core logic is in `dev_src/ac_cdd_core`.
+*   Run tests using: `uv run pytest tests/`
+*   Linting: `uv run ruff check dev_src/`
+
+## License
+
+[License Name]

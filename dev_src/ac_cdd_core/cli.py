@@ -22,12 +22,70 @@ def main() -> None:
     pass
 
 
+def check_environment() -> None:
+    """Checks for required tools and API keys."""
+    import os
+    import shutil
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
+    missing_tools = []
+    missing_vars = []
+
+    # 1. Executables
+    # Removing 'aider' and 'jules' from local requirements as we aim for fully remote architecture.
+    # 'git' and 'uv' are still needed for local project management.
+    # 'gh' is optional but recommended for PRs.
+    required_tools = ["uv", "git"]
+    for tool in required_tools:
+        if not shutil.which(tool):
+            missing_tools.append(tool)
+
+    # 2. Environment Variables
+    # Check strict requirements. Note: OpenRouter is optional if Gemini is used directly,
+    # but we should check at least one LLM key.
+    # Jules requires JULES_API_KEY.
+    required_vars = ["JULES_API_KEY", "E2B_API_KEY"]
+
+    # We need at least one model provider
+    if not os.environ.get("GEMINI_API_KEY") and not os.environ.get("GOOGLE_API_KEY") and not os.environ.get("OPENROUTER_API_KEY"):
+         missing_vars.append("GEMINI_API_KEY (or GOOGLE_API_KEY / OPENROUTER_API_KEY)")
+
+    for var in required_vars:
+        if not os.environ.get(var):
+            missing_vars.append(var)
+
+    if missing_tools or missing_vars:
+        console.print(Panel("Environment Check Failed", style="bold red"))
+
+        if missing_tools:
+            console.print("[bold red]Missing Executables:[/bold red]")
+            for tool in missing_tools:
+                console.print(f"- {tool}")
+            console.print("\n[yellow]Please install these tools and ensure they are in your PATH.[/yellow]\n")
+
+        if missing_vars:
+            console.print("[bold red]Missing Environment Variables:[/bold red]")
+            for var in missing_vars:
+                console.print(f"- {var}")
+            console.print("\n[yellow]Please check your .env file.[/yellow]\n")
+
+        # We don't exit strict here to allow users to fix while running,
+        # but we prompt them heavily.
+        if not typer.confirm("Do you want to proceed anyway? (May cause runtime errors)"):
+            raise typer.Exit(code=1)
+    else:
+        console.print("[bold green]✓ Environment Check Passed[/bold green]")
+
 @app.command()
 def init() -> None:
     """
     Initialize the AC-CDD environment.
-    Creates necessary directories and files.
+    Checks environment and creates necessary directories and files.
     """
+    check_environment()
+
     from .services.project import ProjectManager
 
     manager = ProjectManager()
@@ -69,8 +127,11 @@ def gen_cycles(
             sys.exit(1)
 
         services = ServiceContainer.default()
-        from .graph import build_architect_graph
-        graph = build_architect_graph(services)
+        from .graph import GraphBuilder
+
+        # Instantiate builder to manage resources
+        builder = GraphBuilder(services)
+        graph = builder.build_architect_graph()
 
         # Initialize state
         initial_state = CycleState(cycle_id=settings.DUMMY_CYCLE_ID)
@@ -85,17 +146,17 @@ def gen_cycles(
                 sys.exit(1)
             else:
                 msg = (
-                    "✅ Architecture & Planning Complete!\n\n"
+                    "✅ Architect Phase Request Sent!\n\n"
+                    "Jules has created a Pull Request with the architectural plans.\n\n"
                     "Next Steps:\n"
-                    "1. Review the generated architecture:\n"
-                    f"   {settings.paths.documents_dir}/SYSTEM_ARCHITECTURE.md\n\n"
-                    "2. Review the cycle specifications:\n"
-                    f"   {settings.paths.documents_dir}/CYCLE01/SPEC.md\n"
-                    f"   {settings.paths.documents_dir}/CYCLE01/UAT.md\n"
-                    "   ...\n\n"
-                    "3. Start implementation for the first cycle:\n"
-                    "   uv run manage.py run-cycle 01\n\n"
-                    "(Or run all cycles automatically with: uv run manage.py run-cycle --auto)"
+                    "1. Review the Pull Request on GitHub.\n"
+                    "2. Merge the PR if the architecture looks correct.\n"
+                    "3. Pull the changes locally:\n"
+                    "   git pull origin main  (or your working branch)\n"
+                    "4. Verify the generated documents exist:\n"
+                    f"   ls {settings.paths.documents_dir}/SYSTEM_ARCHITECTURE.md\n"
+                    "5. Start implementation for the first cycle:\n"
+                    "   uv run manage.py run-cycle --id 01"
                 )
                 console.print(
                     Panel(msg, title="Next Action Guide", style="bold green", expand=False)
@@ -105,6 +166,9 @@ def gen_cycles(
             console.print(f"[red]Error during execution:[/red] {e}")
             logger.exception("Graph execution failed")
             sys.exit(1)
+        finally:
+            # Graceful cleanup
+            await builder.cleanup()
 
     asyncio.run(_run())
 
@@ -131,8 +195,11 @@ def run_cycle(
             sys.exit(1)
 
         services = ServiceContainer.default()
-        from .graph import build_coder_graph
-        graph = build_coder_graph(services)
+        from .graph import GraphBuilder
+
+        # Instantiate builder to manage resources
+        builder = GraphBuilder(services)
+        graph = builder.build_coder_graph()
 
         # Initialize state
         initial_state = CycleState(cycle_id=cycle_id)
@@ -165,14 +232,15 @@ def run_cycle(
                         next_cycle_id = "XX"
 
                     msg = (
-                        f"✅ Cycle {cycle_id} Implementation Complete!\n\n"
+                        f"✅ Cycle {cycle_id} Implementation Request Sent!\n\n"
+                        "Jules has created a Pull Request with the implementation.\n\n"
                         "Next Steps:\n"
-                        f"1. Review the changes in branch: feature/cycle-{cycle_id}\n"
-                        f"2. Check the session report: "
-                        f"dev_documents/CYCLE{cycle_id}/session_report.json\n"
-                        "3. If satisfied, merge the PR (or use 'gh pr merge').\n"
+                        "1. Review the Pull Request on GitHub.\n"
+                        "2. Merge the PR if the implementation and tests pass.\n"
+                        "3. Pull the changes locally:\n"
+                        "   git checkout main && git pull\n"
                         "4. Proceed to the next cycle:\n"
-                        f"   uv run manage.py run-cycle {next_cycle_id}"
+                        f"   uv run manage.py run-cycle --id {next_cycle_id}"
                     )
 
                 console.print(
@@ -183,6 +251,9 @@ def run_cycle(
             console.print(f"[red]Error during execution:[/red] {e}")
             logger.exception("Graph execution failed")
             sys.exit(1)
+        finally:
+            # Graceful cleanup
+            await builder.cleanup()
 
     asyncio.run(_run())
 

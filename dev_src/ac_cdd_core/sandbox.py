@@ -34,7 +34,7 @@ class SandboxRunner:
         if self.sandbox_id:
             try:
                 logger.info(f"Connecting to existing sandbox: {self.sandbox_id}")
-                self.sandbox = await Sandbox.connect(self.sandbox_id, api_key=self.api_key)
+                self.sandbox = Sandbox.connect(self.sandbox_id, api_key=self.api_key)
                 return self.sandbox
             except Exception as e:
                 logger.warning(
@@ -42,13 +42,13 @@ class SandboxRunner:
                 )
 
         logger.info("Creating new E2B Sandbox...")
-        self.sandbox = await Sandbox.create(
+        self.sandbox = Sandbox.create(
             api_key=self.api_key, template=settings.sandbox.template
         )
 
         # Initial setup: install UV and sync files
         if settings.sandbox.install_cmd:
-            await self.sandbox.commands.run(
+            self.sandbox.commands.run(
                 settings.sandbox.install_cmd, timeout=settings.sandbox.timeout
             )
 
@@ -70,7 +70,7 @@ class SandboxRunner:
         command_str = " ".join(cmd)
         logger.info(f"[Sandbox] Running: {command_str}")
 
-        exec_result = await sandbox.commands.run(
+        exec_result = sandbox.commands.run(
             command_str, cwd=self.cwd, envs=env or {}, timeout=settings.sandbox.timeout
         )
 
@@ -127,10 +127,10 @@ class SandboxRunner:
 
         # Upload the tarball
         remote_tar_path = f"{self.cwd}/bundle.tar.gz"
-        await sandbox.files.write(remote_tar_path, tar_buffer)
+        sandbox.files.write(remote_tar_path, tar_buffer)
 
         # Extract
-        await sandbox.commands.run(
+        sandbox.commands.run(
             f"tar -xzf bundle.tar.gz -C {self.cwd}", timeout=settings.sandbox.timeout
         )
         logger.info("Synced files to sandbox via tarball.")
@@ -138,5 +138,5 @@ class SandboxRunner:
 
     async def close(self) -> None:
         if self.sandbox:
-            await self.sandbox.close()
+            self.sandbox.kill()
             self.sandbox = None

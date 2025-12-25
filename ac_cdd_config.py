@@ -87,6 +87,11 @@ class AgentsConfig(BaseSettings):
     auditor_model: str = Field(default="gemini-2.5-pro", validation_alias="SMART_MODEL")
     qa_analyst_model: str = Field(default="gemini-2.5-flash", validation_alias="FAST_MODEL")
 
+class AiderConfig(BaseSettings):
+    model_config = SettingsConfigDict(extra="ignore")
+    smart_model: str = Field(default="claude-3-5-sonnet", description="Model for editing code (Fixer)")
+    fast_model: str = Field(default="gemini-2.0-flash-exp", description="Model for reading/auditing code")
+
     # Prompts (Content loaded via _read_prompt)
     auditor: str = Field(
         default_factory=lambda: _read_prompt("auditor.md", "DEFAULT_AUDITOR_PROMPT")
@@ -110,16 +115,23 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str | None = None
     MAX_RETRIES: int = 10
     DUMMY_CYCLE_ID: str = "00"
+    E2B_API_KEY: str | None = None
+
+    # GCP Config for Jules API
+    GCP_PROJECT_ID: str | None = None
+    GCP_REGION: str = "us-central1"
 
     # Committee Config
     NUM_AUDITORS: int = 3
     REVIEWS_PER_AUDITOR: int = 2
+    MAX_ITERATIONS: int = 3  # Fixed Iteration Mode
 
     paths: PathsConfig = PathsConfig()
     jules: JulesConfig = JulesConfig()
     tools: ToolsConfig = ToolsConfig()
     sandbox: SandboxConfig = SandboxConfig()
     agents: AgentsConfig = AgentsConfig()
+    aider: AiderConfig = AiderConfig()
     prompts: PromptsConfig = PromptsConfig()
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")

@@ -1,85 +1,136 @@
-# Developer Flow & Architecture
+# AC-CDD Internal Development Flow
 
-This document describes the architectural flow and developer experience for the AC-CDD system.
+This document explains the internal architecture, logic, and resources used by the AC-CDD agent system.
+It is designed to provide complete transparency into "who is doing what" during the development lifecycle.
 
-## Core Philosophy
+## 🏗 System Architecture
 
-**AC-CDD (Cycle-Based Contract-Driven Development)** is a methodology that uses AI agents to strictly enforce quality gates during rapid iteration.
+AC-CDD utilizes a **Hybrid Agent System** orchestrated by **LangGraph**. It combines the autonomous capabilities of Google's Jules API with the precision editing and auditing power of the `aider` CLI.
+Crucially, all code execution and modification (testing, fixing, auditing) occurs within a secure **E2B Sandbox** to ensure isolation and consistency.
 
-1.  **Contract-First**: Everything starts with a specification (Contract).
-2.  **Cycle-Based**: Development happens in discrete, manageable cycles.
-3.  **Strict Auditing**: No code is merged without passing a strict, multi-pass AI audit.
+### Role & Tool Mapping
 
-## Architecture
+| Role | Tool / API | Model Configuration | Responsibility | Execution Environment |
+|---|---|---|---|---|
+| **Architect** | **Google Jules API** | Standard Jules Model | Analyzes requirements (`ALL_SPEC.md`), designs architecture, and generates `SPEC.md` and `UAT.md`. Operates in a text-only mode. | Local (Controller) |
+| **Coder (Initial)** | **Google Jules API** | Standard Jules Model | Performs the **Initial Implementation** (Iteration 0). Scaffolds the project from scratch. | Local (Controller) |
+| **Coder (Fixer)** | **aider (CLI)** | `SMART_MODEL` (e.g., Claude 3.5 Sonnet) via OpenRouter (Optional) | Handles **Refinement & Repair** (Iteration > 0). Uses `aider`'s superior code editing capabilities to apply fixes. | **Remote E2B Sandbox** |
+| **Auditor** | **aider (CLI)** | `FAST_MODEL` (e.g., Gemini 2.0 Flash) via OpenRouter (Optional) | Strictly reviews code in **Read-Only** mode. Leverages `aider`'s Repository Map to understand context and detect issues across the codebase. | **Remote E2B Sandbox** |
 
-The system is built on **LangGraph** and orchestrates two main workflows:
+## 🔄 Detailed Workflow Logic
 
-### 1. Architect Workflow (`gen-cycles`)
+The system operates in two main phases: **Architecture** and **Coding**.
 
-*   **Goal**: Define the system and break it down into implementation cycles.
-*   **Agent**: Jules (Architect Persona).
-*   **Inputs**: `dev_documents/templates/ARCHITECT_INSTRUCTION.md`.
-*   **Outputs**:
-    *   `SYSTEM_ARCHITECTURE.md`: High-level design.
-    *   `ALL_SPEC.md`: Detailed specifications for all cycles.
-    *   `UAT.md`: User Acceptance Testing criteria.
-
-### 2. Coder Workflow (`run-cycle`)
-
-*   **Goal**: Implement a specific cycle (e.g., Cycle 01).
-*   **Agents**:
-    *   **Coder** (Jules): Writes code and tests in `src/`.
-    *   **QA Analyst** (Gemini Flash): Analyzes test logs against `UAT.md`.
-    *   **Auditor** (Gemini Pro): Strictly reviews code changes against best practices and security rules.
+### 1. Architect Phase (`gen-cycles`)
+*   **Input**: `dev_documents/ALL_SPEC.md` (User Requirements)
 *   **Process**:
-    1.  **Checkout**: Creates `feat/cycle{id}`.
-    2.  **Coder Session**: Generates code based on `SPEC.md` and `ARCHITECT_INSTRUCTION.md`.
-    3.  **Test**: Runs `pytest` in a sandbox or local environment.
-    4.  **UAT**: QA Analyst evaluates pass/fail.
-    5.  **Audit**: Auditor reviews code. Must pass 3 consecutive checks (Triple Check) or satisfies the "Strict" criteria.
-    6.  **Commit**: Code is committed only if all gates pass.
+    1.  **JulesClient** initiates a session with the Architect Persona (`ARCHITECT_INSTRUCTION.md`).
+    2.  Jules analyzes requirements and outputs design documents in a strict `FILENAME:` format.
+    3.  The client parses these blocks and writes them to disk.
+*   **Output**: `SYSTEM_ARCHITECTURE.md`, `CYCLE{xx}/SPEC.md`, `CYCLE{xx}/UAT.md`.
 
-## Directory Structure
+### 2. Coder Phase (`run-cycle --auto`)
+This phase uses a **Fixed Iteration Loop** (default: 3 rounds) to force continuous improvement.
+All heavy lifting (tests, fixing) happens in the **Shared Sandbox**.
 
-To separate the tooling from the product being built, we use the following structure:
+```mermaid
+graph TD
+    Start([Start Cycle]) --> Checkout[Checkout Branch]
+    Checkout --> InitSandbox[Init Shared Sandbox]
+    InitSandbox --> Loop{Iteration Loop}
 
-*   **`dev_src/`**: Contains the AC-CDD core application code (the agents, CLI, graph logic).
-*   **`src/`**: Reserved for **User Product Code**. The agents will create files here.
-*   **`dev_documents/`**: Stores project documentation, cycle artifacts, and templates.
-    *   `templates/`: Instructions for agents (`ARCHITECT_INSTRUCTION.md`, `CODER_INSTRUCTION.md`).
-    *   `CYCLE{xx}/`: Artifacts specific to a cycle.
-*   **`tests/`**: Tests for the AC-CDD core. User tests should generally be generated within `src/tests` or alongside code, depending on configuration.
+    Loop -->|Iter = 1| Jules["Jules (Initial Implementation)"]
+    Loop -->|Iter > 1| AiderFix["Aider (Remote Fixer)"]
 
-## Configuration & Models
+    Jules --> RunTests["Run Tests (Remote)"]
+    AiderFix --> RunTests
 
-The system is designed to be multi-model capable.
+    RunTests --> UATEval["UAT Evaluation (QA Analyst)"]
+    UATEval --> StrictAudit["Strict Audit (Remote Aider)"]
+
+    StrictAudit -->|Feedback| Loop
+
+    Loop -->|Max Iters Reached| Merge[Commit & Merge]
+```
+
+#### Step-by-Step Logic
+1.  **Iteration 1 (Creation)**:
+    *   **Agent**: **Jules**.
+    *   **Action**: Reads `SPEC.md` and implements the core logic from scratch locally. Files are then synced to the sandbox.
+2.  **Verification**:
+    *   **Tests**: `pytest` runs inside the **E2B Sandbox** via `SandboxRunner`. This ensures tests run in a clean, consistent environment with all dependencies installed.
+    *   **UAT**: The `QA Analyst` agent evaluates captured test logs against `UAT.md`.
+3.  **Strict Audit**:
+    *   **Agent**: **Aider** (Read-Only).
+    *   **Execution**: Runs remotely in the sandbox.
+    *   **Logic**: Reviews the code against `AUDITOR_INSTRUCTION.md`. Even if the code works, it *must* find improvements.
+4.  **Iteration 2+ (Refinement)**:
+    *   **Agent**: **Aider** (Fixer).
+    *   **Execution**: Runs remotely in the sandbox. `aider` applies precise edits to the code.
+    *   **Sync**: Modified files (`src/`, `tests/`) are automatically **downloaded** from the sandbox back to the local file system via `sync_from_sandbox`.
+5.  **Completion**:
+    *   The loop continues until `MAX_ITERATIONS` (defined in config) is reached.
+    *   The final state is committed to the feature branch.
+
+## 🔍 Deep Dive: Core Mechanisms
+
+### Feature 1: The RAD Pipeline (`gen-cycles`)
+The "Rapid Application Design" pipeline transforms raw text into structured engineering artifacts without human intervention.
+*   **Process**: The `ArchitectGraph` invokes the **Jules Architect**.
+*   **Parsing Logic**: `JulesClient` monitors the agent's output stream in real-time. It uses a robust regex (`FILENAME:\s*(.*?)\n\s*` ````) to detect file blocks generated by the LLM.
+*   **Result**: This allows the Architect to "write" complex file trees (specs, diagrams, plans) simply by outputting text.
+
+### Feature 2: The Audit Loop (The "Committee")
+Instead of a simple "Pass/Fail" check, AC-CDD enforces a **Forced Iteration Loop** to guarantee code maturity.
+*   **Mechanism**: The `CoderGraph` does not allow merging until `MAX_ITERATIONS` are completed.
+*   **The Cycle**:
+    1.  **Implementation**: Jules scaffolds the feature.
+    2.  **Audit**: `aider` (Fast Model) reads the code context and applies the `AUDITOR_INSTRUCTION.md` rules.
+    3.  **Refinement**: `aider` (Smart Model) consumes this feedback and applies surgical edits to the codebase **inside the sandbox**.
+*   **Reverse Sync**: Since `aider` modifies code remotely, the system uses a robust tarball strategy (`sync_from_sandbox`) to pull changes back to the developer's local machine, ensuring the local repo is always up to date.
+
+### Feature 3: Sandbox Architecture & Persistence
+To solve performance bottlenecks, AC-CDD uses a **Shared Sandbox Model**.
+*   **Persistence**: Instead of spinning up a new sandbox for every test run, a single `SandboxRunner` is initialized at the start of a Cycle.
+*   **Efficiency**: Dependencies (`uv`, `pytest`, `aider`) are installed exactly once.
+*   **Isolation**: User code never runs locally. All execution happens in the cloud (E2B), protecting the local machine from side effects.
+
+### Feature 4: UAT Gatekeeper
+The **UAT Gatekeeper** ensures that the code actually does what the user asked for.
+*   **Input**: `test_logs` (captured from `pytest`) and `UAT.md` (generated by the Architect).
+*   **Evaluation**: The `uat_evaluate_node` invokes a QA Analyst Agent.
+*   **Logic**: The agent parses the Gherkin-style scenarios in `UAT.md` and cross-references them with the execution logs.
+
+## 🤖 Configuration & Resources
+
+The system's behavior is controlled via environment variables and configuration files.
 
 ### Environment Variables (`.env`)
 
-*   `JULES_API_KEY`: Mandatory. Authenticates with the Jules backend.
-*   `GEMINI_API_KEY`: Default for Auditor/QA.
-*   `OPENROUTER_API_KEY`: Optional. Use for accessing other models (Claude, GPT-4) via OpenRouter.
+| Variable | Usage | Recommended Value |
+|---|---|---|
+| `JULES_API_KEY` | Authentication for Google Jules API (Architect/Initial Coder). | `required` |
+| `GEMINI_API_KEY` | Primary key for Gemini Models (Auditor/QA). | `optional` (required if not using OpenRouter) |
+| `ANTHROPIC_API_KEY` | Primary key for Claude Models (Fixer via Aider). | `optional` (required if not using OpenRouter) |
+| `OPENROUTER_API_KEY` | Recommended. Unified access to Gemini & Claude models. | `required` (if using OpenRouter) |
+| `E2B_API_KEY` | Key for E2B Sandbox Orchestration. | `required` |
+| `SMART_MODEL` | Model ID for **Fixer** (Aider). High capability required. | `claude-3-5-sonnet-20241022` |
+| `FAST_MODEL` | Model ID for **Auditor** (Aider). Speed & Context required. | `gemini-2.0-flash-exp` |
 
-### Model Selection
+### Configuration Files
 
-In `ac_cdd_config.py` (or via `.env` aliases), you can assign specific models to agents:
+*   **`ac_cdd_config.py`**: Central Python configuration.
+    *   `MAX_ITERATIONS`: Controls the number of refinement loops (Default: 3).
+    *   `AiderConfig`: Maps `SMART_MODEL`/`FAST_MODEL` to `aider` arguments.
+    *   `SandboxConfig`: Controls timeout, template, and directories to sync (`src`, `tests`, etc.).
+*   **`dev_documents/templates/`**: System Prompts.
+    *   `ARCHITECT_INSTRUCTION.md`: Prompts for Jules (Architect).
+    *   `CODER_INSTRUCTION.md`: Prompts for Jules (Initial Coder).
+    *   `AUDITOR_INSTRUCTION.md`: Prompts for Aider (Auditor). **Must remain Strict.**
 
-*   **Auditor**: Needs high reasoning capability. Default: `gemini-2.5-pro` (`SMART_MODEL`).
-*   **QA Analyst**: Needs speed and context window. Default: `gemini-2.5-flash` (`FAST_MODEL`).
+## Why this Architecture?
 
-To use OpenRouter, set the model name with the prefix (e.g., `openrouter/anthropic/claude-3-opus`) and ensure `OPENROUTER_API_KEY` is set.
-
-## Development Workflow for Users
-
-1.  **Initialize**: `uv run manage.py init`
-2.  **Design**: Edit `dev_documents/templates/ARCHITECT_INSTRUCTION.md` to describe your app.
-3.  **Generate Plan**: `uv run manage.py gen-cycles`
-4.  **Review**: Check `ALL_SPEC.md` and `SYSTEM_ARCHITECTURE.md`.
-5.  **Implement**: `uv run manage.py run-cycle --id 01`
-    *   If Audit fails, the agent will automatically retry with feedback.
-    *   If UAT fails, the cycle stops for manual intervention or retry.
-
-## Troubleshooting
-
-*   **Infinite Audit Loops**: If the Auditor keeps rejecting code, check the `audit_feedback` in the logs. You may need to manually intervene or adjust the `AUDITOR_INSTRUCTION.md` template.
-*   **Jules Connection**: Ensure `JulesClient` is properly configured and `JULES_API_KEY` is valid.
+*   **Fully Remote**: By running Aider and tests in the sandbox, we eliminate "it works on my machine" issues and protect the developer's environment.
+*   **Jules**: Excellent at "0 to 1" creation and understanding broad project goals.
+*   **Aider**: The SOTA tool for applying diffs and editing existing code, making it superior for the "Fixer" role.
+*   **LangGraph**: Acts as the supervisor, ensuring the process forces rigorous refinement cycles.

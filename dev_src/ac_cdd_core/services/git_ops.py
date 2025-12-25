@@ -26,7 +26,7 @@ class GitManager:
         status = await self._run_git(["status", "--porcelain"])
         if status:
             logger.warning("Working directory is not clean. Stashing changes...")
-            await self._run_git(["stash", "push", "-m", "Auto-stash before Jules run"])
+            await self._run_git(["stash", "push", "-u", "-m", "Auto-stash before Jules run"])
 
     async def create_working_branch(self, prefix: str, id: str) -> str:
         """
@@ -35,11 +35,14 @@ class GitManager:
         branch_name = f"feature/{prefix}-{id}"
         logger.info(f"Switching to branch {branch_name}...")
 
-        # Try to checkout first (if it exists)
-        _, _, code = await self.runner.run_command([self.git_cmd, "checkout", branch_name], check=False)
+        # Check if branch exists
+        _, _, code = await self.runner.run_command(
+            [self.git_cmd, "rev-parse", "--verify", branch_name], check=False
+        )
         
         if code == 0:
-            logger.info(f"Checked out existing branch {branch_name}")
+            logger.info(f"Branch {branch_name} exists. Checking out...")
+            await self._run_git(["checkout", branch_name])
         else:
             # If not, create it
             logger.info(f"Branch does not exist. Creating {branch_name}...")
@@ -85,6 +88,32 @@ class GitManager:
     async def get_current_branch(self) -> str:
         return await self._run_git(["rev-parse", "--abbrev-ref", "HEAD"])
 
+    async def get_remote_url(self) -> str:
+        """Returns the URL of the 'origin' remote."""
+        return await self._run_git(["config", "--get", "remote.origin.url"])
+
     async def get_diff(self, target_branch: str = "main") -> str:
         """Returns the diff between HEAD and target branch."""
         return await self._run_git(["diff", f"{target_branch}...HEAD"])
+
+    async def merge_pr(self, pr_url: str) -> None:
+        """
+        Merges a Pull Request using GitHub CLI.
+        """
+        logger.info(f"Merging PR: {pr_url}...")
+        try:
+            await self.runner.run_command(
+                [self.gh_cmd, "pr", "merge", pr_url, "--merge", "--delete-branch"],
+                check=True,
+            )
+            logger.info("PR merged successfully.")
+        except Exception as e:
+            logger.warning(f"Failed to auto-merge PR. Please merge manually. Error: {e}")
+
+    async def pull_changes(self) -> None:
+        """
+        Pulls changes from the remote repository.
+        """
+        logger.info("Pulling latest changes...")
+        await self._run_git(["pull"])
+        logger.info("Changes pulled successfully.")

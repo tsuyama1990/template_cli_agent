@@ -1,18 +1,21 @@
+import json
 from pathlib import Path
 from typing import Any, Literal
+import re
 
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from .agents import auditor_agent, qa_analyst_agent
+from .agents import qa_analyst_agent
 from .config import settings
 from .domain_models import AuditResult, UatAnalysis
-from .process_runner import ProcessRunner
 from .service_container import ServiceContainer
 from .services.git_ops import GitManager
 from .services.jules_client import JulesClient
+from .services.aider_client import AiderClient
 from .state import CycleState
 from .utils import logger
+from .sandbox import SandboxRunner
 
 MAX_AUDIT_RETRIES = 2
 
@@ -21,7 +24,57 @@ class GraphBuilder:
     def __init__(self, services: ServiceContainer):
         self.services = services
         self.jules_client = JulesClient()
+        self.aider_client = AiderClient()
         self.git = GitManager()
+        # Shared sandbox for the lifecycle of the graph execution (approx. one cycle)
+        self.sandbox_runner: SandboxRunner | None = None
+
+    async def _get_shared_sandbox(self) -> SandboxRunner:
+        """
+        Get or initialize the shared sandbox runner.
+        Ensures dependencies are installed once.
+        """
+        if self.sandbox_runner:
+            return self.sandbox_runner
+
+        logger.info("Initializing Shared Sandbox...")
+
+        # Use template ID from settings if available (e.g., prebuilt image)
+        # self.sandbox_runner = SandboxRunner(sandbox_id=None, cwd=settings.sandbox.cwd)
+        # Note: SandboxRunner init doesn't create the sandbox immediately, run_command does.
+        # But we want to ensure deps are installed now.
+        self.sandbox_runner = SandboxRunner()
+
+        # We trigger a simple command to ensure connection/creation
+        await self.sandbox_runner.run_command(["echo", "Sandbox Ready"], check=False)
+
+        # Check if dependencies are already installed (optimization for reused/template sandboxes)
+        # We check for 'uv' which is our main tool
+        stdout, _, code = await self.sandbox_runner.run_command(["uv", "--version"], check=False)
+
+        if code == 0:
+            logger.info("Dependencies appear to be installed. Skipping full install.")
+        else:
+            logger.info("Installing dependencies...")
+            # We need aider-chat for remote execution + standard test deps.
+            # We install the current project in editable mode to get the 'ac-cdd' command (which JulesClient uses).
+            deps = ["uv", "pytest", "python-dotenv", "aider-chat"]
+
+            # Install dependencies
+            await self.sandbox_runner.run_command(["pip", "install"] + deps)
+
+            # Install the project itself (for the CLI tool)
+            # The files are already synced to cwd by _sync_to_sandbox called in run_command
+            await self.sandbox_runner.run_command(["pip", "install", "-e", "."])
+
+        return self.sandbox_runner
+
+    async def cleanup(self) -> None:
+        """Explicitly close the sandbox runner."""
+        if self.sandbox_runner:
+            logger.info("Cleaning up shared sandbox...")
+            await self.sandbox_runner.close()
+            self.sandbox_runner = None
 
     # --- Architect Graph Nodes ---
 
@@ -36,25 +89,81 @@ class GraphBuilder:
         """Architect Session: Generates all specs and plans."""
         logger.info("Phase: Architect Session")
 
+        # Get Shared Sandbox (Persistent)
+        runner = await self._get_shared_sandbox()
+
         template_path = Path(settings.paths.templates) / "ARCHITECT_INSTRUCTION.md"
         spec_path = Path(settings.paths.documents_dir) / "ALL_SPEC.md"
         signal_file = Path(settings.paths.documents_dir) / "plan_status.json"
 
         if not spec_path.exists():
-             return {"error": "ALL_SPEC.md not found.", "current_phase": "architect_failed"}
+            return {"error": "ALL_SPEC.md not found.", "current_phase": "architect_failed"}
 
         # Input: user requirements (ALL_SPEC.md)
-        files = [str(spec_path)]
+        cwd = Path.cwd()
+        def _to_rel(p: Path) -> str:
+            try:
+                return str(p.relative_to(cwd))
+            except ValueError:
+                return str(p)
+
+        files = [_to_rel(spec_path)]
+
         # System Instruction: ARCHITECT_INSTRUCTION.md
         instruction = template_path.read_text(encoding="utf-8")
 
         try:
+            # Pass runner for remote execution
             result = await self.jules_client.run_session(
                 session_id="architect-session",
                 prompt=instruction,
                 files=files,
-                completion_signal_file=signal_file
+                completion_signal_file=signal_file,
+                runner=runner,
             )
+
+            # Since Jules now returns a PR URL (or status dict) instead of file content directly,
+            # we log the result and mark as complete.
+            # Note: The actual 'cycles' plan is inside the PR content.
+            # For the local flow to continue perfectly, we might need to parse the PR desc or file.
+            # For now, we assume the user will review the PR.
+            pr_url = result.get("pr_url")
+            if pr_url:
+                logger.info(f"Architect PR created: {pr_url}")
+
+                # --- Auto-Merge Logic ---
+                try:
+                    logger.info("Attempting to auto-merge PR...")
+                    await self.git.merge_pr(pr_url)
+                    await self.git.pull_changes()
+                    logger.info("PR merged and changes pulled successfully.")
+
+                    # Reload plan status from the now-synced local file
+                    if signal_file.exists():
+                        try:
+                            plan_data = json.loads(signal_file.read_text(encoding="utf-8"))
+                            # Update result to include the planned cycles
+                            result["cycles"] = plan_data.get("cycles", [])
+                        except Exception as e:
+                            logger.warning(f"Failed to parse plan_status.json after merge: {e}")
+
+                except Exception as e:
+                    logger.warning(
+                        f"Auto-merge failed. Please merge manually via the URL above. Error: {e}"
+                    )
+                # ------------------------
+
+            else:
+                msg = (
+                    "Jules session finished but NO Pull Request was created.\n"
+                    "Possible causes:\n"
+                    "1. The prompt instructed to output text instead of creating files.\n"
+                    "2. The agent decided no changes were necessary.\n"
+                    "Check the GCP Console for the session logs."
+                )
+                logger.error(msg)
+                return {"error": "No PR created by Jules", "current_phase": "architect_failed"}
+
         except Exception as e:
             logger.error(f"Architect session failed: {e}")
             return {"error": str(e), "current_phase": "architect_failed"}
@@ -62,7 +171,7 @@ class GraphBuilder:
         return {
             "current_phase": "architect_complete",
             "planned_cycles": result.get("cycles", []),
-            "error": None
+            "error": None,
         }
 
     async def commit_architect_node(self, state: CycleState) -> dict[str, Any]:
@@ -79,12 +188,21 @@ class GraphBuilder:
 
         await self.git.ensure_clean_state()
         branch = await self.git.create_working_branch("feat", f"cycle{cycle_id}")
-        return {"current_phase": "branch_ready", "active_branch": branch}
+        # Initialize iteration count for the new cycle
+        return {
+            "current_phase": "branch_ready",
+            "active_branch": branch,
+            "iteration_count": 0,
+        }
 
     async def coder_session_node(self, state: CycleState) -> dict[str, Any]:
-        """Coder Session: Implement and Test Creation."""
+        """Coder Session: Implement and Test Creation (Jules or Aider)."""
         cycle_id = state["cycle_id"]
-        logger.info(f"Phase: Coder Session (Cycle {cycle_id})")
+        iteration_count = state.get("iteration_count", 0) + 1
+
+        logger.info(
+            f"Phase: Coder Session (Cycle {cycle_id}) - Iteration {iteration_count}/{settings.MAX_ITERATIONS}"
+        )
 
         template_path = Path(settings.paths.templates) / "CODER_INSTRUCTION.md"
         cycle_dir = Path(settings.paths.documents_dir) / f"CYCLE{cycle_id}"
@@ -92,53 +210,128 @@ class GraphBuilder:
         uat_file = cycle_dir / "UAT.md"
         arch_file = Path(settings.paths.documents_dir) / "SYSTEM_ARCHITECTURE.md"
 
-        audit_feedback = state.get("audit_feedback")
+        cwd = Path.cwd()
+        def _to_rel(p: Path) -> str:
+            try:
+                return str(p.relative_to(cwd))
+            except ValueError:
+                return str(p)
 
-        if audit_feedback:
-            logger.info("Applying Audit Feedback to Coder Instructions.")
-            feedback_text = "\n".join(f"- {issue}" for issue in audit_feedback)
-            instruction = (
-                f"Your previous implementation FAILED the strict audit.\n"
-                f"You must fix the following CRITICAL ISSUES immediately:\n\n"
-                f"{feedback_text}\n\n"
-                f"Check the existing code, apply fixes, and verify with tests."
-            )
+        # Determine if this is Initial Creation (Jules) or Fix Loop (Aider)
+        if iteration_count > 1:
+            # --- FIX LOOP (Aider) ---
+            logger.info("Mode: Aider Fixer (Refinement/Repair)")
+            audit_feedback = state.get("audit_feedback")
+
+            # Get Shared Sandbox (Persistent)
+            runner = await self._get_shared_sandbox()
+
+            # Gather files to fix
+            src_files = list(Path(settings.paths.src).rglob("*.py"))
+            test_files = list(Path(settings.paths.tests).rglob("*.py"))
+            # Ensure relative paths for remote execution
+            files_to_edit = [_to_rel(f) for f in src_files + test_files]
+
+            # Instruction
+            if audit_feedback:
+                feedback_text = "\n".join(f"- {issue}" for issue in audit_feedback)
+                instruction = (
+                    f"You are the Lead Engineer fixing issues found during audit.\n"
+                    f"Fix the following issues strictly:\n\n{feedback_text}\n\n"
+                    f"Verify your changes with tests."
+                )
+            else:
+                instruction = (
+                    "You are the Lead Engineer. The previous audit passed, "
+                    "but you must now OPTIMIZE the code.\n"
+                    "Refactor for performance, readability, and better typing."
+                )
+
+            try:
+                # Execute Remote Aider
+                result = await self.aider_client.run_fix(
+                    files=files_to_edit, instruction=instruction, runner=runner
+                )
+                return {
+                    "coder_report": {"tool": "aider", "output": result},
+                    "current_phase": "coder_complete",
+                    "iteration_count": iteration_count,
+                }
+            except Exception as e:
+                return {"error": str(e), "current_phase": "coder_failed"}
+
         else:
-            # Prepare standard instruction
+            # --- INITIAL CREATION (Jules) ---
+            logger.info("Mode: Jules Creator (Initial Impl)")
+
+            # Get Shared Sandbox
+            runner = await self._get_shared_sandbox()
+
             base_instruction = template_path.read_text(encoding="utf-8")
             instruction = base_instruction.replace("{{cycle_id}}", cycle_id)
 
-        files = [str(template_path), str(arch_file)]
-        if spec_file.exists():
-            files.append(str(spec_file))
-        if uat_file.exists():
-            files.append(str(uat_file))
+            files = [_to_rel(template_path), _to_rel(arch_file)]
+            if spec_file.exists():
+                files.append(_to_rel(spec_file))
+            if uat_file.exists():
+                files.append(_to_rel(uat_file))
 
-        signal_file = cycle_dir / "session_report.json"
+            signal_file = cycle_dir / "session_report.json"
 
-        try:
-            result = await self.jules_client.run_session(
-                session_id=f"coder-{cycle_id}",
-                prompt=instruction,
-                files=files,
-                completion_signal_file=signal_file
-            )
-            return {"coder_report": result, "current_phase": "coder_complete"}
-        except Exception as e:
-            return {"error": str(e), "current_phase": "coder_failed"}
+            try:
+                # Execute Remote Jules
+                result = await self.jules_client.run_session(
+                    session_id=f"coder-{cycle_id}-iter{iteration_count}",
+                    prompt=instruction,
+                    files=files,
+                    completion_signal_file=signal_file,
+                    runner=runner,
+                )
+
+                pr_url = result.get("pr_url")
+                if pr_url:
+                    logger.info(f"Coder PR created: {pr_url}")
+                    return {
+                        "coder_report": result,
+                        "current_phase": "coder_complete",
+                        "iteration_count": iteration_count,
+                    }
+                else:
+                    msg = (
+                        "Jules session finished but NO Pull Request was created.\n"
+                        "Possible causes:\n"
+                        "1. The prompt instructed to output text instead of creating files.\n"
+                        "2. The agent decided no changes were necessary.\n"
+                        "Check the GCP Console for the session logs."
+                    )
+                    logger.error(msg)
+                    return {"error": "No PR created by Jules", "current_phase": "coder_failed"}
+            except Exception as e:
+                return {"error": str(e), "current_phase": "coder_failed"}
 
     async def run_tests_node(self, state: CycleState) -> dict[str, Any]:
         """Run tests to capture logs for UAT analysis."""
-        logger.info("Phase: Run Tests")
+        logger.info("Phase: Run Tests (Sandbox)")
 
-        runner = ProcessRunner()
+        try:
+            # Use Shared Sandbox
+            runner = await self._get_shared_sandbox()
 
-        # Try running tests
-        cmd = ["uv", "run", "pytest", "tests/"]
-        stdout, stderr, code = await runner.run_command(cmd, check=False)
+            # Execute Tests
+            # Dependencies are already installed in _get_shared_sandbox
+            cmd = ["uv", "run", "pytest", "tests/"]
+            stdout, stderr, code = await runner.run_command(cmd, check=False)
 
-        logs = f"STDOUT:\n{stdout}\n\nSTDERR:\n{stderr}"
-        return {"test_logs": logs, "test_exit_code": code, "current_phase": "tests_run"}
+            logs = f"STDOUT:\n{stdout}\n\nSTDERR:\n{stderr}"
+            return {"test_logs": logs, "test_exit_code": code, "current_phase": "tests_run"}
+
+        except Exception as e:
+            logger.error(f"Sandbox execution failed: {e}")
+            return {
+                "test_logs": f"Execution Failed: {e}",
+                "test_exit_code": -1,
+                "current_phase": "tests_failed_exec"
+            }
 
     async def uat_evaluate_node(self, state: CycleState) -> dict[str, Any]:
         """Gemini-based UAT Evaluation."""
@@ -176,78 +369,77 @@ class GraphBuilder:
         return {"current_phase": "uat_passed", "error": None}
 
     async def auditor_node(self, state: CycleState) -> dict[str, Any]:
-        """Committee of Auditors Node (Sequential Multi-Audit)."""
-        logger.info("Phase: Committee Auditor")
+        """Strict Auditor Node (Aider)."""
+        logger.info("Phase: Strict Auditor (Aider)")
 
-        auditor_idx = state.get("current_auditor_index", 1)
-        review_count = state.get("current_auditor_review_count", 1)
+        iteration_count = state.get("iteration_count", 1)
 
-        logger.info(
-            f"Auditor #{auditor_idx} (Review {review_count}/{settings.REVIEWS_PER_AUDITOR})"
-        )
+        # Get Shared Sandbox (Persistent)
+        runner = await self._get_shared_sandbox()
 
-        # 1. Gather Context
-        runner = ProcessRunner()
-        tree_cmd = [
-            "tree", "-L", "3", "-I",
-            "__pycache__|.git|.venv|node_modules|site-packages|*.egg-info"
-        ]
-        tree_out, _, _ = await runner.run_command(tree_cmd, check=False)
-        diff_out = await self.git.get_diff("main")
+        # 1. Gather Context (Files)
+        src_files = list(Path(settings.paths.src).rglob("*.py"))
+        test_files = list(Path(settings.paths.tests).rglob("*.py"))
 
-        # Load Strict Persona Prompt
+        cwd = Path.cwd()
+        def _to_rel(p: Path) -> str:
+            try:
+                return str(p.relative_to(cwd))
+            except ValueError:
+                return str(p)
+
+        files_to_audit = [_to_rel(f) for f in src_files + test_files]
+
+        # Load Instruction
         template_path = Path(settings.paths.templates) / "AUDITOR_INSTRUCTION.md"
         if template_path.exists():
-            strict_persona = template_path.read_text(encoding="utf-8")
+            instruction = template_path.read_text(encoding="utf-8")
         else:
-            strict_persona = "Act as a strict code auditor. Reject if any issues found."
+            instruction = "Review the code strictly."
 
-        # Inject Auditor Identity
-        identity_prompt = (
-            f"You are Auditor #{auditor_idx} of {settings.NUM_AUDITORS} in the review committee."
+        instruction += f"\n\n(Iteration {iteration_count})"
+
+        # 2. Run Audit via Aider (Remote)
+        output = await self.aider_client.run_audit(
+            files=files_to_audit, instruction=instruction, runner=runner
         )
 
-        prompt = (
-            f"{identity_prompt}\n{strict_persona}\n\n"
-            "=== DIRECTORY STRUCTURE ===\n"
-            f"{tree_out}\n\n"
-            "=== CHANGES (DIFF) ===\n"
-            f"{diff_out}\n\n"
-        )
+        logger.info(f"Audit Round {iteration_count} Complete.")
 
-        # 2. Run Audit
-        result = await auditor_agent.run(prompt)
-        audit_result: AuditResult = result.output
+        # 3. Parse Output for Structured Report
+        marker_start = "=== AUDIT REPORT START ==="
+        marker_end = "=== AUDIT REPORT END ==="
 
-        if audit_result.is_approved:
-            logger.info(f"Auditor #{auditor_idx} APPROVED")
+        extracted_text = ""
+        if marker_start in output and marker_end in output:
+            try:
+                start_idx = output.index(marker_start) + len(marker_start)
+                end_idx = output.index(marker_end)
+                extracted_text = output[start_idx:end_idx].strip()
+            except ValueError:
+                extracted_text = ""
 
-            # Check if committee is finished
-            if auditor_idx >= settings.NUM_AUDITORS:
-                return {
-                    "audit_result": audit_result,
-                    "current_phase": "audit_passed",
-                    "audit_feedback": None
-                }
+        if not extracted_text:
+            lines = output.strip().split("\n")
+            if len(lines) > 20:
+                extracted_text = "\n".join(lines[-20:])
             else:
-                # Move to next auditor
-                return {
-                    "audit_result": audit_result,
-                    "current_auditor_index": auditor_idx + 1,
-                    "current_auditor_review_count": 1,
-                    "current_phase": "audit_next_round",
-                    "audit_feedback": None
-                }
-        else:
-            logger.warning(f"Auditor #{auditor_idx} REJECTED")
-            # Stay on same auditor, increment review count
-            # Logic handled in conditional edge to decide loop vs fail
-            return {
-                "audit_result": audit_result,
-                "current_auditor_review_count": review_count + 1,
-                "audit_feedback": audit_result.critical_issues,
-                "current_phase": "audit_failed"
-            }
+                extracted_text = output.strip()
+
+        feedback_lines = [line.strip() for line in extracted_text.split("\n") if line.strip()]
+
+        dummy_result = AuditResult(
+            is_approved=False,
+            critical_issues=feedback_lines,
+            minor_issues=[],
+            score=0,
+        )
+
+        return {
+            "audit_result": dummy_result,
+            "current_phase": "audit_complete",
+            "audit_feedback": feedback_lines,
+        }
 
     async def commit_coder_node(self, state: CycleState) -> dict[str, Any]:
         """Commit implementation."""
@@ -293,6 +485,14 @@ class GraphBuilder:
         def check_coder(state: CycleState) -> Literal["run_tests", "end"]:
             if state.get("error"):
                 return "end"
+            # If iteration is 1, we just created a PR. We stop here to let user merge.
+            # But the graph logic might expect to continue.
+            # In "Jules Mode" (iter 1), we treat PR creation as success and end.
+            # In "Aider Mode" (iter > 1), we continue to tests.
+            iteration_count = state.get("iteration_count", 1)
+            if iteration_count == 1:
+                return "end" # User must merge PR and restart/pull for next steps.
+
             return "run_tests"
 
         workflow.add_conditional_edges(
@@ -309,48 +509,23 @@ class GraphBuilder:
             "uat_evaluate", check_uat, {"auditor": "auditor", "end": END}
         )
 
-        def check_audit(state: CycleState) -> Literal["commit", "auditor", "coder_session", "end"]:
-            phase = state.get("current_phase")
-            # We use the review_count stored in state,
-            # which was already incremented in node if failed
-            review_count = state.get("current_auditor_review_count", 1)
-            # But the node returns the *next* count value.
-            # If rejected, review_count is now (prev + 1).
-            # Max retries means REVIEWS_PER_AUDITOR.
-            # E.g. limit 2.
-            # 1st try (count=1) -> Reject -> returns count=2 -> (2 <= 2) -> coder_session.
-            # 2nd try (count=2) -> Reject -> returns count=3 -> (3 > 2) -> end.
+        def check_audit(state: CycleState) -> Literal["commit", "coder_session"]:
+            current_iter = state.get("iteration_count", 0)
+            max_iter = settings.MAX_ITERATIONS  # default: 3
 
-            if phase == "audit_passed":
-                # All auditors approved
-                return "commit"
+            if current_iter < max_iter:
+                logger.info(f"Iteration {current_iter}/{max_iter}: Proceeding to refinement loop.")
+                return "coder_session"
 
-            if phase == "audit_next_round":
-                # Passed current auditor, loop to next
-                return "auditor"
-
-            if phase == "audit_failed":
-                # Check retries (note: review_count is already incremented)
-                # If review_count is 2, it means we are about to try for the 2nd time?
-                # No, review_count tracks "how many times have we TRIED".
-                # If node returns count=2, it means we failed the 1st time, and next will be 2nd.
-                # So if count <= LIMIT, we can retry.
-                if review_count <= settings.REVIEWS_PER_AUDITOR:
-                     return "coder_session"
-                else:
-                     logger.error("Audit Failed: Max retries exceeded for this auditor.")
-                     return "end"
-
-            return "end"
+            logger.info("Max iterations reached. Proceeding to commit.")
+            return "commit"
 
         workflow.add_conditional_edges(
             "auditor",
             check_audit,
             {
                 "commit": "commit",
-                "auditor": "auditor",
                 "coder_session": "coder_session",
-                "end": END,
             },
         )
 
@@ -360,6 +535,7 @@ class GraphBuilder:
 
 
 def build_architect_graph(services: ServiceContainer) -> CompiledStateGraph:
+    # Deprecated legacy helper, preferably use GraphBuilder directly in CLI to access cleanup
     return GraphBuilder(services).build_architect_graph()
 
 
