@@ -1,0 +1,31 @@
+# Configuration for MLIP-AutoPipe Cycle 01
+
+database_path: "mlip_pipe.db"
+
+# --- Labelling Engine (Module C) Configuration ---
+qe_command: "pw.x"  # Assumes pw.x is in the user's PATH. Can be an absolute path or include mpirun.
+
+dft_parameters:
+  pseudo_dir: "/path/to/your/sssp_pseudos" # IMPORTANT: User must change this path
+  ecutwfc: 60.0  # Plane-wave cutoff energy in Rydberg
+  kpoints: [4, 4, 4, 0, 0, 0] # Monkhorst-Pack k-point grid
+
+  # Mapping of element to its pseudopotential file name
+  # These should be present in the `pseudo_dir` directory.
+  # Example for SSSP Efficiency pseudopotentials.
+  pseudopotentials:
+    Si: "Si.upf"
+    # Add other elements as needed, e.g.:
+    # C: "C.upf"
+    # O: "O.upf"
+
+# --- Training Engine (Module D) Configuration ---
+training:
+  model_type: "mace"
+  learning_rate: 0.005
+  num_epochs: 100
+  r_cut: 5.0 # Cutoff radius for the MACE model in Angstroms
+
+  # Configuration for Delta Learning
+  delta_learn: true # Set to `false` to train directly on DFT values
+  baseline_potential: "zbl" # Can be 'zbl' or 'lj'
