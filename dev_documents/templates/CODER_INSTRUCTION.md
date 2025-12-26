@@ -14,6 +14,15 @@ Your goal is to implement and test the features for **CYCLE {{cycle_id}}**.
 - `dev_documents/CYCLE{{cycle_id}}/SPEC.md`
 - `dev_documents/CYCLE{{cycle_id}}/UAT.md`
 
+## Constraints & Environment
+- **EXISTING PROJECT**: You are working within an EXISTING project ("Autonomous Dev Env").
+- **DO NOT OVERWRITE CONFIGURATION**: DO NOT delete or overwrite `pyproject.toml`, `uv.lock`, or `README.md` with a new blank project template.
+- **MODIFYING CONFIGURATION**: If you need to add dependencies for this cycle:
+    - Add them to the `dependencies` list in `pyproject.toml` (or `[tool.uv]` section).
+    - DO NOT remove existing dependencies unless they are clearly incompatible.
+    - DO NOT change the project `name`, `version`, or `description` unless explicitly instructed.
+- **SOURCE CODE**: Place your code in `src/` (or `dev_src/` if instructed), respecting the existing package structure.
+
 ## Tasks
 
 1. **Test Driven Development (TDD)**
