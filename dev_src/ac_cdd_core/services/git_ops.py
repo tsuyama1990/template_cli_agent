@@ -117,3 +117,8 @@ class GitManager:
         logger.info("Pulling latest changes...")
         await self._run_git(["pull"])
         logger.info("Changes pulled successfully.")
+
+    async def push_branch(self, branch: str) -> None:
+        """Pushes the specified branch to origin."""
+        logger.info(f"Pushing branch {branch} to origin...")
+        await self._run_git(["push", "-u", "origin", branch])

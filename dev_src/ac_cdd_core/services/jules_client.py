@@ -193,8 +193,12 @@ class JulesClient:
                 raise JulesSessionError(f"Unsupported repository URL format: {repo_url}. Only GitHub is supported.")
 
             branch = await self.git.get_current_branch()
+
+            # Ensure the branch exists on the remote so Jules can access it
+            await self.git.push_branch(branch)
+
         except Exception as e:
-            raise JulesSessionError(f"Failed to determine git context: {e}") from e
+            raise JulesSessionError(f"Failed to determine/push git context: {e}") from e
 
         # 2. Create Session
         logger.info(f"Creating Jules Session {session_id} on branch {branch}...")
