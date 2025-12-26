@@ -1,0 +1,23 @@
+# Configuration for the MLIP-AutoPipe Cycle 01 Workflow
+
+# --- Labelling Engine (DFT) Configuration ---
+dft:
+  qe_command: "pw.x"  # The command to run Quantum Espresso
+  pseudos:
+    Si: "Si.upf"
+    Ar: "Ar.upf"
+  ecutwfc: 80.0       # Plane-wave cutoff energy in Rydberg
+  kpts: [4, 4, 4]     # K-point grid for the Brillouin zone sampling
+
+# --- Training Engine (MLIP) Configuration ---
+training:
+  model_type: "mace"
+  learning_rate: 0.01
+  num_epochs: 100
+  r_cut: 5.0
+  delta_learn: true
+  baseline_potential: "lj"
+
+# --- Database Configuration ---
+database:
+  path: "mlip_cycle01.db"
