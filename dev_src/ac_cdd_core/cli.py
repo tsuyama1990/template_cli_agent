@@ -177,6 +177,7 @@ def gen_cycles(
 def run_cycle(
     cycle_id: Annotated[str, typer.Option("--id", help="Cycle ID (e.g., '01')")] = "01",
     auto: Annotated[bool, typer.Option(help="Run without manual confirmation")] = False,
+    start_iter: Annotated[int, typer.Option("--start-iter", help="Force start at specific iteration (0=Creator, 1=Refiner)")] = 0,
 ) -> None:
     """
     Run a Development Cycle.
@@ -185,7 +186,7 @@ def run_cycle(
     import asyncio
 
     async def _run() -> None:
-        console.rule(f"[bold green]Running Cycle {cycle_id}[/bold green]")
+        console.rule(f"[bold green]Running Cycle {cycle_id} (Start Iter: {start_iter})[/bold green]")
 
         # Check API availability
         try:
@@ -202,7 +203,7 @@ def run_cycle(
         graph = builder.build_coder_graph()
 
         # Initialize state
-        initial_state = CycleState(cycle_id=cycle_id)
+        initial_state = CycleState(cycle_id=cycle_id, iteration_count=start_iter)
 
         try:
             # We iterate through events to show progress if needed, or just invoke

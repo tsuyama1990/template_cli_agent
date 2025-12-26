@@ -188,11 +188,14 @@ class GraphBuilder:
 
         await self.git.ensure_clean_state()
         branch = await self.git.create_working_branch("feat", f"cycle{cycle_id}")
-        # Initialize iteration count for the new cycle
+        
+        # Initialize iteration count (default to 0 if not provided in start state)
+        current_iter = state.get("iteration_count", 0)
+        
         return {
             "current_phase": "branch_ready",
             "active_branch": branch,
-            "iteration_count": 0,
+            "iteration_count": current_iter,
         }
 
     async def coder_session_node(self, state: CycleState) -> dict[str, Any]:
