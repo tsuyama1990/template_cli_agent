@@ -1,0 +1,22 @@
+# Configuration for E2E tests of the MLIP-AutoPipe Cycle 01 Workflow
+
+# --- Labelling Engine (DFT) Configuration ---
+dft:
+  qe_command: "pw.x"  # This command will be mocked during the test
+  pseudos:
+    Si: "Si.upf"     # This file does not need to exist for the test
+  ecutwfc: 80.0
+  kpts: [2, 2, 2]     # A smaller k-point grid for testing is fine
+
+# --- Training Engine (MLIP) Configuration ---
+training:
+  model_type: "test_mace"
+  learning_rate: 0.01
+  num_epochs: 5       # A small number of epochs for fast testing
+  r_cut: 5.0
+  delta_learn: true
+  baseline_potential: "lj"
+
+# --- Database Configuration ---
+database:
+  path: "test_e2e_workflow.db" # A test-specific database path

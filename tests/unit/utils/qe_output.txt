@@ -1,0 +1,82 @@
+
+
+     Program PWSCF v.6.5 (svn rev. 20216) starts on 10May2024 at 10:10:10
+
+     This program is part of the open-source Quantum ESPRESSO suite
+     for quantum simulation of materials; please cite
+         "P. Giannozzi et al., J. Phys.:Condens. Matter 21 395502 (2009);
+         "P. Giannozzi et al., J. Phys.:Condens. Matter 29 465901 (2017);
+          URL http://www.quantum-espresso.org",
+     in publications based on this work. More details at
+     http://www.quantum-espresso.org/quote
+
+     Serial version
+     Waiting for input...
+     Reading input from standard input
+
+     Current dimensions of program PWSCF are:
+     Max number of different atomic species (ntypx) = 10
+     Max number of atoms in the unit cell (natx) = 200
+     Max number of atomic wavefunctions (nbndx) = 500
+     Max number of k-points (nkstot) = 1000
+     Max number of G-vectors (ngwx) = 20000
+
+     Subspace diagonalization in iterative solution of the eigenvalue problem:
+     one sub-group per k-point
+
+     Parallelization info
+     --------------------
+     sticks:   dense  smooth     PW  G-vecs:    dense   smooth      PW
+     Min         16      16     16                16       16      16
+     Max       2000    2000   2000             20000    20000   20000
+     Sum      21786   21786  21786             21786    21786   21786
+     --------------------
+     bravais-lattice index     = 0
+     a(1) = (   5.130000   0.000000   0.000000 )
+     a(2) = (   0.000000   5.130000   0.000000 )
+     a(3) = (   0.000000   0.000000   5.130000 )
+     number of atoms/cell      = 2
+     number of atomic types    = 1
+     kinetic-energy cutoff     = 80.0000  Ry
+     charge density cutoff     = 320.0000 Ry
+     scf convergence threshold = 1.0E-08
+     mixing beta               = 0.70
+     number of k points        = 64
+     ...
+     iteration #  1     ecut=    80.00 Ry     beta= 0.70
+     ethr =  1.00E-08     avg # of iterations =  9.0
+
+     total cpu time spent up to now is        0.1 secs
+
+     Self-consistent field calculation ...
+
+     iteration #  1     Harris-Foulkes estimate =    -11.24355591 Ry
+     iteration #  2     total energy =    -11.24355700 Ry
+     iteration #  3     total energy =    -11.24355702 Ry
+     iteration #  4     total energy =    -11.24355702 Ry
+
+     convergence has been achieved in   4 iterations
+
+     Final enthalpy =    -11.24355702 Ry
+
+     Forces acting on atoms (Ry/au):
+     atom    1 type  1   force =    -0.00000001    -0.00000001     0.00000001
+     atom    2 type  1   force =     0.00000001     0.00000001    -0.00000001
+
+     Total force =     0.00000003     Total SCF correction =     0.00000000
+
+     entering subroutine stress ...
+     total   stress  (Ry/bohr**3)            (kbar)       P=     -3.23
+         -0.00002195    -0.00000000     0.00000000       -0.32        -0.00         0.00
+         -0.00000000    -0.00002195     0.00000000       -0.00        -0.32         0.00
+          0.00000000     0.00000000    -0.00002195        0.00         0.00        -0.32
+
+!    total energy              =     -11.24355702 Ry
+     Harris-Foulkes estimate   =     -11.24355702 Ry
+     estimated scf accuracy    <          1.0E-09 Ry
+
+     The total energy is the sum of the following terms:
+     ...
+     End of self-consistent calculation
+
+     JOB DONE.
