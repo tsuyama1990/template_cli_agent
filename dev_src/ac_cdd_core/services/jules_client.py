@@ -145,6 +145,10 @@ class JulesClient:
         except Exception as e:
             logger.warning(f"Could not load Google Credentials: {e}. Falling back to API Key if available.")
             self.credentials = None
+        
+        # Import Manager Agent lazily to avoid circular deps if any
+        from ac_cdd_core.agents import manager_agent
+        self.manager_agent = manager_agent
 
     def _get_headers(self) -> Dict[str, str]:
         headers = {
@@ -321,8 +325,60 @@ class JulesClient:
                             error_msg = data.get("error", {}).get("message", "Unknown error")
                             logger.error(f"Jules Session Failed: {error_msg}")
                             raise JulesSessionError(f"Jules Session Failed: {error_msg}")
+                        
+                        # --- INTERACTIVE HANDLING START ---
+                        # If Jules is waiting for user feedback (Interactive Question)
+                        if state == "AWAITING_USER_FEEDBACK":
+                             # We need to find WHAT the question is.
+                             act_url = f"{session_url}/activities?pageSize=10" # Get recent
+                             act_resp = await client.get(act_url, headers=self._get_headers(), timeout=10.0)
+                             
+                             if act_resp.status_code == 200:
+                                 activities = act_resp.json().get("activities", [])
+                                 # Look for the latest "agentMessaged"
+                                 question = None
+                                 for act in activities: # usually sorted newest first? or oldest first? Checks imply newest is usually last appended but check timestamps if needed.
+                                      # API docs say: activities are returned in reverse chronological order (newest first) by default? 
+                                      # Use simple search for now on the list we get.
+                                      if "agentMessaged" in act:
+                                          question = act["agentMessaged"].get("agentMessage")
+                                          if question: 
+                                              # Found a question.
+                                              break
+                                 
+                                 # Fallback if structure differs or we missed it
+                                 if not question:
+                                     question = "Jules is waiting for feedback but no clear question found. Please review the plan or provide next steps."
 
-                    # --- 2. Check Activities ---
+                                 # Only reply if we haven't already replied to identical request?
+                                 # For simplicity, we assume AWAITING_USER_FEEDBACK persists until we reply.
+                                 # We risk loop if manager agent reply doesn't satisfy Jules.
+                                 # Ideally track processed state. But let's rely on Manager Agent to be helpful.
+                                 
+                                 self.console.print(f"\n[bold magenta]Jules Question Detected:[/bold magenta] {question}")
+                                 self.console.print("[dim]Consulting Manager Agent...[/dim]")
+                                 
+                                 try:
+                                     # Ask Manager Agent
+                                     mgr_response = await self.manager_agent.run(question)
+                                     reply_text = mgr_response.data
+                                     
+                                     self.console.print(f"[bold cyan]Manager Agent Reply:[/bold cyan] {reply_text}")
+                                     
+                                     # Send Reply
+                                     await self._send_message(session_url, reply_text)
+                                     
+                                     # Sleep a bit to allow state transition
+                                     await asyncio.sleep(5)
+                                     continue # Restart loop to check status change
+
+                                 except Exception as e:
+                                     logger.error(f"Manager Agent failed: {e}")
+                                     # Fallthrough to manual input wait
+                        # --- INTERACTIVE HANDLING END ---
+
+                    # --- 2. Check Activities (Logging only) ---
+                    # (Code below remains for logging purposes, but logic handled above for interaction)
                     act_url = f"{session_url}/activities"
                     act_resp = await client.get(act_url, headers=self._get_headers(), timeout=10.0)
 
@@ -331,30 +387,9 @@ class JulesClient:
                         activities = act_data.get("activities", [])
 
                         if len(activities) > last_activity_count:
-                            # self.console.print(f"\n[bold blue]New Activity detected ({len(activities)} total)[/bold blue]")
-                            
-                            # Determine new activities (assuming chronological append)
-                            new_items = activities[last_activity_count:]
-                            for act in new_items:
-                                # Extract message content (checking likely fields)
-                                message = act.get("displayMessage") or act.get("text") or act.get("description")
-                                
-                                # Check for detail/reasoning if available (often in 'detail' or 'reasoning')
-                                if not message and "detail" in act:
-                                    message = act["detail"]
-
-                                if message:
-                                    self.console.print(f"\n[bold magenta]Jules:[/bold magenta] {message}")
-                                    
-                                    # Heuristic: If message ends with a question mark or seems like a question, prompt user
-                                    if "?" in message or "advice" in message.lower() or "proceed" in message.lower():
-                                        self.console.print("[bold yellow]>> Jules is asking for input. Type your response and press Enter:[/bold yellow]")
-                                else:
-                                    # Fallback for debugging unknown structures
-                                    # self.console.print(f"[dim]Activity: {act}[/dim]")
-                                    pass
-
-                            last_activity_count = len(activities)
+                             # Just log new activity count for now to avoid duplicate prints with above logic
+                             self.console.print(f"[dim]Activity Count: {len(activities)}[/dim]")
+                             last_activity_count = len(activities)
 
                     # --- 3. Non-blocking User Input Check (Linux/Mac) ---
                     # This allows the user to type concurrently with polling loop

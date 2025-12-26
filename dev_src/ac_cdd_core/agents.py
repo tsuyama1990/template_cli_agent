@@ -81,3 +81,14 @@ qa_analyst_agent: Agent[Any, UatAnalysis] = Agent(
 @qa_analyst_agent.system_prompt
 def qa_analyst_system_prompt(ctx: RunContext[Any]) -> str:
     return _get_system_context()
+
+
+# Manager Agent (for handling clarifying questions)
+manager_agent: Agent[Any, str] = Agent(
+    model=get_model(settings.agents.qa_analyst_model),
+    system_prompt="You are the Technical Project Manager. Answer clarifying questions from the developer concerning the project specifications and conventions accurately and concisely.",
+)
+
+@manager_agent.system_prompt
+def manager_system_prompt(ctx: RunContext[Any]) -> str:
+    return _get_system_context()
