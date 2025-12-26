@@ -360,9 +360,9 @@ class GraphBuilder:
         result = await qa_analyst_agent.run(prompt)
         
         logger.info(f"DEBUG: QA Result Type: {type(result)}")
-        logger.info(f"DEBUG: QA Result Data Type: {type(result.data)}")
+        logger.info(f"DEBUG: QA Result Output Type: {type(result.output)}")
         
-        analysis = result.data
+        analysis = result.output
         if isinstance(analysis, str):
              # Fallback if it comes back as string (try to parse if it looks like JSON, or fail gracefully)
              logger.warning(f"QA Agent returned string instead of object: {analysis}")
