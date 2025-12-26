@@ -357,7 +357,7 @@ class GraphBuilder:
             "If tests failed or scenarios are missing, verdict is FAIL."
         )
 
-        result = await qa_analyst_agent.run(prompt)
+        result = await qa_analyst_agent.run(prompt, result_type=UatAnalysis)
         
         # Use .data for the structured Pydantic model
         analysis: UatAnalysis = result.data
