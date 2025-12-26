@@ -32,6 +32,8 @@ dependencies = [
     "pyyaml",
     "mace-torch",
     "click",
+    "numpy",
+    "scipy",
 ]
 
 [tool.uv]
@@ -40,7 +42,7 @@ environments = ["sys_platform == 'linux'"]
 [project.scripts]
 ac-cdd = "ac_cdd_core.cli:app"
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
     "typer",
     "rich",

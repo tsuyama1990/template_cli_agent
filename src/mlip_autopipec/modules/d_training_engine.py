@@ -1,115 +1,104 @@
-import subprocess
-from pathlib import Path
-from typing import List
-
-from ase.atoms import Atoms
-from ase.calculators.singlepoint import SinglePointCalculator
-from ase.io import write
+import torch
+import os
 import numpy as np
+from typing import List
+from ase.db import connect
+
+from mace.tools import AtomicNumberTable
+from mace.modules.models import MACE
 
 from mlip_autopipec.data.database import AseDB
 from mlip_autopipec.data.models import TrainingConfig
-from mlip_autopipec.utils import baseline_potentials
-
+from mlip_autopipec.utils.baseline_potentials import calculate_lj_potential, calculate_zbl_potential
+from mlip_autopipec.utils.mace_utils import to_atomic_data
 
 class TrainingEngine:
-    """
-    This class encapsulates the logic for training a Machine Learning Interatomic
-    Potential (MLIP) model. It handles data loading, preparation for Delta
-
-    Learning, and interfacing with the underlying MLIP framework (e.g., MACE)
-    via its command-line interface.
-    """
-
     def __init__(self, config: TrainingConfig, db: AseDB):
-        self._config = config
-        self._db = db
-        self._work_dir = Path.cwd()
-        # MACE saves the model in the current working directory based on the 'name'
-        self._model_name = "trained_model"
-        self._model_path = self._work_dir / f"{self._model_name}.model"
+        self.config = config
+        self.db = db
+        self.z_table = None
 
+    def _load_and_prepare_data(self, ids: List[int]) -> List: # Returns List[AtomicData]
+        """
+        Loads data from the database, calculates baseline potentials,
+        and prepares it in the format required by MACE.
+        """
+        all_atoms = []
+        with connect(self.db.db_path) as db:
+            for db_id in ids:
+                row = db.get(id=db_id)
+                atoms = row.toatoms()
+                dft_energy = row.energy
+                dft_forces = row.forces
 
-    def execute(self, ids: List[int]) -> Path:
-        training_data = self._load_and_prepare_data(ids)
-        train_file_path = self._work_dir / "temp_train.xyz"
+                if self.config.delta_learn:
+                    if self.config.baseline_potential == 'lj':
+                        baseline_energy, baseline_forces = calculate_lj_potential(atoms)
+                    elif self.config.baseline_potential == 'zbl':
+                        baseline_energy, baseline_forces = calculate_zbl_potential(atoms)
+                    else:
+                        baseline_energy, baseline_forces = 0.0, np.zeros((len(atoms), 3))
 
-        try:
-            # Save the prepared data to a temporary file for the CLI tool
-            write(train_file_path, training_data)
-
-            # Construct the command-line arguments for mace_run_train
-            command = [
-                "mace_run_train",
-                f"--name={self._model_name}",
-                f"--train_file={train_file_path}",
-                f"--energy_key=energy",
-                f"--forces_key=forces",
-                f"--r_max={self._config.r_cut}",
-                f"--max_num_epochs={self._config.num_epochs}",
-                f"--lr={self._config.learning_rate}",
-                f"--device=cpu", # Forcing CPU for broader compatibility
-                f"--save_cpu", # Ensure model is saved in a CPU-compatible format
-                "--E0s=average", # Provide required atomic energy references
-                "--batch_size=1", # Use a batch size compatible with small test data
-                "--valid_batch_size=1",
-            ]
-
-            # Execute the training command
-            result = subprocess.run(command, capture_output=True, text=True)
-
-            if result.returncode != 0:
-                error_message = (
-                    f"MACE training failed with exit code {result.returncode}.\\n"
-                    f"Stdout:\\n{result.stdout}\\n"
-                    f"Stderr:\\n{result.stderr}"
-                )
-                raise RuntimeError(error_message)
-
-        finally:
-            # Ensure the temporary file is always cleaned up
-            if train_file_path.exists():
-                train_file_path.unlink()
-
-        # The actual model path is determined by MACE, using the 'name'
-        final_model_path = self._work_dir / f"{self._model_name}.model"
-        # The test expects a .pt file, so we will rename it for consistency
-        # In a real scenario, we would just use the .model file.
-        final_pt_path = self._work_dir / "models" / "trained_model.pt"
-        final_pt_path.parent.mkdir(exist_ok=True)
-        if final_model_path.exists():
-            final_model_path.rename(final_pt_path)
-            return final_pt_path
-
-        raise FileNotFoundError("MACE did not produce the expected model file.")
-
-
-    def _load_and_prepare_data(self, ids: List[int]) -> List[Atoms]:
-        prepared_atoms_list = []
-        for db_id in ids:
-            row = self._db._db.get(id=db_id)
-            dft_energy = row.energy
-            dft_forces = row.forces
-            atoms = self._db._db.get_atoms(id=db_id)
-
-            target_energy = dft_energy
-            target_forces = dft_forces
-
-            if self._config.delta_learn:
-                if self._config.baseline_potential == "lj":
-                    baseline_energy = baseline_potentials.get_lj_potential(atoms)
-                    baseline_forces = baseline_potentials.get_lj_forces(atoms)
+                    atoms.calc = None # Use modern syntax
+                    atoms.info['energy'] = dft_energy - baseline_energy
+                    atoms.arrays['forces'] = dft_forces - baseline_forces
                 else:
-                    raise ValueError("Unsupported baseline potential specified.")
+                    atoms.calc = None # Use modern syntax
+                    atoms.info['energy'] = dft_energy
+                    atoms.arrays['forces'] = dft_forces
 
-                target_energy -= baseline_energy
-                target_forces -= baseline_forces
+                all_atoms.append(atoms)
 
-            training_atoms = atoms.copy()
-            # ASE's XYZ writer looks for results in the .info dictionary
-            training_atoms.info['energy'] = target_energy
-            training_atoms.arrays['forces'] = np.array(target_forces)
+        atomic_numbers = set()
+        for atoms in all_atoms:
+            atomic_numbers.update(atoms.get_atomic_numbers())
 
-            prepared_atoms_list.append(training_atoms)
+        self.z_table = AtomicNumberTable([int(z) for z in sorted(list(atomic_numbers))])
 
-        return prepared_atoms_list
+        atomic_data_list = [
+            to_atomic_data(atoms, z_table=self.z_table, cutoff=self.config.r_cut)
+            for atoms in all_atoms
+        ]
+
+        return atomic_data_list
+
+    def execute(self, ids: List[int], output_dir: str = "models") -> str:
+        """
+        Loads data, trains the MACE model, and saves it.
+        Returns the path to the saved model file.
+        """
+
+        training_data = self._load_and_prepare_data(ids)
+
+        model = MACE(
+            r_max=self.config.r_cut,
+            num_bessels=8,
+            num_polynomial_basis=4,
+            atomic_numbers=self.z_table.zs,
+            correlation=3,
+            hidden_irreps='16x0e + 16x1o',
+            MLP_irreps='16x0e',
+            atomic_energies=np.zeros(len(self.z_table.zs)),
+            avg_num_neighbors=15.0,
+            atomic_inter_scale=1.0,
+            atomic_inter_shift=0.0
+        )
+
+        optimizer = torch.optim.Adam(model.parameters(), lr=self.config.learning_rate)
+
+        for epoch in range(self.config.num_epochs):
+            for data in training_data:
+                optimizer.zero_grad()
+                output = model(data.to_dict())
+                loss = torch.sum((output['energy'] - data.energy)**2)
+                loss.backward()
+                optimizer.step()
+            print(f"Epoch {epoch+1}/{self.config.num_epochs}, Loss: {loss.item()}")
+
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        model_path = os.path.join(output_dir, "trained_model.pt")
+        torch.save(model, model_path)
+
+        return model_path
