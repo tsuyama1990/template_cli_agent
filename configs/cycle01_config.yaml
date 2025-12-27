@@ -1,0 +1,39 @@
+# Sample Configuration for MLIP-AutoPipe Cycle 01
+
+# Path to the ASE database file
+db_path: "mlip.db"
+
+# Command to execute Quantum Espresso's pw.x
+# Example for a local installation: "/path/to/qe/bin/pw.x"
+# Example for a system with MPI: "mpirun -np 4 pw.x"
+qe_command: "pw.x" # Replace with your actual command
+
+# Pseudopotential files for each element in the system
+pseudos:
+  Si: "Si.pbe-n-rrkjus_psl.1.0.0.UPF"
+
+# DFT parameters for Quantum Espresso
+dft_params:
+  control:
+    calculation: 'scf'
+    restart_mode: 'from_scratch'
+    prefix: 'mlip_autopipec'
+  system:
+    ecutwfc: 60.0
+    ecutrho: 240.0
+  electrons:
+    mixing_beta: 0.7
+    conv_thr: 1.0e-10
+  k_points:
+    scheme: 'automatic'
+    grid: [2, 2, 2]
+    shift: [0, 0, 0]
+
+# Training configuration for the MACE model
+training:
+  model_type: "mace"
+  learning_rate: 0.01
+  num_epochs: 10
+  r_cut: 5.0
+  delta_learn: true
+  baseline_potential: "lj"

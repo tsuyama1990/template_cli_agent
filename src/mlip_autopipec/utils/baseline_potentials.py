@@ -1,37 +1,45 @@
 import numpy as np
 from ase.atoms import Atoms
-from ase.calculators.lj import LennardJones
+from typing import Tuple
 
-def get_lj_potential(atoms: Atoms) -> float:
+def calculate_lj_potential(atoms: Atoms, epsilon: float = 0.01, sigma: float = 3.4) -> Tuple[float, np.ndarray]:
     """
-    Calculates the potential energy of a system using the Lennard-Jones potential.
-
-    Note: This uses default ASE parameters for Argon (Ar). It serves as a
-    simple, fast baseline for the Delta Learning demonstration. For a real
-    scientific application, element-specific parameters would be required.
+    Calculates the Lennard-Jones potential energy and forces for a set of atoms.
 
     Args:
-        atoms: The `ase.Atoms` object.
+        atoms: The ASE Atoms object.
+        epsilon: The depth of the potential well in eV.
+        sigma: The distance at which the potential is zero in Angstroms.
 
     Returns:
-        The total potential energy in eV.
+        A tuple containing the total energy (float) and the forces (np.ndarray).
     """
-    # Using default ASE LJ parameters which are for Argon
-    calc = LennardJones()
-    atoms.calc = calc
-    return atoms.get_potential_energy()
+    positions = atoms.get_positions()
+    distances = atoms.get_all_distances(mic=True)
 
-def get_lj_forces(atoms: Atoms) -> np.ndarray:
-    """
-    Calculates the atomic forces of a system using the Lennard-Jones potential.
+    energy = 0.0
+    forces = np.zeros((len(atoms), 3))
 
-    Args:
-        atoms: The `ase.Atoms` object.
+    # Get pairs of atoms to avoid double counting
+    idx_i, idx_j = np.triu_indices(len(atoms), k=1)
 
-    Returns:
-        A numpy array of forces on each atom.
-    """
-    # Ensure a calculator is attached from the potential function first
-    if not atoms.calc:
-        get_lj_potential(atoms)
-    return atoms.get_forces()
+    for i, j in zip(idx_i, idx_j):
+        dist = distances[i, j]
+        if dist == 0: continue # Should not happen with triu_indices k=1
+
+        # Calculate LJ potential
+        sr6 = (sigma / dist) ** 6
+        sr12 = sr6 ** 2
+        energy += 4 * epsilon * (sr12 - sr6)
+
+        # Calculate force magnitude
+        force_mag = -24 * epsilon * (2 * sr12 - sr6) / dist
+
+        # Calculate force vector
+        direction = (positions[i] - positions[j]) / dist
+        force_vec = force_mag * direction
+
+        forces[i] += force_vec
+        forces[j] -= force_vec
+
+    return energy, forces

@@ -1,0 +1,11 @@
+!    total energy              =     -11.23032512 Ry
+Forces acting on atoms (cartesian axes, Ry/au):
+
+     atom    1 type  Si   force =    -0.00000000    0.00000000   -0.00000000
+     atom    2 type  Si   force =     0.00000000   -0.00000000    0.00000000
+total stress  (Ry/bohr**3)
+  -0.00000001   0.00000000  -0.00000000
+   0.00000000  -0.00000001   0.00000000
+  -0.00000000   0.00000000  -0.00000001
+
+JOB DONE.
