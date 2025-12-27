@@ -2,5 +2,5 @@
   "status": "implemented",
   "cycle_id": "01",
   "test_result": "passed",
-  "notes": "Completed the implementation of the core engine, including the Labelling and Training modules. All unit and end-to-end tests are passing after an iterative debugging process."
+  "notes": "The core engine for labelling and training has been implemented and tested. The mace-torch API proved to be challenging, but all issues were resolved."
 }

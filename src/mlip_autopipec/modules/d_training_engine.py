@@ -1,9 +1,13 @@
+# src/mlip_autopipec/modules/d_training_engine.py
+"""
+This module defines the TrainingEngine, which is responsible for training
+the Machine Learning Interatomic Potential (MLIP).
+"""
 import subprocess
 from pathlib import Path
 from typing import List
 
 from ase.atoms import Atoms
-from ase.calculators.singlepoint import SinglePointCalculator
 from ase.io import write
 import numpy as np
 
@@ -16,7 +20,6 @@ class TrainingEngine:
     """
     This class encapsulates the logic for training a Machine Learning Interatomic
     Potential (MLIP) model. It handles data loading, preparation for Delta
-
     Learning, and interfacing with the underlying MLIP framework (e.g., MACE)
     via its command-line interface.
     """
@@ -25,38 +28,45 @@ class TrainingEngine:
         self._config = config
         self._db = db
         self._work_dir = Path.cwd()
-        # MACE saves the model in the current working directory based on the 'name'
         self._model_name = "trained_model"
         self._model_path = self._work_dir / f"{self._model_name}.model"
 
-
     def execute(self, ids: List[int]) -> Path:
-        training_data = self._load_and_prepare_data(ids)
-        train_file_path = self._work_dir / "temp_train.xyz"
+        """
+        Executes the full training workflow.
 
+        Args:
+            ids: A list of database IDs to be used as the training set.
+
+        Returns:
+            The file path to the saved, trained model.
+        """
+        training_data = self._load_and_prepare_data(ids)
+        if not training_data:
+            raise ValueError("No valid training data found for the given IDs.")
+
+        train_file_path = self._work_dir / "temp_train.xyz"
         try:
-            # Save the prepared data to a temporary file for the CLI tool
             write(train_file_path, training_data)
 
-            # Construct the command-line arguments for mace_run_train
             command = [
                 "mace_run_train",
                 f"--name={self._model_name}",
                 f"--train_file={train_file_path}",
-                f"--energy_key=energy",
-                f"--forces_key=forces",
+                "--energy_key=energy",
+                "--forces_key=forces",
                 f"--r_max={self._config.r_cut}",
                 f"--max_num_epochs={self._config.num_epochs}",
                 f"--lr={self._config.learning_rate}",
-                f"--device=cpu", # Forcing CPU for broader compatibility
-                f"--save_cpu", # Ensure model is saved in a CPU-compatible format
-                "--E0s=average", # Provide required atomic energy references
-                "--batch_size=1", # Use a batch size compatible with small test data
+                "--hidden_irreps=128x0e",
+                "--device=cpu",
+                "--save_cpu",
+                "--E0s=average",
+                "--batch_size=1",
                 "--valid_batch_size=1",
             ]
 
-            # Execute the training command
-            result = subprocess.run(command, capture_output=True, text=True)
+            result = subprocess.run(command, capture_output=True, text=True, check=False)
 
             if result.returncode != 0:
                 error_message = (
@@ -67,14 +77,10 @@ class TrainingEngine:
                 raise RuntimeError(error_message)
 
         finally:
-            # Ensure the temporary file is always cleaned up
             if train_file_path.exists():
                 train_file_path.unlink()
 
-        # The actual model path is determined by MACE, using the 'name'
         final_model_path = self._work_dir / f"{self._model_name}.model"
-        # The test expects a .pt file, so we will rename it for consistency
-        # In a real scenario, we would just use the .model file.
         final_pt_path = self._work_dir / "models" / "trained_model.pt"
         final_pt_path.parent.mkdir(exist_ok=True)
         if final_model_path.exists():
@@ -83,33 +89,39 @@ class TrainingEngine:
 
         raise FileNotFoundError("MACE did not produce the expected model file.")
 
-
     def _load_and_prepare_data(self, ids: List[int]) -> List[Atoms]:
+        """
+        Loads data from the database and prepares it for training.
+        """
         prepared_atoms_list = []
         for db_id in ids:
-            row = self._db._db.get(id=db_id)
-            dft_energy = row.energy
-            dft_forces = row.forces
-            atoms = self._db._db.get_atoms(id=db_id)
+            row = self._db.get(db_id)
+            if not row or not row.get("was_successful"):
+                continue
+
+            atoms = Atoms(
+                numbers=row["numbers"],
+                positions=row["positions"],
+                cell=row["cell"],
+                pbc=row["pbc"],
+            )
+            dft_energy = row["total_energy_ev"]
+            dft_forces = np.array(row["forces"])
 
             target_energy = dft_energy
             target_forces = dft_forces
 
             if self._config.delta_learn:
                 if self._config.baseline_potential == "lj":
-                    baseline_energy = baseline_potentials.get_lj_potential(atoms)
-                    baseline_forces = baseline_potentials.get_lj_forces(atoms)
+                    baseline_energy, baseline_forces = baseline_potentials.calculate_lj_potential(atoms)
                 else:
                     raise ValueError("Unsupported baseline potential specified.")
 
                 target_energy -= baseline_energy
                 target_forces -= baseline_forces
 
-            training_atoms = atoms.copy()
-            # ASE's XYZ writer looks for results in the .info dictionary
-            training_atoms.info['energy'] = target_energy
-            training_atoms.arrays['forces'] = np.array(target_forces)
-
-            prepared_atoms_list.append(training_atoms)
+            atoms.info["energy"] = target_energy
+            atoms.arrays["forces"] = target_forces
+            prepared_atoms_list.append(atoms)
 
         return prepared_atoms_list
