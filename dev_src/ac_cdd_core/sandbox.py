@@ -42,9 +42,7 @@ class SandboxRunner:
                 )
 
         logger.info("Creating new E2B Sandbox...")
-        self.sandbox = Sandbox.create(
-            api_key=self.api_key, template=settings.sandbox.template
-        )
+        self.sandbox = Sandbox.create(api_key=self.api_key, template=settings.sandbox.template)
 
         # Initial setup: install UV and sync files
         if settings.sandbox.install_cmd:

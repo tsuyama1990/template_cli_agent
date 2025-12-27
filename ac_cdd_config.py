@@ -45,6 +45,7 @@ class PathsConfig(BaseSettings):
             self.contracts_dir = f"{self.package_dir}/contracts"
         return self
 
+
 class JulesConfig(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
     # Default to regular command name 'jules'
@@ -87,10 +88,15 @@ class AgentsConfig(BaseSettings):
     auditor_model: str = Field(default="gemini-2.5-pro", validation_alias="SMART_MODEL")
     qa_analyst_model: str = Field(default="gemini-2.5-flash", validation_alias="FAST_MODEL")
 
+
 class AiderConfig(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
-    smart_model: str = Field(default="claude-3-5-sonnet", description="Model for editing code (Fixer)")
-    fast_model: str = Field(default="gemini-2.5-flash", description="Model for reading/auditing code")
+    smart_model: str = Field(
+        default="claude-3-5-sonnet", description="Model for editing code (Fixer)"
+    )
+    fast_model: str = Field(
+        default="gemini-2.5-flash", description="Model for reading/auditing code"
+    )
 
     # Prompts (Content loaded via _read_prompt)
     auditor: str = Field(

@@ -1,0 +1,5 @@
+training:
+  model_path: "models/test_model.pt"
+  data_path: "data/"
+  epochs: 10
+  delta_learn: true

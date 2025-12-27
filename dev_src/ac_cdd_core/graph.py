@@ -1,7 +1,7 @@
 import json
+import re
 from pathlib import Path
 from typing import Any, Literal
-import re
 
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
@@ -9,13 +9,13 @@ from langgraph.graph.state import CompiledStateGraph
 from .agents import qa_analyst_agent
 from .config import settings
 from .domain_models import AuditResult, UatAnalysis
+from .sandbox import SandboxRunner
 from .service_container import ServiceContainer
+from .services.aider_client import AiderClient
 from .services.git_ops import GitManager
 from .services.jules_client import JulesClient
-from .services.aider_client import AiderClient
 from .state import CycleState
 from .utils import logger
-from .sandbox import SandboxRunner
 
 MAX_AUDIT_RETRIES = 2
 
@@ -54,13 +54,15 @@ class GraphBuilder:
 
         if code == 0:
             # Also check for aider, as it's critical
-            _, _, aider_code = await self.sandbox_runner.run_command(["aider", "--version"], check=False)
+            _, _, aider_code = await self.sandbox_runner.run_command(
+                ["aider", "--version"], check=False
+            )
             if aider_code == 0:
                 logger.info("Dependencies appear to be installed. Skipping full install.")
             else:
-                 logger.info("uv found but aider missing. Installing dependencies...")
-                 code = 1 # Force install path
-        
+                logger.info("uv found but aider missing. Installing dependencies...")
+                code = 1  # Force install path
+
         if code != 0:
             logger.info("Installing dependencies...")
             # We need aider-chat for remote execution + standard test deps.
@@ -108,6 +110,7 @@ class GraphBuilder:
 
         # Input: user requirements (ALL_SPEC.md)
         cwd = Path.cwd()
+
         def _to_rel(p: Path) -> str:
             try:
                 return str(p.relative_to(cwd))
@@ -195,10 +198,10 @@ class GraphBuilder:
 
         await self.git.ensure_clean_state()
         branch = await self.git.create_working_branch("feat", f"cycle{cycle_id}")
-        
+
         # Initialize iteration count (default to 0 if not provided in start state)
         current_iter = state.get("iteration_count", 0)
-        
+
         return {
             "current_phase": "branch_ready",
             "active_branch": branch,
@@ -221,6 +224,7 @@ class GraphBuilder:
         arch_file = Path(settings.paths.documents_dir) / "SYSTEM_ARCHITECTURE.md"
 
         cwd = Path.cwd()
+
         def _to_rel(p: Path) -> str:
             try:
                 return str(p.relative_to(cwd))
@@ -230,9 +234,11 @@ class GraphBuilder:
         # Determine if this is Initial Creation (Jules) or Fix Loop (Aider)
         if iteration_count > 1 and state.get("jules_session_name"):
             # --- FIX LOOP (Jules Reuse) ---
-            logger.info(f"Mode: Jules Fixer (Refinement/Repair) - Resuming Session {state['jules_session_name']}")
+            logger.info(
+                f"Mode: Jules Fixer (Refinement/Repair) - Resuming Session {state['jules_session_name']}"
+            )
             audit_feedback = state.get("audit_feedback", [])
-            
+
             # Get Shared Sandbox (Persistent)
             runner = await self._get_shared_sandbox()
 
@@ -245,7 +251,7 @@ class GraphBuilder:
                     f"Update the code and the PR."
                 )
             else:
-                 instruction = (
+                instruction = (
                     "The previous audit passed contextually, but we are doing another iteration.\n"
                     "Please review and optimize the code further."
                 )
@@ -253,26 +259,28 @@ class GraphBuilder:
             try:
                 # Continue Jules Session
                 result = await self.jules_client.continue_session(
-                    session_name=state["jules_session_name"],
-                    prompt=instruction
+                    session_name=state["jules_session_name"], prompt=instruction
                 )
-                
+
                 pr_url = result.get("pr_url")
                 if pr_url:
                     logger.info(f"Jules updated PR: {pr_url}")
                     # Switch to the PR branch to test the changes
                     await self.git.checkout_pr(pr_url)
-                    
+
                     return {
                         "coder_report": result,
                         "current_phase": "coder_complete",
                         "iteration_count": iteration_count,
                         # maintain session info
                         "jules_session_name": state["jules_session_name"],
-                        "pr_url": pr_url
+                        "pr_url": pr_url,
                     }
                 else:
-                    return {"error": "Jules finished but lost track of PR.", "current_phase": "coder_failed"}
+                    return {
+                        "error": "Jules finished but lost track of PR.",
+                        "current_phase": "coder_failed",
+                    }
 
             except Exception as e:
                 return {"error": str(e), "current_phase": "coder_failed"}
@@ -310,7 +318,7 @@ class GraphBuilder:
 
                 if pr_url:
                     logger.info(f"Coder PR created: {pr_url}")
-                    
+
                     # Switch to the PR branch to test the changes
                     # DO NOT MERGE YET (as per user request)
                     await self.git.checkout_pr(pr_url)
@@ -356,7 +364,7 @@ class GraphBuilder:
             return {
                 "test_logs": f"Execution Failed: {e}",
                 "test_exit_code": -1,
-                "current_phase": "tests_failed_exec"
+                "current_phase": "tests_failed_exec",
             }
 
     async def uat_evaluate_node(self, state: CycleState) -> dict[str, Any]:
@@ -381,48 +389,51 @@ class GraphBuilder:
         )
 
         result = await qa_analyst_agent.run(prompt)
-        
+
         logger.info(f"DEBUG: QA Result Type: {type(result)}")
         logger.info(f"DEBUG: QA Result Output Type: {type(result.output)}")
-        
+
         analysis = result.output
         if isinstance(analysis, str):
-             # Fallback if it comes back as string (try to parse if it looks like JSON, or fail gracefully)
-             logger.warning(f"QA Agent returned string instead of object: {analysis}")
-             # Attempt to parse if it looks like JSON
-             if "{" in analysis:
-                 try:
-                     import json
-                     # rudimentary cleanup if it has markdown code blocks
-                     clean_json = analysis.replace("```json", "").replace("```", "").strip()
-                     analysis = UatAnalysis.model_validate_json(clean_json)
-                 except Exception as e:
-                      logger.error(f"Failed to parse JSON from string: {e}")
-                      return {"error": f"UAT Analysis format error: {analysis}", "current_phase": "uat_failed"}
-             else:
-                 # Fallback: Try regex parsing for common LLM text formats (e.g. Llama)
-                 # Expecting lines like: "**Result:** Fail" or "- Result: Pass"
-                 # And content starting with "### Evaluation"
-                 verdict = "FAIL" # Default to fail if we can't parse
-                 summary = analysis
+            # Fallback if it comes back as string (try to parse if it looks like JSON, or fail gracefully)
+            logger.warning(f"QA Agent returned string instead of object: {analysis}")
+            # Attempt to parse if it looks like JSON
+            if "{" in analysis:
+                try:
+                    # rudimentary cleanup if it has markdown code blocks
+                    clean_json = analysis.replace("```json", "").replace("```", "").strip()
+                    analysis = UatAnalysis.model_validate_json(clean_json)
+                except Exception as e:
+                    logger.error(f"Failed to parse JSON from string: {e}")
+                    return {
+                        "error": f"UAT Analysis format error: {analysis}",
+                        "current_phase": "uat_failed",
+                    }
+            else:
+                # Fallback: Try regex parsing for common LLM text formats (e.g. Llama)
+                # Expecting lines like: "**Result:** Fail" or "- Result: Pass"
+                # And content starting with "### Evaluation"
+                verdict = "FAIL"  # Default to fail if we can't parse
+                summary = analysis
 
-                 # 1. Regex for Verdict
-                 # Matches: **Result:** Pass, - Result: Pass, Result: Pass (case insensitive)
-                 verdict_match = re.search(r"(?:Result|Verdict)\s*:?\**\s*(Pass|Fail)", analysis, re.IGNORECASE)
-                 if verdict_match:
-                     found = verdict_match.group(1).upper()
-                     if found == "PASS":
-                         verdict = "PASS"
-                 
-                 # 2. Construct fallback object
-                 # We treat the entire text as the summary if structured parsing fails
-                 analysis = UatAnalysis(
-                     verdict=verdict,
-                     summary=summary,
-                     behavior_analysis=summary  # Fallback: reuse summary as behavior analysis
-                 )
-                 logger.info(f"Parsed unstructured QA output: Verdict={verdict}")
+                # 1. Regex for Verdict
+                # Matches: **Result:** Pass, - Result: Pass, Result: Pass (case insensitive)
+                verdict_match = re.search(
+                    r"(?:Result|Verdict)\s*:?\**\s*(Pass|Fail)", analysis, re.IGNORECASE
+                )
+                if verdict_match:
+                    found = verdict_match.group(1).upper()
+                    if found == "PASS":
+                        verdict = "PASS"
 
+                # 2. Construct fallback object
+                # We treat the entire text as the summary if structured parsing fails
+                analysis = UatAnalysis(
+                    verdict=verdict,
+                    summary=summary,
+                    behavior_analysis=summary,  # Fallback: reuse summary as behavior analysis
+                )
+                logger.info(f"Parsed unstructured QA output: Verdict={verdict}")
 
         logger.info(f"UAT Analysis: {analysis.verdict} - {analysis.summary[:100]}...")
 
@@ -451,6 +462,7 @@ class GraphBuilder:
         test_files = list(Path(settings.paths.tests).rglob("*.py"))
 
         cwd = Path.cwd()
+
         def _to_rel(p: Path) -> str:
             try:
                 return str(p.relative_to(cwd))
