@@ -1,96 +1,91 @@
-import os
-from unittest.mock import MagicMock, patch, call
+"""Unit tests for the Training Engine."""
 import pytest
-from ase.build import bulk
-from ase.io import read
+from unittest.mock import patch, MagicMock
 import numpy as np
-
+from ase.atoms import Atoms
 from mlip_autopipec.modules.d_training_engine import TrainingEngine
 from mlip_autopipec.data.models import TrainingConfig
-from mlip_autopipec.utils import baseline_potentials
+from mlip_autopipec.data.database import AseDB
+
+@pytest.fixture
+def mock_db():
+    db = MagicMock(spec=AseDB)
+    atoms = Atoms('H2', positions=[[0, 0, 0], [0, 0, 1]])
+    db_entry = {
+        "atoms": atoms,
+        "total_energy_ev": -10.0,
+        "forces": np.array([[0, 0, 0.1], [0, 0, -0.1]]),
+        "was_successful": True,
+    }
+    db.get.return_value = db_entry
+    return db
 
 @pytest.fixture
 def training_config():
-    """Provides a standard TrainingConfig for tests."""
     return TrainingConfig(
         model_type='mace',
         learning_rate=0.01,
-        num_epochs=10,
+        num_epochs=1,
         r_cut=5.0,
         delta_learn=True,
-        baseline_potential='lj'
+        baseline_potential='lennard_jones'
     )
 
-@pytest.fixture
-def atoms_data():
-    """Creates a mock dataset for testing the data preparation."""
-    atoms = bulk('Si', 'diamond', a=5.43)
-    dft_energy = -100.0
-    dft_forces = np.array([[0.1, 0.1, 0.1], [-0.1, -0.1, -0.1]])
-    baseline_energy = -90.0
-    baseline_forces = np.array([[0.05, 0.05, 0.05], [-0.05, -0.05, -0.05]])
+def mock_tensor_creation(data, dtype):
+    """Custom mock for torch.tensor."""
+    if isinstance(data, (float, int)):
+        return data  # Return raw value for energy
+    else:
+        # Return a mock tensor with a .numpy() method for forces
+        mock_tensor = MagicMock()
+        mock_tensor.numpy.return_value = np.array(data)
+        return mock_tensor
 
-    # Mock for the ase.db.get() method which returns a row object
-    mock_row = MagicMock()
-    mock_row.energy = dft_energy
-    mock_row.forces = dft_forces
+@patch('mlip_autopipec.modules.d_training_engine.MACE')
+@patch('mlip_autopipec.modules.d_training_engine.torch')
+@patch('mlip_autopipec.modules.d_training_engine.Adam')
+@patch('mlip_autopipec.modules.d_training_engine.AtomicNumberTable')
+@patch('mlip_autopipec.modules.d_training_engine.config_from_atoms')
+@patch('mlip_autopipec.modules.d_training_engine.AtomicData')
+def test_training_engine_delta_learning(mock_atomic_data, mock_config, mock_z_table, mock_adam, mock_torch, mock_mace, mock_db, training_config):
+    """Test the data preparation with delta learning enabled."""
+    mock_torch.tensor.side_effect = mock_tensor_creation
 
-    return mock_row, atoms, baseline_energy, baseline_forces
-
-def test_baseline_potential_lj():
-    atoms = bulk('Ar', 'fcc', a=5.2)
-    energy = baseline_potentials.get_lj_potential(atoms)
-    forces = baseline_potentials.get_lj_forces(atoms)
-    assert isinstance(energy, float)
-    assert isinstance(forces, np.ndarray)
-
-@patch('subprocess.run')
-@patch('mlip_autopipec.utils.baseline_potentials.get_lj_potential')
-@patch('mlip_autopipec.utils.baseline_potentials.get_lj_forces')
-def test_training_engine_execute_subprocess(
-    mock_get_forces, mock_get_potential, mock_subprocess_run, training_config, atoms_data
-):
-    """
-    Tests that the TrainingEngine correctly calls the MACE CLI tool via subprocess
-    and correctly prepares the data in a temporary file.
-    """
-    mock_db = MagicMock()
-    mock_row, atoms_obj, baseline_energy, baseline_forces = atoms_data
-    mock_db._db.get.return_value = mock_row
-    mock_db._db.get_atoms.return_value = atoms_obj
-
-    mock_get_potential.return_value = baseline_energy
-    mock_get_forces.return_value = baseline_forces
-    mock_subprocess_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+    class MockAtomicData:
+        def to_device(self, device): return self
+    mock_atomic_data.from_config.return_value = MockAtomicData()
 
     engine = TrainingEngine(config=training_config, db=mock_db)
+    prepared_data = engine._load_and_prepare_data(ids=[1])
 
-    try:
-        model_path = engine.execute(ids=[1])
+    db_entry = mock_db.get()
+    dft_energy = db_entry["total_energy_ev"]
+    dft_forces = db_entry["forces"]
 
-        # 1. Check subprocess call
-        mock_subprocess_run.assert_called_once()
-        args, kwargs = mock_subprocess_run.call_args
-        command = args[0]
-        assert "mace_run_train" == command[0]
-        # Check for the argument robustly, ignoring the absolute path
-        assert any(arg.startswith("--train_file=") and "temp_train.xyz" in arg for arg in command)
-        assert f"--num_epochs={training_config.num_epochs}" in command
+    assert prepared_data[0].energy < dft_energy
+    assert not np.allclose(prepared_data[0].forces.numpy(), dft_forces)
 
-        # 2. Check the content of the temporary file passed to the CLI
-        # The file is created and deleted inside execute(), so we can't read it
-        # directly. Instead, we can use a spy or another mock on `ase.io.write`.
-        # For simplicity here, we assume the internal logic is correct if the
-        # inputs to it were correct.
+@patch('mlip_autopipec.modules.d_training_engine.MACE')
+@patch('mlip_autopipec.modules.d_training_engine.torch')
+@patch('mlip_autopipec.modules.d_training_engine.Adam')
+@patch('mlip_autopipec.modules.d_training_engine.AtomicNumberTable')
+@patch('mlip_autopipec.modules.d_training_engine.config_from_atoms')
+@patch('mlip_autopipec.modules.d_training_engine.AtomicData')
+def test_training_engine_no_delta_learning(mock_atomic_data, mock_config, mock_z_table, mock_adam, mock_torch, mock_mace, mock_db, training_config):
+    """Test the data preparation with delta learning disabled."""
+    training_config.delta_learn = False
+    mock_torch.tensor.side_effect = mock_tensor_creation
 
-        # 3. Check that the baseline potentials were called.
-        mock_get_potential.assert_called_once()
-        mock_get_forces.assert_called_once()
+    class MockAtomicData:
+        def to_device(self, device): return self
+    mock_atomic_data.from_config.return_value = MockAtomicData()
 
-        assert "trained_model.pt" in str(model_path)
+    engine = TrainingEngine(config=training_config, db=mock_db)
+    prepared_data = engine._load_and_prepare_data(ids=[1])
 
-    finally:
-        # Cleanup temp file if test fails before engine does
-        temp_file = "temp_train.xyz"
-        if os.path.exists(temp_file):
-            os.remove(temp_file)
+    db_entry = mock_db.get()
+    dft_energy = db_entry["total_energy_ev"]
+    dft_forces = db_entry["forces"]
+
+    assert np.isclose(prepared_data[0].energy, dft_energy)
+    assert np.allclose(prepared_data[0].forces.numpy(), dft_forces)
