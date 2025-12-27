@@ -1,20 +1,23 @@
-from pydantic import BaseModel
+"""Pydantic models for data structures."""
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 
+
 class DFTResult(BaseModel):
-    """
-    A Pydantic model to represent the results of a DFT calculation.
-    """
-    total_energy_ev: float
-    forces: List[List[float]]
-    stress: List[List[float]]
+    """Represents the results of a DFT calculation."""
+    model_config = ConfigDict(extra='forbid')
+
+    total_energy_ev: Optional[float] = None
+    forces: Optional[List[List[float]]] = None
+    stress: Optional[List[List[float]]] = None
     was_successful: bool
     error_message: Optional[str] = None
 
+
 class TrainingConfig(BaseModel):
-    """
-    A Pydantic model for configuring the MLIP training process.
-    """
+    """Represents the configuration for an MLIP training run."""
+    model_config = ConfigDict(extra='forbid')
+
     model_type: str
     learning_rate: float
     num_epochs: int
