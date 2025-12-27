@@ -1,73 +1,90 @@
-from pathlib import Path
-
-import numpy as np
+"""Interface to the ASE database for storing and retrieving calculation results."""
+from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional
+from ase.db import connect
 from ase.atoms import Atoms
 from ase.calculators.singlepoint import SinglePointCalculator
-from ase.db import connect
-
-from mlip_autopipec.data.models import DFTResult
-
+from ase.stress import full_3x3_to_voigt_6_stress
+from .models import DFTResult
+import numpy as np
 
 class AseDB:
-    """
-    A wrapper class for handling interactions with an ASE (Atomic Simulation Environment)
-    SQLite database. This class provides a structured way to write and read atomistic
-    simulation data.
-    """
+    """A wrapper class for the ASE database."""
 
-    def __init__(self, db_path: str | Path):
+    def __init__(self, db_path: str):
         """
-        Initialises the AseDB object and connects to the specified database file.
+        Initializes the AseDB wrapper.
 
         Args:
-            db_path: The file path to the SQLite database. If it doesn't exist,
-                     it will be created.
+            db_path: Path to the ASE database file.
         """
-        self._db_path = Path(db_path)
-        self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._db = connect(self._db_path)
+        self.db_path = db_path
 
     def write(self, atoms: Atoms, result: DFTResult) -> int:
         """
-        Writes an atomic configuration and its associated DFT calculation results
-        to the database.
-
-        This method attaches the results to the ase.Atoms object using a
-        SinglePointCalculator, which is the standard ASE practice for storing
-        energy, forces, and stress. Metadata is stored as key-value pairs.
+        Writes an Atoms object and its corresponding DFT result to the database.
 
         Args:
-            atoms: The `ase.Atoms` object representing the atomic structure.
-            result: A `DFTResult` object containing the calculation outputs.
+            atoms: The ASE Atoms object.
+            result: The DFTResult object.
 
         Returns:
-            The unique ID of the newly created row in the database.
+            The ID of the new database entry.
         """
-        # Convert 3x3 stress tensor to 6-element Voigt form (xx, yy, zz, yz, xz, xy)
-        stress_voigt = [
-            result.stress[0][0],
-            result.stress[1][1],
-            result.stress[2][2],
-            result.stress[1][2],
-            result.stress[0][2],
-            result.stress[0][1],
-        ]
+        with connect(self.db_path) as db:
+            # Attach results to atoms object via a calculator
+            # to be compliant with ASE db schema.
+            forces_np = np.array(result.forces)
+            if forces_np.shape != (len(atoms), 3):
+                forces_np = np.zeros((len(atoms), 3))
 
-        # Attach results to the Atoms object via a SinglePointCalculator
-        calc = SinglePointCalculator(
-            atoms=atoms,
-            energy=result.total_energy_ev,
-            forces=np.array(result.forces),
-            stress=np.array(stress_voigt),
-        )
-        atoms.calc = calc
+            stress_np = np.array(result.stress)
+            if stress_np.shape != (3, 3):
+                stress_np = np.zeros((3, 3))
+            stress_voigt = full_3x3_to_voigt_6_stress(stress_np)
 
-        # Filter out None values from key-value pairs, as ASE DB doesn't support them.
-        key_value_pairs = {
-            'was_successful': result.was_successful,
-            'error_message': result.error_message,
+            atoms.calc = SinglePointCalculator(
+                atoms=atoms,
+                energy=result.total_energy_ev,
+                forces=forces_np,
+                stress=stress_voigt,
+            )
+
+            key_value_pairs = {
+                "was_successful": result.was_successful,
+                "error_message": result.error_message,
+            }
+            # Filter out None values to prevent db errors
+            key_value_pairs = {k: v for k, v in key_value_pairs.items() if v is not None}
+
+            db_id = db.write(atoms, key_value_pairs=key_value_pairs)
+        return db_id
+
+    def get(self, db_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Retrieves a record from the database by its ID.
+
+        Args:
+            db_id: The ID of the database entry.
+
+        Returns:
+            A dictionary containing the retrieved data, or None if not found.
+        """
+        with connect(self.db_path) as db:
+            try:
+                row = db.get(id=db_id)
+            except KeyError:
+                return None
+
+        if not row:
+            return None
+
+        atoms = row.toatoms()
+        return {
+            "atoms": atoms,
+            "total_energy_ev": atoms.get_potential_energy(),
+            "forces": atoms.get_forces(),
+            "stress": atoms.get_stress(voigt=False),
+            "was_successful": row.key_value_pairs.get("was_successful", False),
+            "error_message": row.key_value_pairs.get("error_message"),
         }
-        kvp_filtered = {k: v for k, v in key_value_pairs.items() if v is not None}
-
-        db_id = self._db.write(atoms, key_value_pairs=kvp_filtered)
-        return int(db_id)

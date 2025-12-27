@@ -1,0 +1,43 @@
+# Configuration for MLIP-AutoPipe Cycle 01
+
+# Path to the Quantum Espresso pw.x executable.
+# Can be a simple command or include mpirun for parallel execution.
+qe_command: "pw.x"
+
+# Path to the ASE database file where results will be stored.
+database_path: "mlip.db"
+
+# Pseudopotentials mapping element symbols to their filenames.
+# These files should be located in a directory specified in the QE input.
+pseudopotentials:
+  Si: "Si.UPF"
+  H: "H.UPF"
+  O: "O.UPF"
+
+# Parameters for the DFT calculation, structured to match the QE input namelists.
+dft_parameters:
+  control:
+    calculation: "'scf'"
+    prefix: "'mlip_calc'"
+    pseudo_dir: "'./pseudos/'"
+    outdir: "'./out/'"
+    verbosity: "'high'"
+  system:
+    ibrav: 0
+    ecutwfc: 60.0
+    ecutrho: 240.0
+    occupations: "'smearing'"
+    smearing: "'mv'"
+    degauss: 0.01
+  electrons:
+    conv_thr: "1.0e-10"
+    mixing_beta: 0.7
+
+# Configuration for the MLIP training engine.
+training:
+  model_type: "mace"
+  learning_rate: 0.005
+  num_epochs: 10
+  r_cut: 5.0
+  delta_learn: true
+  baseline_potential: "lennard_jones"

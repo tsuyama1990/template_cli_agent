@@ -1,87 +1,68 @@
-from pathlib import Path
-from typing import Tuple
-
+"""The Labelling Engine for performing automated DFT calculations."""
+import subprocess
+import tempfile
+import os
+from typing import Dict, Any
 from ase.atoms import Atoms
-
-from mlip_autopipec.data.database import AseDB
-from mlip_autopipec.utils import dft_utils
-
+from ..data.database import AseDB
+from ..utils.dft_utils import generate_qe_input, parse_qe_output
 
 class LabellingEngine:
-    """
-    This class encapsulates the logic for performing automated Density Functional
-    Theory (DFT) calculations using Quantum Espresso. It acts as a robust wrapper
-    that handles input file generation, execution of the DFT code, parsing of the
-    output, and storage of the results in the project's database.
-    """
+    """Orchestrates the DFT calculation for a given atomic structure."""
 
-    def __init__(self, qe_command: str, db: AseDB):
+    def __init__(self, qe_command: str, parameters: Dict[str, Any], pseudos: Dict[str, str], db: AseDB):
         """
-        Initialises the LabellingEngine.
+        Initializes the LabellingEngine.
 
         Args:
-            qe_command: The command-line instruction to execute Quantum Espresso's
-                        pw.x, including any MPI prefixes (e.g., "mpirun -np 4 pw.x").
-            db: An initialised AseDB object for database interactions.
+            qe_command: The command to execute Quantum Espresso's pw.x (e.g., "mpirun -np 4 pw.x").
+            parameters: Dictionary of QE input parameters.
+            pseudos: Dictionary mapping atom species to pseudopotential filenames.
+            db: An instance of the AseDB wrapper.
         """
         self._qe_command = qe_command
+        self._parameters = parameters
+        self._pseudos = pseudos
         self._db = db
 
-    def execute(
-        self,
-        atoms: Atoms,
-        pseudo_dir: str | Path,
-        ecutwfc: int = 60,
-        kpts: Tuple[int, int, int] = (4, 4, 4),
-    ) -> int:
+    def execute(self, atoms: Atoms) -> int:
         """
-        Executes the full DFT labelling workflow for a given atomic structure.
-
-        This method performs the following steps:
-        1. Generates a Quantum Espresso input file from the `ase.Atoms` object.
-        2. Runs the Quantum Espresso calculation as a subprocess.
-        3. Parses the output to extract energy, forces, and stress.
-        4. Writes the results to the ASE database.
+        Runs a DFT calculation for the given Atoms object and stores the result in the database.
 
         Args:
-            atoms: The `ase.Atoms` object representing the structure to be calculated.
-            pseudo_dir: The path to the directory containing pseudopotential files.
-            ecutwfc: The plane-wave energy cutoff for the calculation (in Ry).
-            kpts: The k-point mesh for the calculation.
+            atoms: The ASE Atoms object to be calculated.
 
         Returns:
-            The unique database ID of the newly created record.
+            The ID of the new entry in the database.
         """
-        work_dir = Path.cwd()
-        input_filepath = work_dir / "QE_input.in"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_path = os.path.join(temp_dir, "qe.in")
+            output_path = os.path.join(temp_dir, "qe.out")
 
-        # 1. Generate input file
-        input_content = dft_utils.generate_qe_input(
-            atoms=atoms, pseudo_dir=pseudo_dir, ecutwfc=ecutwfc, kpts=kpts
-        )
-        with open(input_filepath, "w") as f:
-            f.write(input_content)
+            # Generate input file
+            input_content = generate_qe_input(atoms, self._parameters, self._pseudos)
+            with open(input_path, "w") as f:
+                f.write(input_content)
 
-        # 2. Run Quantum Espresso
-        success, stdout, stderr = dft_utils.run_qe(self._qe_command, input_filepath)
+            # Construct and run the command
+            command = f"{self._qe_command} -in {input_path}"
 
-        if not success:
-            # Handle cases where the pw.x executable itself fails
-            # (e.g., file not found, MPI error)
-            result = dft_utils.parse_qe_output(stdout + "\n" + stderr)
-            result.was_successful = False
-            if not result.error_message:
-                result.error_message = (
-                    f"Subprocess failed with return code != 0. Stderr: {stderr}"
-                )
-        else:
-            # 3. Parse the output
-            result = dft_utils.parse_qe_output(stdout)
+            completed_process = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                cwd=temp_dir
+            )
 
-        # 4. Save results to the database
-        db_id = self._db.write(atoms, result)
+            # Parse the output
+            output_content = completed_process.stdout
+            if completed_process.returncode != 0:
+                # Append stderr for more context on failure
+                output_content += "\n--- STDERR ---\n" + completed_process.stderr
 
-        # Clean up input file
-        input_filepath.unlink()
+            dft_result = parse_qe_output(output_content)
 
-        return db_id
+            # Write to database
+            db_id = self._db.write(atoms, dft_result)
+            return db_id
