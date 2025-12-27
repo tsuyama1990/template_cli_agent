@@ -71,3 +71,27 @@ class AseDB:
 
         db_id = self._db.write(atoms, key_value_pairs=kvp_filtered)
         return int(db_id)
+
+    def get(self, db_id: int) -> dict:
+        """
+        Retrieves a record from the database by its ID.
+
+        Args:
+            db_id: The unique ID of the record to retrieve.
+
+        Returns:
+            A dictionary containing the data for the record.
+        """
+        row = self._db.get(id=db_id)
+        data = row.key_value_pairs
+        data.update(
+            {
+                "numbers": row.numbers,
+                "positions": row.positions,
+                "cell": row.cell,
+                "pbc": row.pbc,
+                "total_energy_ev": row.energy,
+                "forces": row.forces,
+            }
+        )
+        return data
