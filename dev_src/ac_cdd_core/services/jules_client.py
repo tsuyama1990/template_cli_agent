@@ -278,9 +278,10 @@ class JulesClient:
         result["session_name"] = session_name
         return result
 
-    async def _check_for_inquiry(self, client: httpx.AsyncClient, session_url: str) -> Optional[str]:
+    async def _check_for_inquiry(self, client: httpx.AsyncClient, session_url: str) -> Optional[tuple[str, str]]:
         """
         Checks if the session is waiting for user feedback by inspecting recent activities.
+        Returns tuple (message, activity_id) if found, else None.
         """
         try:
             act_url = f"{session_url}/activities?pageSize=50"
@@ -288,9 +289,14 @@ class JulesClient:
             
             if act_resp.status_code == 200:
                 activities = act_resp.json().get("activities", [])
+                # Sort by time desc just in case, though API usually does this
+                # We want the *latest* message provided by the agent.
                 for act in activities:
                     if "agentMessaged" in act:
-                        return act["agentMessaged"].get("agentMessage")
+                        msg = act["agentMessaged"].get("agentMessage")
+                        # Activity name is unique ID usually "sessions/.../activities/..."
+                        act_id = act.get("name") 
+                        return msg, act_id
         except Exception as e:
             logger.warning(f"Failed to check for inquiry: {e}")
         return None
@@ -300,6 +306,7 @@ class JulesClient:
         Polls for PR creation and handles user interaction (Human-in-the-loop).
         """
         last_activity_count = 0
+        processed_activity_ids = set()
 
         start_time = asyncio.get_event_loop().time()
         self.console.print(f"[bold green]Jules is working... (Session: {session_name})[/bold green]")
@@ -325,51 +332,68 @@ class JulesClient:
                         data = resp.json()
                         state = data.get("state")
 
-
-                        # --- INTERACTIVE HANDLING START ---
-                        # Check for inquiries in both AWAITING_USER_FEEDBACK and COMPLETED states
-                        # COMPLETED might be a "turn complete" state waiting for next input
-                        if state in ["AWAITING_USER_FEEDBACK", "COMPLETED"]:
-                             question = await self._check_for_inquiry(client, session_url)
-                             
-                             if question:
-                                 self.console.print(f"\n[bold magenta]Jules Question Detected:[/bold magenta] {question}")
-                                 self.console.print("[dim]Consulting Manager Agent...[/dim]")
-                                 
-                                 try:
-                                     # Ask Manager Agent
-                                     mgr_response = await self.manager_agent.run(question)
-                                     reply_text = mgr_response.output
-                                     
-                                     self.console.print(f"[bold cyan]Manager Agent Reply:[/bold cyan] {reply_text}")
-                                     
-                                     # Send Reply
-                                     await self._send_message(session_url, reply_text)
-                                     
-                                     # Sleep a bit to allow state transition
-                                     await asyncio.sleep(5)
-                                     continue # Restart loop to check status change
-                                     
-                                 except Exception as e:
-                                     logger.error(f"Manager Agent failed: {e}")
-                                     # Fallthrough if manager fails (maybe retry or just wait)
-
-                        # --- INTERACTIVE HANDLING END ---
-
-                        # Check Terminal States if no PR yet or no inquiry found
+                        # --- PRIORITY CHECK: Success/Completion ---
+                        # If we are COMPLETED/SUCCEEDED, check for PR *first* before asking more questions.
+                        # This avoids the infinite loop where we answer a question even though the task is done.
                         if state in ["SUCCEEDED", "COMPLETED"]:
-                            # If we are here in COMPLETED state, it means no question was found/handled above
-                            if "outputs" in data:
+                             if "outputs" in data:
                                 for output in data["outputs"]:
                                     if "pullRequest" in output:
                                         pr_url = output["pullRequest"].get("url")
                                         if pr_url:
                                             self.console.print(f"\n[bold green]PR Created: {pr_url}[/bold green]")
                                             return {"pr_url": pr_url, "status": "success", "raw": data}
+                             
+                             # If state is SUCCEEDED/COMPLETED but no PR, we might be done without one.
+                             # Only continue checking for questions if we are explicitly strictly not done.
+                             # But "SUCCEEDED" usually means final. "COMPLETED" can be intermediate step (rarely) or final.
+                             # If we have no PR but are succeeded, maybe we just return success.
+                             if state == "SUCCEEDED":
+                                 self.console.print("[yellow]Session Succeeded but NO PR found.[/yellow]")
+                                 return {"status": "success", "raw": data}
 
-                            self.console.print("[yellow]Session Succeeded/Completed but NO PR found.[/yellow]")
-                            return {"status": "success", "raw": data}
+                        # --- INTERACTIVE HANDLING START ---
+                        # Only check for questions if we are NOT successfully done yet
+                        if state in ["AWAITING_USER_FEEDBACK", "COMPLETED"]:
+                             inquiry_result = await self._check_for_inquiry(client, session_url)
+                             
+                             if inquiry_result:
+                                 question, act_id = inquiry_result
+                                 
+                                 # DEDUPLICATION: Check if we already answered this activity
+                                 if act_id and act_id not in processed_activity_ids:
+                                     self.console.print(f"\n[bold magenta]Jules Question Detected:[/bold magenta] {question}")
+                                     self.console.print("[dim]Consulting Manager Agent...[/dim]")
+                                     
+                                     try:
+                                         mgr_response = await self.manager_agent.run(question)
+                                         reply_text = mgr_response.output
+                                         
+                                         # FORCE PR CREATION INSTRUCTION
+                                         # We append this to ensure Jules knows to move forward if satisfied.
+                                         reply_text += "\n\n(System Note: If the task is effectively complete or the blocker is resolved, please proceed immediately to create the Pull Request. Do not wait for further confirmation.)"
 
+                                         self.console.print(f"[bold cyan]Manager Agent Reply:[/bold cyan] {reply_text}")
+                                         
+                                         # Send Reply
+                                         await self._send_message(session_url, reply_text)
+                                         
+                                         # Mark as processed
+                                         processed_activity_ids.add(act_id)
+                                         
+                                         # Sleep a bit to allow state transition
+                                         await asyncio.sleep(5)
+                                         continue # Restart loop to check status change
+                                         
+                                     except Exception as e:
+                                         logger.error(f"Manager Agent failed: {e}")
+                                         # Fallthrough if manager fails (maybe retry or just wait)
+                                 
+                                 # If duplicate, we just loop again (waiting for state change or new msg)
+
+                        # --- INTERACTIVE HANDLING END ---
+
+                        # Check Terminal States if no PR yet or no inquiry found
                         if state == "FAILED":
                             logger.error(f"Full Session Data on Failure: {json.dumps(data, indent=2)}")
                             error_msg = data.get("error", {}).get("message", "Unknown error")
