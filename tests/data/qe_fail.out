@@ -1,0 +1,28 @@
+     Program PWSCF v.6.5 starts on 12Jan2024 at 10:00:00
+
+     This program is part of the open-source Quantum ESPRESSO suite
+     for quantum simulation of materials; please cite
+         "P. Giannozzi et al., J. Phys.:Condens. Matter 21 395502 (2009);
+         "P. Giannozzi et al., J. Phys.:Condens. Matter 29 465901 (2017);
+          URL http://www.quantum-espresso.org",
+     in publications or presentations arising from this work. More details at
+     http://www.quantum-espresso.org/quote
+
+     Self-consistent field calculation ...
+
+     iteration #  1     ecut=    60.00 Ry     beta= 0.70
+     total cpu time spent up to now is        0.1 secs
+
+     ethr =  1.00E-10,  avg # of iterations =  10.0
+
+     negative rho detected, resetting mixing
+     ...
+     iteration # 10     ecut=    60.00 Ry     beta= 0.70
+     total cpu time spent up to now is        1.0 secs
+
+     ethr =  1.00E-10,  avg # of iterations =  10.0
+
+     Error in routine cdiaghg (174):
+     S matrix not positive definite
+
+     SCF NOT CONVERGED

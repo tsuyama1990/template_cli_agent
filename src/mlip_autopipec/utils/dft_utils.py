@@ -1,186 +1,115 @@
 import re
-import subprocess
-from pathlib import Path
-from typing import Tuple
-
 import numpy as np
 from ase.atoms import Atoms
+from typing import Dict, Any, Tuple
 
 from mlip_autopipec.data.models import DFTResult
 
 # Conversion factors
 RY_TO_EV = 13.605693122994
-RY_AU_TO_EV_A = RY_TO_EV / 0.529177210903
-RY_BOHR3_TO_EV_A3 = RY_TO_EV / (0.529177210903**3)
+BOHR_TO_ANGSTROM = 0.529177210903
+RY_AU_TO_EV_A = RY_TO_EV / BOHR_TO_ANGSTROM
 
+def generate_qe_input(atoms: Atoms, params: Dict[str, Any], pseudos: Dict[str, str]) -> str:
+    """Generates a Quantum Espresso input file string."""
+    nat = len(atoms)
+    ntyp = len(pseudos)
 
-def generate_qe_input(
-    atoms: Atoms,
-    pseudo_dir: str | Path,
-    ecutwfc: int,
-    kpts: Tuple[int, int, int],
-    pseudopotentials: dict[str, str] | None = None,
-) -> str:
-    """
-    Generates a Quantum Espresso input file content string for a given ASE Atoms object.
+    control = params.get('control', {})
+    system = params.get('system', {})
+    electrons = params.get('electrons', {})
 
-    Args:
-        atoms: The atomic structure.
-        pseudo_dir: Path to the directory containing pseudopotential files.
-        ecutwfc: The plane-wave energy cutoff.
-        kpts: The k-point mesh dimensions.
-        pseudopotentials: A dictionary mapping atomic symbols to pseudopotential filenames.
-                          If None, it assumes a simple convention (e.g., 'Si' -> 'Si.UPF').
+    input_lines = [
+        "&CONTROL",
+        f"    calculation = '{control.get('calculation', 'scf')}'",
+        f"    restart_mode = '{control.get('restart_mode', 'from_scratch')}'",
+        f"    prefix = '{control.get('prefix', 'pwscf')}'",
+        "    tstress = .true.",
+        "    tprnfor = .true.",
+        f"    outdir = '{control.get('outdir', './')}'",
+        f"    pseudo_dir = '{control.get('pseudo_dir', './')}'",
+        "/",
+        "&SYSTEM",
+        f"    ibrav = 0",
+        f"    nat = {nat}",
+        f"    ntyp = {ntyp}",
+        f"    ecutwfc = {system.get('ecutwfc', 60.0)}",
+        f"    ecutrho = {system.get('ecutrho', 240.0)}",
+        "/",
+        "&ELECTRONS",
+        f"    mixing_beta = {electrons.get('mixing_beta', 0.7)}",
+        f"    conv_thr = {electrons.get('conv_thr', 1.0e-10)}",
+        "/",
+        "ATOMIC_SPECIES",
+    ]
 
-    Returns:
-        A string containing the formatted Quantum Espresso input.
-    """
-    if pseudopotentials is None:
-        symbols = sorted(list(set(atoms.get_chemical_symbols())))
-        pseudopotentials = {s: f"{s}.UPF" for s in symbols}
+    unique_symbols = sorted(list(pseudos.keys()))
+    for symbol in unique_symbols:
+        input_lines.append(f"    {symbol} {atoms.get_masses()[list(atoms.get_chemical_symbols()).index(symbol)]} {pseudos[symbol]}")
 
-    atom_types = sorted(pseudopotentials.keys())
-    atom_type_map = {symbol: i + 1 for i, symbol in enumerate(atom_types)}
-
-    input_lines = []
-    input_lines.append(
-        """
-&CONTROL
-    calculation = 'scf'
-    restart_mode = 'from_scratch'
-    prefix = 'mlip'
-    outdir = './out'
-    wfcdir = './wfc'
-    pseudo_dir = '{}'
-    verbosity = 'high'
-/
-""".format(
-            pseudo_dir
-        )
-    )
-
-    input_lines.append(
-        """
-&SYSTEM
-    ibrav = 0
-    nat = {}
-    ntyp = {}
-    ecutwfc = {}
-/
-""".format(
-            len(atoms), len(atom_types), ecutwfc
-        )
-    )
-
-    input_lines.append(
-        """
-&ELECTRONS
-    mixing_beta = 0.7
-    conv_thr = 1.0e-10
-/
-"""
-    )
-
-    input_lines.append("ATOMIC_SPECIES")
-    for symbol in atom_types:
-        # A placeholder for atomic mass, QE doesn't use it for SCF.
-        atomic_mass = 28.0855
-        pseudo_file = pseudopotentials[symbol]
-        input_lines.append(f" {symbol}  {atomic_mass:.4f}  {pseudo_file}")
-
-    input_lines.append("\nCELL_PARAMETERS (angstrom)")
+    input_lines.append("\nCELL_PARAMETERS angstrom")
     for vector in atoms.get_cell():
-        input_lines.append(f" {vector[0]:14.9f} {vector[1]:14.9f} {vector[2]:14.9f}")
+        input_lines.append(f"    {vector[0]:.10f} {vector[1]:.10f} {vector[2]:.10f}")
 
-    input_lines.append("\nATOMIC_POSITIONS (angstrom)")
+    input_lines.append("\nATOMIC_POSITIONS angstrom")
     for atom in atoms:
-        pos = atom.position
-        input_lines.append(
-            f" {atom.symbol}  {pos[0]:14.9f} {pos[1]:14.9f} {pos[2]:14.9f}"
-        )
+        input_lines.append(f"    {atom.symbol} {atom.position[0]:.10f} {atom.position[1]:.10f} {atom.position[2]:.10f}")
 
-    input_lines.append("\nK_POINTS (automatic)")
-    input_lines.append(f" {kpts[0]} {kpts[1]} {kpts[2]} 0 0 0")
+    k_points = params.get('k_points', {'scheme': 'automatic', 'grid': [1, 1, 1], 'shift': [0, 0, 0]})
+    input_lines.append(f"\nK_POINTS {k_points['scheme']}")
+    if k_points['scheme'] == 'automatic':
+        grid = k_points['grid']
+        shift = k_points['shift']
+        input_lines.append(f"  {grid[0]} {grid[1]} {grid[2]} {shift[0]} {shift[1]} {shift[2]}")
 
     return "\n".join(input_lines)
 
 
 def parse_qe_output(output: str) -> DFTResult:
-    """
-    Parses the standard output of a Quantum Espresso run to extract results.
+    """Parses Quantum Espresso output to extract energy, forces, and stress."""
+    total_energy_ev = None
+    forces = []
+    stress = np.zeros((3, 3))
+    was_successful = "JOB DONE" in output
+    error_message = None
 
-    Args:
-        output: The stdout string captured from the `pw.x` execution.
+    if not was_successful:
+        if "SCF NOT CONVERGED" in output:
+            error_message = "SCF did not converge."
+        else:
+            error_message = "QE job did not finish successfully."
 
-    Returns:
-        A DFTResult object containing the parsed data. If the run failed,
-        `was_successful` is False and `error_message` is populated.
-    """
-    if "convergence NOT achieved" in output or "ERROR" in output:
-        return DFTResult(
-            total_energy_ev=0,
-            forces=[],
-            stress=[],
-            was_successful=False,
-            error_message=output[-500:],  # Capture the tail of the output for context
-        )
+    # Find total energy
+    energy_match = re.search(r"!    total energy\s+=\s+(-?[\d\.]+)\s+Ry", output)
+    if energy_match:
+        total_energy_ev = float(energy_match.group(1)) * RY_TO_EV
 
-    try:
-        # Extract total energy
-        energy_match = re.search(r"!\s+total energy\s+=\s+(-?\d+\.\d+)\s+Ry", output)
-        total_energy_ry = float(energy_match.group(1))
+    # Find forces
+    force_match = re.search(r"Forces acting on atoms \(cartesian axes, Ry/au\):\s*\n\s*\n((?:\s*atom\s+\d+\s+type\s+\w+\s+force\s+=\s+[-]?[\d\.]+\s+[-]?[\d\.]+\s+[-]?[\d\.]+\s*\n)+)", output)
+    if force_match:
+        force_lines = force_match.group(1).strip().split('\n')
+        for line in force_lines:
+            parts = line.split('=')
+            force_values = [float(f) for f in parts[1].strip().split()]
+            forces.append([f * RY_AU_TO_EV_A for f in force_values])
 
-        # Extract forces
-        forces_section = re.search(
-            r"Forces acting on atoms \(cartesian axes, Ry/au\):\s*\n([\s\S]+?)(?=total stress)",
-            output,
-        )
-        forces_lines = forces_section.group(1).strip().split("\n")
-        forces = []
-        for line in forces_lines:
-            parts = line.split()
-            forces.append([float(parts[3]), float(parts[5]), float(parts[7])])
+    # Find stress
+    stress_match = re.search(r"total stress\s*\(Ry/bohr\*\*3\)\s*\n((?:\s*[-]?[\d\.]+\s*[-]?[\d\.]+\s*[-]?[\d\.]+\s*\n){3})", output)
+    if stress_match:
+        stress_lines = stress_match.group(1).strip().split('\n')
+        stress_ry_bohr3 = np.array([list(map(float, line.split())) for line in stress_lines])
+        # Convert Ry/bohr^3 to eV/Angstrom^3
+        stress = stress_ry_bohr3 * RY_TO_EV / (BOHR_TO_ANGSTROM**3)
 
-        # Extract stress
-        stress_section = re.search(r"total stress\s+\(Ry/bohr\*\*3\).*?\n([\s\S]+)", output)
-        stress_lines = stress_section.group(1).strip().split("\n")
-        stress = []
-        for line in stress_lines:
-            # Filter out empty lines that might result from splitting
-            if not line.strip():
-                continue
-            stress.append([float(p) for p in line.split()[:3]])
+    if total_energy_ev is None or not forces:
+        was_successful = False
+        if error_message is None:
+            error_message = "Could not parse energy or forces from output."
 
-        return DFTResult(
-            total_energy_ev=total_energy_ry * RY_TO_EV,
-            forces=(np.array(forces) * RY_AU_TO_EV_A).tolist(),
-            stress=(np.array(stress) * RY_BOHR3_TO_EV_A3).tolist(),
-            was_successful=True,
-        )
-    except (AttributeError, IndexError, ValueError) as e:
-        return DFTResult(
-            total_energy_ev=0,
-            forces=[],
-            stress=[],
-            was_successful=False,
-            error_message=f"Parsing failed with error: {e}\nOutput tail:\n{output[-1000:]}",
-        )
-
-
-def run_qe(qe_command: str, input_file: str | Path) -> Tuple[bool, str, str]:
-    """
-    Executes a Quantum Espresso calculation as a subprocess.
-
-    Args:
-        qe_command: The command to run QE (e.g., "pw.x", "mpirun -np 4 pw.x").
-        input_file: The path to the QE input file.
-
-    Returns:
-        A tuple containing: (success_flag, stdout, stderr).
-    """
-    command = f"{qe_command} -in {input_file}"
-    result = subprocess.run(
-        command, shell=True, capture_output=True, text=True, cwd=Path.cwd()
+    return DFTResult(
+        total_energy_ev=total_energy_ev if total_energy_ev is not None else 0.0,
+        forces=forces if forces else [],
+        stress=stress.tolist() if stress is not None else [],
+        was_successful=was_successful,
+        error_message=error_message
     )
-    success = result.returncode == 0
-    return success, result.stdout, result.stderr

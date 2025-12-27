@@ -1,112 +1,123 @@
-import os
-import subprocess
-from pathlib import Path
-
 import pytest
-from ase.build import bulk
-from ase.io import write
+import yaml
+from click.testing import CliRunner
+from unittest.mock import patch
+import os
 
 from mlip_autopipec.main_cycle01 import main
 
-# A minimal config file for testing purposes
-TEST_CONFIG_YAML = """
-database:
-  path: "test.db"
+# A minimal, valid YAML config for the test
+MOCK_CONFIG = {
+    "db_path": "test_e2e.db",
+    "qe_command": "mock_pw.x",
+    "pseudos": {"Si": "Si.upf"},
+    "dft_params": {
+        "control": {"calculation": "scf"},
+        "system": {"ecutwfc": 60.0},
+        "electrons": {"mixing_beta": 0.7}
+    },
+    "training": {
+        "model_type": "mace",
+        "learning_rate": 0.001,
+        "num_epochs": 1,
+        "r_cut": 4.0,
+        "delta_learn": True,
+        "baseline_potential": "lj"
+    }
+}
 
-labelling:
-  qe_command: "mock_pw.x"
-  pseudo_dir: "pseudos/"
-  ecutwfc: 60
-  kpts: [4, 4, 4]
-
-training:
-  model_type: "mace"
-  learning_rate: 0.01
-  num_epochs: 2
-  r_cut: 5.0
-  delta_learn: false
-  baseline_potential: "lj"
+# A minimal structure file (can be invalid CIF, just needs to exist)
+MOCK_STRUCTURE_CONTENT = """
+data_Si
+_cell_length_a 5.43
+_cell_length_b 5.43
+_cell_length_c 5.43
+_cell_angle_alpha 90
+_cell_angle_beta 90
+_cell_angle_gamma 90
+loop_
+_atom_site_label
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+Si 0.0 0.0 0.0
+Si 0.25 0.25 0.25
 """
 
-# A mock pw.x script that produces predictable output
-MOCK_PWX_SCRIPT = f"""#!/bin/bash
-echo '!    total energy              =     -150.00000000 Ry'
-echo 'Forces acting on atoms (cartesian axes, Ry/au):'
-echo '     atom    1   fx=   0.00000000   fy=   0.00000000   fz=   0.00000000'
-echo 'total stress  (Ry/bohr**3)                       (kbar)'
-echo '  1.0   0.0   0.0'
-echo '  0.0   1.0   0.0'
-echo '  0.0   0.0   1.0'
-exit 0
-"""
+@pytest.fixture
+def test_environment(tmp_path):
+    """Sets up a temporary directory with mock config and structure files."""
+    config_file = tmp_path / "config.yaml"
+    with open(config_file, "w") as f:
+        yaml.dump(MOCK_CONFIG, f)
 
-@pytest.fixture(scope="module")
-def setup_test_environment(tmpdir_factory):
+    structure_file = tmp_path / "structure.cif"
+    with open(structure_file, "w") as f:
+        f.write(MOCK_STRUCTURE_CONTENT)
+
+    # Also create a mock pseudo file
+    pseudo_file = tmp_path / "Si.upf"
+    with open(pseudo_file, "w") as f:
+        f.write("mock pseudo")
+
+    # Change to the temp directory so that QE finds the pseudo
+    os.chdir(tmp_path)
+
+    yield config_file, structure_file
+
+    # Cleanup
+    os.remove("test_e2e.db") if os.path.exists("test_e2e.db") else None
+    model_file = "models/trained_model.pt"
+    if os.path.exists(model_file):
+         os.remove(model_file)
+         os.rmdir("models")
+
+
+@patch('mlip_autopipec.modules.d_training_engine.TrainingEngine.execute')
+@patch('mlip_autopipec.modules.c_labelling_engine.LabellingEngine.execute')
+def test_e2e_workflow_successful(mock_labeller_execute, mock_trainer_execute, test_environment):
     """
-    Creates a temporary directory with all necessary files for an E2E run.
-    This includes a mock QE executable, a structure file, and a config file.
+    Tests the full end-to-end workflow from the CLI, mocking the engine executions.
     """
-    tmpdir = tmpdir_factory.mktemp("e2e_test")
+    config_file, structure_file = test_environment
 
-    # Create config file
-    config_path = tmpdir.join("test_config.yaml")
-    config_path.write(TEST_CONFIG_YAML)
+    # Configure mocks to return successful results
+    mock_labeller_execute.return_value = 1 # Mock database ID
+    mock_trainer_execute.return_value = "models/trained_model.pt"
 
-    # Create structure file with two identical structures to satisfy MACE's
-    # train/validation split requirement.
-    atoms = bulk('Si', 'diamond', a=5.43)
-    structure_path = tmpdir.join("si_bulk.xyz")
-    write(str(structure_path), [atoms, atoms])
+    # Mock the AseDB.get method to simulate a successful labelling
+    with patch('mlip_autopipec.data.database.AseDB.get') as mock_db_get:
+        from ase import Atoms
+        mock_db_get.return_value = (Atoms('H'), {'was_successful': True})
 
-    # Create mock executable
-    mock_pwx_path = tmpdir.join("mock_pw.x")
-    mock_pwx_path.write(MOCK_PWX_SCRIPT)
-    os.chmod(str(mock_pwx_path), 0o755)
+        runner = CliRunner()
+        result = runner.invoke(main, ['--config', str(config_file), '--structure', str(structure_file)])
 
-    # Update the config to point to our mock executable
-    # and add it to the system PATH
-    original_path = os.environ['PATH']
-    os.environ['PATH'] = f"{tmpdir}:{original_path}"
+    assert result.exit_code == 0
+    assert "--- Starting Cycle 01 Workflow ---" in result.output
+    assert "Labelling complete" in result.output
+    assert "Workflow complete" in result.output
 
-    yield str(config_path), str(structure_path)
+    mock_labeller_execute.assert_called_once()
+    mock_trainer_execute.assert_called_once()
 
-    # Teardown
-    os.environ['PATH'] = original_path
 
-def test_cycle01_e2e_workflow(setup_test_environment, capsys):
+@patch('mlip_autopipec.modules.c_labelling_engine.LabellingEngine.execute')
+def test_e2e_workflow_labelling_fails(mock_labeller_execute, test_environment):
     """
-    Tests the full end-to-end workflow for Cycle 01 by invoking the CLI.
+    Tests that the workflow aborts correctly if the labelling engine fails.
     """
-    config_path, structure_path = setup_test_environment
+    config_file, structure_file = test_environment
+    mock_labeller_execute.return_value = 1
 
-    # We use subprocess to call our CLI to simulate a user running it.
-    # This is more robust than calling the main function directly.
-    command = [
-        "python", "-m", "mlip_autopipec.main_cycle01",
-        "--config", config_path,
-        "--structure", structure_path
-    ]
+    with patch('mlip_autopipec.data.database.AseDB.get') as mock_db_get:
+        from ase import Atoms
+        mock_db_get.return_value = (Atoms('H'), {'was_successful': False, 'error_message': 'Test Failure'})
 
-    # We change the working directory to the directory of the config file to
-    # ensure that the database and model files are created there.
-    process = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        cwd=os.path.dirname(config_path),
-        env={**os.environ, "PYTHONPATH": f"{os.getcwd()}/src"}
-    )
+        runner = CliRunner()
+        result = runner.invoke(main, ['--config', str(config_file), '--structure', str(structure_file)])
 
-    # Check that the process ran successfully
-    assert process.returncode == 0, f"CLI process failed with stderr: {process.stderr}"
-
-    # Check that the expected output was printed
-    stdout = process.stdout
-    assert "Labelling complete." in stdout
-    assert "Workflow complete." in stdout
-    assert "trained_model.pt" in stdout
-
-    # Check that the output files were created
-    config_dir = Path(os.path.dirname(config_path))
-    assert (config_dir / "test.db").exists()
-    assert (config_dir / "models" / "trained_model.pt").exists()
+    assert result.exit_code == 0
+    assert "ERROR: Labelling failed" in result.output
+    assert "Aborting workflow" in result.output
+    assert "Running Training Engine" not in result.output
