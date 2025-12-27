@@ -2,36 +2,30 @@ import numpy as np
 from ase.atoms import Atoms
 from ase.calculators.lj import LennardJones
 
-def get_lj_potential(atoms: Atoms) -> float:
+def calculate_lj_potential(atoms: Atoms, epsilon: float = 0.01032, sigma: float = 3.405) -> tuple[float, np.ndarray]:
     """
-    Calculates the potential energy of a system using the Lennard-Jones potential.
+    Calculates the energy and forces for an ASE Atoms object using the
+    Lennard-Jones potential.
 
-    Note: This uses default ASE parameters for Argon (Ar). It serves as a
-    simple, fast baseline for the Delta Learning demonstration. For a real
-    scientific application, element-specific parameters would be required.
+    This serves as a simple, fast baseline potential for the Delta Learning
+    strategy. The default parameters are for Argon but provide a reasonable
+    repulsive/attractive interaction for general-purpose use.
 
     Args:
-        atoms: The `ase.Atoms` object.
+        atoms: The ase.Atoms object for which to calculate the potential.
+        epsilon: The depth of the potential well (in eV).
+        sigma: The finite distance at which the inter-particle potential is zero (in Angstroms).
 
     Returns:
-        The total potential energy in eV.
+        A tuple containing:
+        - The total potential energy (float, in eV).
+        - The forces on each atom (np.ndarray, in eV/Angstrom).
     """
-    # Using default ASE LJ parameters which are for Argon
-    calc = LennardJones()
-    atoms.calc = calc
-    return atoms.get_potential_energy()
+    # ASE's LennardJones calculator is a convenient and tested implementation.
+    calculator = LennardJones(epsilon=epsilon, sigma=sigma, rc=10.0)
+    atoms.calc = calculator
 
-def get_lj_forces(atoms: Atoms) -> np.ndarray:
-    """
-    Calculates the atomic forces of a system using the Lennard-Jones potential.
+    energy = atoms.get_potential_energy()
+    forces = atoms.get_forces()
 
-    Args:
-        atoms: The `ase.Atoms` object.
-
-    Returns:
-        A numpy array of forces on each atom.
-    """
-    # Ensure a calculator is attached from the potential function first
-    if not atoms.calc:
-        get_lj_potential(atoms)
-    return atoms.get_forces()
+    return energy, forces
