@@ -43,7 +43,9 @@ class SandboxRunner:
 
         logger.info("Creating new E2B Sandbox...")
         self.sandbox = Sandbox.create(
-            api_key=self.api_key, template=settings.sandbox.template
+            api_key=self.api_key, 
+            template=settings.sandbox.template,
+            timeout=settings.sandbox.timeout  # Pass explicit timeout for keep-alive
         )
 
         # Initial setup: install UV and sync files
