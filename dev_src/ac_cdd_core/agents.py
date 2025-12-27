@@ -1,3 +1,4 @@
+import os  # Added import
 from pathlib import Path
 from typing import Any
 
@@ -6,7 +7,7 @@ from ac_cdd_core.domain_models import (
     UatAnalysis,
 )
 from pydantic_ai import Agent, RunContext
-from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.models.openai import OpenAIChatModel
 
 
 def _load_file_content(filepath: str) -> str:
@@ -55,10 +56,12 @@ def get_model(model_name: str) -> Any:
         if not api_key:
             raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
 
-        return OpenAIModel(
+        # OpenAIChatModel requires env var for OpenRouter if using provider="openrouter"
+        os.environ["OPENROUTER_API_KEY"] = api_key
+
+        return OpenAIChatModel(
             model_name=real_model_name,
-            base_url="https://openrouter.ai/api/v1",
-            api_key=api_key,
+            provider="openrouter",
         )
 
     # If gemini/ prefix exists, or just return the string (let PydanticAI handle it)
