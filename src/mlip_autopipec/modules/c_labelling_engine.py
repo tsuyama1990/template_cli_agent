@@ -1,5 +1,8 @@
+"""The Labelling Engine (Module C) for automated DFT calculations."""
+import subprocess
+import tempfile
 from pathlib import Path
-from typing import Tuple
+from typing import Dict, Tuple
 
 from ase.atoms import Atoms
 
@@ -9,79 +12,89 @@ from mlip_autopipec.utils import dft_utils
 
 class LabellingEngine:
     """
-    This class encapsulates the logic for performing automated Density Functional
-    Theory (DFT) calculations using Quantum Espresso. It acts as a robust wrapper
-    that handles input file generation, execution of the DFT code, parsing of the
-    output, and storage of the results in the project's database.
+    Manages the execution of DFT calculations using Quantum Espresso.
     """
 
-    def __init__(self, qe_command: str, db: AseDB):
+    def __init__(
+        self,
+        db: AseDB,
+        qe_command: str,
+        pseudo_dir: str,
+        pseudos: Dict[str, str],
+        kpts: Tuple[int, int, int],
+        ecutwfc: float,
+    ):
         """
-        Initialises the LabellingEngine.
+        Initializes the Labelling Engine.
 
         Args:
-            qe_command: The command-line instruction to execute Quantum Espresso's
-                        pw.x, including any MPI prefixes (e.g., "mpirun -np 4 pw.x").
-            db: An initialised AseDB object for database interactions.
+            db: An instance of the AseDB wrapper.
+            qe_command: The command to execute Quantum Espresso's pw.x.
+                        (e.g., "pw.x" or "mpirun -np 4 pw.x").
+            pseudo_dir: Path to the directory containing pseudopotential files.
+            pseudos: A dictionary mapping atomic symbols to their pseudopotential filenames.
+            kpts: A 3-tuple specifying the k-point grid for the SCF calculation.
+            ecutwfc: The plane-wave cutoff energy in Rydberg.
         """
-        self._qe_command = qe_command
         self._db = db
+        self._qe_command = qe_command
+        self._pseudo_dir = pseudo_dir
+        self._pseudos = pseudos
+        self._kpts = kpts
+        self._ecutwfc = ecutwfc
 
-    def execute(
-        self,
-        atoms: Atoms,
-        pseudo_dir: str | Path,
-        ecutwfc: int = 60,
-        kpts: Tuple[int, int, int] = (4, 4, 4),
-    ) -> int:
+    def execute(self, atoms: Atoms) -> int:
         """
-        Executes the full DFT labelling workflow for a given atomic structure.
+        Runs a DFT calculation for a given atomic structure and saves the result.
 
         This method performs the following steps:
-        1. Generates a Quantum Espresso input file from the `ase.Atoms` object.
-        2. Runs the Quantum Espresso calculation as a subprocess.
-        3. Parses the output to extract energy, forces, and stress.
-        4. Writes the results to the ASE database.
+        1. Creates a temporary directory for the QE calculation.
+        2. Generates the QE input file using the provided parameters.
+        3. Executes the `pw.x` command using `subprocess`.
+        4. Parses the stdout to extract energy, forces, and stress.
+        5. Writes the result to the ASE database.
 
         Args:
-            atoms: The `ase.Atoms` object representing the structure to be calculated.
-            pseudo_dir: The path to the directory containing pseudopotential files.
-            ecutwfc: The plane-wave energy cutoff for the calculation (in Ry).
-            kpts: The k-point mesh for the calculation.
+            atoms: The ase.Atoms object representing the structure to be calculated.
 
         Returns:
             The unique database ID of the newly created record.
         """
-        work_dir = Path.cwd()
-        input_filepath = work_dir / "QE_input.in"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            work_dir = Path(temp_dir)
+            input_file = work_dir / "qe.in"
+            output_file = work_dir / "qe.out"
 
-        # 1. Generate input file
-        input_content = dft_utils.generate_qe_input(
-            atoms=atoms, pseudo_dir=pseudo_dir, ecutwfc=ecutwfc, kpts=kpts
-        )
-        with open(input_filepath, "w") as f:
-            f.write(input_content)
+            # 1. Generate input file
+            input_str = dft_utils.generate_qe_input(
+                atoms=atoms,
+                pseudo_dir=self._pseudo_dir,
+                pseudos=self._pseudos,
+                kpts=self._kpts,
+                ecutwfc=self._ecutwfc,
+                outdir=str(work_dir / "out"),
+            )
+            input_file.write_text(input_str)
 
-        # 2. Run Quantum Espresso
-        success, stdout, stderr = dft_utils.run_qe(self._qe_command, input_filepath)
+            # 2. Execute pw.x
+            command = self._qe_command.split() + ["-in", str(input_file)]
+            process = subprocess.run(
+                command,
+                cwd=work_dir,
+                capture_output=True,
+                text=True,
+            )
+            output_file.write_text(process.stdout)
 
-        if not success:
-            # Handle cases where the pw.x executable itself fails
-            # (e.g., file not found, MPI error)
-            result = dft_utils.parse_qe_output(stdout + "\n" + stderr)
-            result.was_successful = False
-            if not result.error_message:
-                result.error_message = (
-                    f"Subprocess failed with return code != 0. Stderr: {stderr}"
+            # 3. Parse output
+            if process.returncode != 0:
+                result = dft_utils.DFTResult(
+                    was_successful=False,
+                    error_message=f"QE exited with error code {process.returncode}. Stderr: {process.stderr}"
                 )
-        else:
-            # 3. Parse the output
-            result = dft_utils.parse_qe_output(stdout)
+            else:
+                result = dft_utils.parse_qe_output(process.stdout)
 
-        # 4. Save results to the database
-        db_id = self._db.write(atoms, result)
-
-        # Clean up input file
-        input_filepath.unlink()
-
-        return db_id
+            # 4. Write to database
+            db_id = self._db.write(atoms, result)
+            return db_id

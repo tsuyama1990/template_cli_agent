@@ -1,0 +1,44 @@
+# Configuration for MLIP-AutoPipe Cycle 01
+
+# --- Labelling Engine (Module C) ---
+# Full command to execute Quantum Espresso's pw.x.
+# Can include MPI for parallel execution, e.g., "mpirun -np 4 pw.x"
+qe_command: "pw.x"
+
+# Path to the directory containing pseudopotential files.
+# This should be an absolute path or a path relative to the execution directory.
+pseudo_dir: "/path/to/your/sssp_pseudos"
+
+# Mapping from atomic symbols to their pseudopotential files.
+pseudos:
+  Si: "Si.UPF"
+  # Add other elements as needed, e.g.,
+  # H: "H.UPF"
+  # O: "O.UPF"
+
+# K-point grid for the self-consistent field (SCF) calculation.
+kpts: [4, 4, 4]
+
+# Plane-wave energy cutoff in Rydberg.
+ecutwfc: 60.0
+
+
+# --- Training Engine (Module D) ---
+training:
+  # The type of MLIP model to use. Currently supports 'mace'.
+  model_type: "mace"
+
+  # Learning rate for the Adam optimizer.
+  learning_rate: 0.005
+
+  # Number of training epochs.
+  num_epochs: 50
+
+  # Cutoff radius for atomic interactions in Angstroms.
+  r_cut: 5.0
+
+  # Whether to use the Delta Learning approach.
+  delta_learn: true
+
+  # The baseline potential to use for Delta Learning. Currently supports 'lj'.
+  baseline_potential: "lj"

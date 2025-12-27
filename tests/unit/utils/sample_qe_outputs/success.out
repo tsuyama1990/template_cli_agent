@@ -1,0 +1,17 @@
+
+Begin final coordinates
+     atomic species an      at. pol. (x,y,z)             (a.u.)
+ Si       1    ( 0.000000, 0.000000, 0.000000)
+ Si       2    ( 2.715000, 2.715000, 2.715000)
+End final coordinates
+
+Forces acting on atoms (Ry/au):
+     atom    1 type  1   force =    -0.00000000   -0.00000000   -0.00000000
+     atom    2 type  1   force =     0.00000000    0.00000000    0.00000000
+
+!    total energy              =      -7.98393521 Ry
+
+total stress  (Ry/bohr**3)                (kbar)     P=       -2.92
+  -0.00001019   -0.00000000   -0.00000000    -0.00000000    0.00000000   -0.00000000
+
+JOB DONE.
