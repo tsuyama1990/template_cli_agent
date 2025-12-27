@@ -39,7 +39,7 @@ class GitManager:
         _, _, code = await self.runner.run_command(
             [self.git_cmd, "rev-parse", "--verify", branch_name], check=False
         )
-        
+
         if code == 0:
             logger.info(f"Branch {branch_name} exists. Checking out...")
             await self._run_git(["checkout", branch_name])

@@ -1,0 +1,42 @@
+# Configuration for MLIP-AutoPipe Cycle 01
+
+database:
+  path: "mlip.db"
+
+dft:
+  # IMPORTANT: This command must be in the user's PATH.
+  # For parallel runs, this could be "mpirun -np 4 pw.x"
+  qe_command: "pw.x"
+
+  # A mapping of atomic species to their pseudopotential files.
+  # These files should be located in the directory specified in `pseudo_dir`.
+  pseudopotentials:
+    Si: "Si.pbe-n-rrkjus_psl.1.0.0.UPF" # Example from SSSP library
+
+  # Parameters for the Quantum Espresso calculation.
+  parameters:
+    control:
+      calculation: "scf"
+      verbosity: "high"
+      # This path needs to be accessible by the QE executable.
+      pseudo_dir: "/path/to/your/pseudopotentials"
+      outdir: "./out" # QE output directory (will be created in a temp folder)
+
+    system:
+      ibrav: 0
+      ecutwfc: 60.0 # Wavefunction cutoff energy in Ry
+      ecutrho: 240.0 # Density cutoff energy in Ry
+
+    electrons:
+      conv_thr: 1.0e-8
+      mixing_beta: 0.7
+
+    k_points: [4, 4, 4, 0, 0, 0] # Monkhorst-Pack grid
+
+training:
+  model_type: "mace"
+  learning_rate: 0.001
+  num_epochs: 100
+  r_cut: 5.0 # Cutoff radius for the MACE model
+  delta_learn: true # Whether to use Delta Learning
+  baseline_potential: "lj" # The baseline potential to use for Delta Learning

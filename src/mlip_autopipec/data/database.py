@@ -1,73 +1,60 @@
 from pathlib import Path
+from typing import Any
 
-import numpy as np
+import ase.db
 from ase.atoms import Atoms
-from ase.calculators.singlepoint import SinglePointCalculator
-from ase.db import connect
 
-from mlip_autopipec.data.models import DFTResult
+from .models import DFTResult
 
 
 class AseDB:
-    """
-    A wrapper class for handling interactions with an ASE (Atomic Simulation Environment)
-    SQLite database. This class provides a structured way to write and read atomistic
-    simulation data.
-    """
+    """A wrapper class for the ASE database."""
 
-    def __init__(self, db_path: str | Path):
+    def __init__(self, db_path: Path):
         """
-        Initialises the AseDB object and connects to the specified database file.
+        Initializes the AseDB wrapper.
 
         Args:
-            db_path: The file path to the SQLite database. If it doesn't exist,
-                     it will be created.
+            db_path: The path to the ASE database file.
         """
-        self._db_path = Path(db_path)
-        self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._db = connect(self._db_path)
+        self._db_path = db_path
+        # Explicitly set type='db' to avoid issues with ASE's file type detection
+        self._connection = ase.db.connect(self._db_path, type="db")
 
     def write(self, atoms: Atoms, result: DFTResult) -> int:
         """
-        Writes an atomic configuration and its associated DFT calculation results
-        to the database.
-
-        This method attaches the results to the ase.Atoms object using a
-        SinglePointCalculator, which is the standard ASE practice for storing
-        energy, forces, and stress. Metadata is stored as key-value pairs.
+        Writes an Atoms object and its corresponding DFT result to the database.
 
         Args:
-            atoms: The `ase.Atoms` object representing the atomic structure.
-            result: A `DFTResult` object containing the calculation outputs.
+            atoms: The ASE Atoms object.
+            result: The DFTResult Pydantic model.
 
         Returns:
-            The unique ID of the newly created row in the database.
+            The ID of the new row in the database.
         """
-        # Convert 3x3 stress tensor to 6-element Voigt form (xx, yy, zz, yz, xz, xy)
-        stress_voigt = [
-            result.stress[0][0],
-            result.stress[1][1],
-            result.stress[2][2],
-            result.stress[1][2],
-            result.stress[0][2],
-            result.stress[0][1],
-        ]
+        key_value_pairs = result.dict()
+        # Filter out None values to prevent ASE ValueError
+        key_value_pairs = {k: v for k, v in key_value_pairs.items() if v is not None}
+        return self._connection.write(atoms, key_value_pairs=key_value_pairs)
 
-        # Attach results to the Atoms object via a SinglePointCalculator
-        calc = SinglePointCalculator(
-            atoms=atoms,
-            energy=result.total_energy_ev,
-            forces=np.array(result.forces),
-            stress=np.array(stress_voigt),
-        )
-        atoms.calc = calc
+    def get(self, selection: Any) -> tuple[Atoms | None, dict[str, Any] | None]:
+        """
+        Retrieves a row from the database.
 
-        # Filter out None values from key-value pairs, as ASE DB doesn't support them.
-        key_value_pairs = {
-            'was_successful': result.was_successful,
-            'error_message': result.error_message,
-        }
-        kvp_filtered = {k: v for k, v in key_value_pairs.items() if v is not None}
+        Args:
+            selection: The selection criteria for the row.
 
-        db_id = self._db.write(atoms, key_value_pairs=kvp_filtered)
-        return int(db_id)
+        Returns:
+            A tuple containing the Atoms object and the key-value pairs, or (None, None) if not found.
+        """
+        try:
+            row = self._connection.get(selection)
+            if row:
+                return row.toatoms(), row.key_value_pairs
+            return None, None
+        except (KeyError, IndexError):
+            return None, None
+
+    @property
+    def connection(self):
+        return self._connection

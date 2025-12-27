@@ -92,6 +92,7 @@ manager_agent: Agent[Any, str] = Agent(
     system_prompt="You are the Technical Project Manager. Answer clarifying questions from the developer concerning the project specifications and conventions accurately and concisely.",
 )
 
+
 @manager_agent.system_prompt
 def manager_system_prompt(ctx: RunContext[Any]) -> str:
     return _get_system_context()

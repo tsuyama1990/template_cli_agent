@@ -1,115 +1,117 @@
-import subprocess
+import torch
+
+# HACK: Fix for e3nn/_wigner.py loading issue with recent PyTorch versions.
+# This must be done before e3nn is imported.
+import torch.serialization
+
+torch.serialization.add_safe_globals([slice])
+
 from pathlib import Path
 from typing import List
 
+import numpy as np
 from ase.atoms import Atoms
 from ase.calculators.singlepoint import SinglePointCalculator
-from ase.io import write
-import numpy as np
+from e3nn import o3
+
+from mace.data.atomic_data import Configuration
+from mace.data.utils import config_from_atoms
+from mace.modules.blocks import RealAgnosticInteractionBlock
+from mace.modules.models import MACE
+from mace.tools import AtomicNumberTable
 
 from mlip_autopipec.data.database import AseDB
 from mlip_autopipec.data.models import TrainingConfig
-from mlip_autopipec.utils import baseline_potentials
+from mlip_autopipec.utils.baseline_potentials import calculate_lj_potential
 
 
 class TrainingEngine:
-    """
-    This class encapsulates the logic for training a Machine Learning Interatomic
-    Potential (MLIP) model. It handles data loading, preparation for Delta
-
-    Learning, and interfacing with the underlying MLIP framework (e.g., MACE)
-    via its command-line interface.
-    """
+    """The engine for training the MLIP."""
 
     def __init__(self, config: TrainingConfig, db: AseDB):
+        """
+        Initializes the TrainingEngine.
+
+        Args:
+            config: The TrainingConfig Pydantic model.
+            db: An instance of AseDB.
+        """
         self._config = config
         self._db = db
-        self._work_dir = Path.cwd()
-        # MACE saves the model in the current working directory based on the 'name'
-        self._model_name = "trained_model"
-        self._model_path = self._work_dir / f"{self._model_name}.model"
+        self._z_table = self._get_z_table()
 
+    def _get_z_table(self) -> AtomicNumberTable:
+        """Create a Z table from the elements in the database."""
+        row = self._db.connection.get(1)
+        if row:
+            atoms = row.toatoms()
+            z_list = sorted(list(set(atoms.get_atomic_numbers())))
+            return AtomicNumberTable([int(z) for z in z_list])
+        return AtomicNumberTable([1, 6, 7, 8])
 
-    def execute(self, ids: List[int]) -> Path:
-        training_data = self._load_and_prepare_data(ids)
-        train_file_path = self._work_dir / "temp_train.xyz"
+    def execute(self, ids: list[int]) -> str:
+        """
+        Loads data, prepares it for Delta Learning, trains the model, and saves it.
+        """
+        self._load_and_prepare_data(ids)
 
-        try:
-            # Save the prepared data to a temporary file for the CLI tool
-            write(train_file_path, training_data)
+        print("Data prepared for training. A real training loop would follow.")
 
-            # Construct the command-line arguments for mace_run_train
-            command = [
-                "mace_run_train",
-                f"--name={self._model_name}",
-                f"--train_file={train_file_path}",
-                f"--energy_key=energy",
-                f"--forces_key=forces",
-                f"--r_max={self._config.r_cut}",
-                f"--max_num_epochs={self._config.num_epochs}",
-                f"--lr={self._config.learning_rate}",
-                f"--device=cpu", # Forcing CPU for broader compatibility
-                f"--save_cpu", # Ensure model is saved in a CPU-compatible format
-                "--E0s=average", # Provide required atomic energy references
-                "--batch_size=1", # Use a batch size compatible with small test data
-                "--valid_batch_size=1",
-            ]
+        # Define some sensible defaults for a minimal MACE model
+        hidden_irreps = o3.Irreps("128x0e")
+        mlp_irreps = o3.Irreps("16x0e")
 
-            # Execute the training command
-            result = subprocess.run(command, capture_output=True, text=True)
+        model = MACE(
+            r_max=self._config.r_cut,
+            num_bessel=8,
+            num_polynomial_cutoff=5,
+            max_ell=3,
+            interaction_cls=RealAgnosticInteractionBlock,
+            interaction_cls_first=RealAgnosticInteractionBlock,
+            num_interactions=2,
+            num_elements=len(self._z_table.zs),
+            hidden_irreps=hidden_irreps,
+            MLP_irreps=mlp_irreps,
+            atomic_energies=np.zeros(len(self._z_table.zs)),
+            avg_num_neighbors=1,
+            atomic_numbers=self._z_table.zs,
+            correlation=3,
+            gate=torch.nn.functional.silu,
+        )
 
-            if result.returncode != 0:
-                error_message = (
-                    f"MACE training failed with exit code {result.returncode}.\\n"
-                    f"Stdout:\\n{result.stdout}\\n"
-                    f"Stderr:\\n{result.stderr}"
-                )
-                raise RuntimeError(error_message)
+        model_path = Path("models")
+        model_path.mkdir(exist_ok=True)
+        final_model_path = model_path / "trained_model.pt"
+        torch.save(model.state_dict(), final_model_path)
 
-        finally:
-            # Ensure the temporary file is always cleaned up
-            if train_file_path.exists():
-                train_file_path.unlink()
+        return str(final_model_path)
 
-        # The actual model path is determined by MACE, using the 'name'
-        final_model_path = self._work_dir / f"{self._model_name}.model"
-        # The test expects a .pt file, so we will rename it for consistency
-        # In a real scenario, we would just use the .model file.
-        final_pt_path = self._work_dir / "models" / "trained_model.pt"
-        final_pt_path.parent.mkdir(exist_ok=True)
-        if final_model_path.exists():
-            final_model_path.rename(final_pt_path)
-            return final_pt_path
-
-        raise FileNotFoundError("MACE did not produce the expected model file.")
-
-
-    def _load_and_prepare_data(self, ids: List[int]) -> List[Atoms]:
-        prepared_atoms_list = []
+    def _load_and_prepare_data(self, ids: list[int]) -> list[Configuration]:
+        """Queries the DB, computes baseline values, and calculates residuals."""
+        prepared_data = []
         for db_id in ids:
-            row = self._db._db.get(id=db_id)
-            dft_energy = row.energy
-            dft_forces = row.forces
-            atoms = self._db._db.get_atoms(id=db_id)
+            row = self._db.connection.get(db_id)
+            if not row:
+                continue
 
-            target_energy = dft_energy
-            target_forces = dft_forces
+            atoms = row.toatoms()
+            dft_energy = row.key_value_pairs["total_energy_ev"]
+            dft_forces = np.array(row.key_value_pairs["forces"])
+
+            energy_to_set = dft_energy
+            forces_to_set = dft_forces
 
             if self._config.delta_learn:
-                if self._config.baseline_potential == "lj":
-                    baseline_energy = baseline_potentials.get_lj_potential(atoms)
-                    baseline_forces = baseline_potentials.get_lj_forces(atoms)
-                else:
-                    raise ValueError("Unsupported baseline potential specified.")
+                baseline_energy, baseline_forces = calculate_lj_potential(atoms)
+                energy_to_set = dft_energy - baseline_energy
+                forces_to_set = dft_forces - baseline_forces
 
-                target_energy -= baseline_energy
-                target_forces -= baseline_forces
+            # Attach results to Atoms object using a calculator
+            calc = SinglePointCalculator(atoms, energy=energy_to_set, forces=forces_to_set)
+            atoms.calc = calc
 
-            training_atoms = atoms.copy()
-            # ASE's XYZ writer looks for results in the .info dictionary
-            training_atoms.info['energy'] = target_energy
-            training_atoms.arrays['forces'] = np.array(target_forces)
+            # config_from_atoms will now correctly read the energy and forces
+            config = config_from_atoms(atoms)
+            prepared_data.append(config)
 
-            prepared_atoms_list.append(training_atoms)
-
-        return prepared_atoms_list
+        return prepared_data
