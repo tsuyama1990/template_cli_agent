@@ -1,115 +1,97 @@
 import subprocess
+import shutil
 from pathlib import Path
-from typing import List
+from typing import List, Optional
+import logging
 
-from ase.atoms import Atoms
-from ase.calculators.singlepoint import SinglePointCalculator
-from ase.io import write
 import numpy as np
+from ase.io import write
 
-from mlip_autopipec.data.database import AseDB
-from mlip_autopipec.data.models import TrainingConfig
-from mlip_autopipec.utils import baseline_potentials
-
+from ..data.database import AseDB
+from ..data.models import TrainingConfig
+from ..utils.baseline_potentials import calculate_lj_potential
 
 class TrainingEngine:
-    """
-    This class encapsulates the logic for training a Machine Learning Interatomic
-    Potential (MLIP) model. It handles data loading, preparation for Delta
-
-    Learning, and interfacing with the underlying MLIP framework (e.g., MACE)
-    via its command-line interface.
-    """
-
     def __init__(self, config: TrainingConfig, db: AseDB):
         self._config = config
         self._db = db
-        self._work_dir = Path.cwd()
-        # MACE saves the model in the current working directory based on the 'name'
-        self._model_name = "trained_model"
-        self._model_path = self._work_dir / f"{self._model_name}.model"
 
+    def execute(self, ids: List[int], model_save_path: str = "trained_model.pt", work_dir: Path = Path("./mace_temp")) -> Optional[str]:
+        if not ids:
+            logging.error("Cannot train on an empty list of database IDs.")
+            return None
 
-    def execute(self, ids: List[int]) -> Path:
-        training_data = self._load_and_prepare_data(ids)
-        train_file_path = self._work_dir / "temp_train.xyz"
+        work_dir.mkdir(exist_ok=True)
+        train_file = work_dir / "train.xyz"
 
         try:
-            # Save the prepared data to a temporary file for the CLI tool
-            write(train_file_path, training_data)
+            training_atoms = self._prepare_data_for_xyz(ids)
 
-            # Construct the command-line arguments for mace_run_train
-            command = [
-                "mace_run_train",
-                f"--name={self._model_name}",
-                f"--train_file={train_file_path}",
-                f"--energy_key=energy",
-                f"--forces_key=forces",
-                f"--r_max={self._config.r_cut}",
-                f"--max_num_epochs={self._config.num_epochs}",
-                f"--lr={self._config.learning_rate}",
-                f"--device=cpu", # Forcing CPU for broader compatibility
-                f"--save_cpu", # Ensure model is saved in a CPU-compatible format
-                "--E0s=average", # Provide required atomic energy references
-                "--batch_size=1", # Use a batch size compatible with small test data
-                "--valid_batch_size=1",
-            ]
+            if not training_atoms:
+                logging.error("No valid training data found for the given IDs.")
+                return None
 
-            # Execute the training command
-            result = subprocess.run(command, capture_output=True, text=True)
+            write(train_file, training_atoms)
 
-            if result.returncode != 0:
-                error_message = (
-                    f"MACE training failed with exit code {result.returncode}.\\n"
-                    f"Stdout:\\n{result.stdout}\\n"
-                    f"Stderr:\\n{result.stderr}"
-                )
-                raise RuntimeError(error_message)
+            command = self._build_cli_command(train_file, model_save_path)
+
+            logging.info(f"Running MACE training command: {' '.join(command)}")
+
+            process_result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                cwd=work_dir
+            )
+
+            if process_result.returncode != 0:
+                logging.error(f"MACE training failed. Error:\n{process_result.stderr}")
+                return None
+
+            logging.info(f"Training complete. Model saved to: {model_save_path}")
+            return model_save_path
 
         finally:
-            # Ensure the temporary file is always cleaned up
-            if train_file_path.exists():
-                train_file_path.unlink()
+            if work_dir.exists():
+                shutil.rmtree(work_dir)
 
-        # The actual model path is determined by MACE, using the 'name'
-        final_model_path = self._work_dir / f"{self._model_name}.model"
-        # The test expects a .pt file, so we will rename it for consistency
-        # In a real scenario, we would just use the .model file.
-        final_pt_path = self._work_dir / "models" / "trained_model.pt"
-        final_pt_path.parent.mkdir(exist_ok=True)
-        if final_model_path.exists():
-            final_model_path.rename(final_pt_path)
-            return final_pt_path
-
-        raise FileNotFoundError("MACE did not produce the expected model file.")
-
-
-    def _load_and_prepare_data(self, ids: List[int]) -> List[Atoms]:
+    def _prepare_data_for_xyz(self, ids: List[int]) -> List:
         prepared_atoms_list = []
         for db_id in ids:
-            row = self._db._db.get(id=db_id)
-            dft_energy = row.energy
-            dft_forces = row.forces
-            atoms = self._db._db.get_atoms(id=db_id)
+            entry = self._db.get(db_id)
+            if not entry or not entry[1].was_successful:
+                continue
 
-            target_energy = dft_energy
-            target_forces = dft_forces
+            atoms, dft_result = entry
+            if dft_result.total_energy_ev is None or dft_result.forces is None:
+                continue
 
+            atoms_copy = atoms.copy()
             if self._config.delta_learn:
-                if self._config.baseline_potential == "lj":
-                    baseline_energy = baseline_potentials.get_lj_potential(atoms)
-                    baseline_forces = baseline_potentials.get_lj_forces(atoms)
-                else:
-                    raise ValueError("Unsupported baseline potential specified.")
+                baseline_energy, baseline_forces = calculate_lj_potential(atoms_copy)
+                energy_target = dft_result.total_energy_ev - baseline_energy
+                forces_target = np.array(dft_result.forces) - baseline_forces
+            else:
+                energy_target = dft_result.total_energy_ev
+                forces_target = np.array(dft_result.forces)
 
-                target_energy -= baseline_energy
-                target_forces -= baseline_forces
+            atoms_copy.info['energy'] = energy_target
+            atoms_copy.arrays['forces'] = forces_target
+            atoms_copy.calc = None
 
-            training_atoms = atoms.copy()
-            # ASE's XYZ writer looks for results in the .info dictionary
-            training_atoms.info['energy'] = target_energy
-            training_atoms.arrays['forces'] = np.array(target_forces)
-
-            prepared_atoms_list.append(training_atoms)
+            prepared_atoms_list.append(atoms_copy)
 
         return prepared_atoms_list
+
+    def _build_cli_command(self, train_file: Path, model_save_path: str) -> List[str]:
+        command = [
+            "mace_run_train",
+            f"--name=MLIP_AutoPipe_MACE",
+            f"--train_file={train_file}",
+            f"--model_dir={Path(model_save_path).parent}",
+            f"--hidden_irreps=128x0e+128x1o",
+            f"--r_max={self._config.r_cut}",
+            f"--num_epochs={self._config.num_epochs}",
+            f"--learning_rate={self._config.learning_rate}",
+        ]
+        return command

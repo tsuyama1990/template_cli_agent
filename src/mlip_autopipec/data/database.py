@@ -1,73 +1,94 @@
-from pathlib import Path
-
-import numpy as np
+import ase.db
 from ase.atoms import Atoms
-from ase.calculators.singlepoint import SinglePointCalculator
-from ase.db import connect
+from pathlib import Path
+from typing import Optional, Union, Tuple, List
 
-from mlip_autopipec.data.models import DFTResult
-
+from .models import DFTResult
 
 class AseDB:
     """
-    A wrapper class for handling interactions with an ASE (Atomic Simulation Environment)
-    SQLite database. This class provides a structured way to write and read atomistic
-    simulation data.
+    A wrapper class for ASE's database functionality to provide a clear,
+    type-hinted interface for writing and reading calculation results.
     """
 
-    def __init__(self, db_path: str | Path):
+    def __init__(self, db_path: Union[str, Path]):
         """
-        Initialises the AseDB object and connects to the specified database file.
+        Initialises the database connection.
 
         Args:
-            db_path: The file path to the SQLite database. If it doesn't exist,
-                     it will be created.
+            db_path: The path to the SQLite database file.
         """
-        self._db_path = Path(db_path)
-        self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._db = connect(self._db_path)
+        self.db_path = Path(db_path)
+        self._connect()
+
+    def _connect(self):
+        """Connects to the ASE database, creating the parent directory if needed."""
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self.connection = ase.db.connect(self.db_path)
 
     def write(self, atoms: Atoms, result: DFTResult) -> int:
         """
-        Writes an atomic configuration and its associated DFT calculation results
-        to the database.
+        Writes an Atoms object and its corresponding DFTResult to the database.
 
-        This method attaches the results to the ase.Atoms object using a
-        SinglePointCalculator, which is the standard ASE practice for storing
-        energy, forces, and stress. Metadata is stored as key-value pairs.
+        The DFTResult model is converted to a dictionary. Any fields with a
+        value of None are excluded to prevent errors with the ASE DB backend.
 
         Args:
-            atoms: The `ase.Atoms` object representing the atomic structure.
-            result: A `DFTResult` object containing the calculation outputs.
+            atoms: The ase.Atoms object representing the structure.
+            result: The Pydantic DFTResult object with the calculation data.
 
         Returns:
-            The unique ID of the newly created row in the database.
+            The integer ID of the newly created row in the database.
         """
-        # Convert 3x3 stress tensor to 6-element Voigt form (xx, yy, zz, yz, xz, xy)
-        stress_voigt = [
-            result.stress[0][0],
-            result.stress[1][1],
-            result.stress[2][2],
-            result.stress[1][2],
-            result.stress[0][2],
-            result.stress[0][1],
-        ]
+        # Use model_dump to convert the Pydantic model to a dict.
+        # exclude_none=True is critical as the ASE DB cannot handle None values.
+        key_value_pairs = result.model_dump(exclude_none=True)
+        db_id = self.connection.write(atoms, key_value_pairs=key_value_pairs)
+        return db_id
 
-        # Attach results to the Atoms object via a SinglePointCalculator
-        calc = SinglePointCalculator(
-            atoms=atoms,
-            energy=result.total_energy_ev,
-            forces=np.array(result.forces),
-            stress=np.array(stress_voigt),
-        )
-        atoms.calc = calc
+    def get(self, db_id: int) -> Optional[Tuple[Atoms, DFTResult]]:
+        """
+        Retrieves an Atoms object and its DFTResult by its database ID.
 
-        # Filter out None values from key-value pairs, as ASE DB doesn't support them.
-        key_value_pairs = {
-            'was_successful': result.was_successful,
-            'error_message': result.error_message,
+        Args:
+            db_id: The integer ID of the row to retrieve.
+
+        Returns:
+            A tuple containing the Atoms object and the reconstructed DFTResult
+            object, or None if the ID is not found.
+        """
+        try:
+            row = self.connection.get(id=db_id)
+        except (KeyError, IndexError):
+            return None
+
+        atoms = row.toatoms()
+
+        # Reconstruct the DFTResult object from the row's key-value data.
+        # Using .get() provides default None values for missing keys, which
+        # is safe for the optional fields in the Pydantic model.
+        dft_result_data = {
+            'total_energy_ev': row.get('total_energy_ev'),
+            'forces': row.get('forces'),
+            'stress': row.get('stress'),
+            'was_successful': row.get('was_successful'),
+            'error_message': row.get('error_message'),
         }
-        kvp_filtered = {k: v for k, v in key_value_pairs.items() if v is not None}
 
-        db_id = self._db.write(atoms, key_value_pairs=kvp_filtered)
-        return int(db_id)
+        # Filter out keys that were not present in the database row to avoid
+        # passing None for fields that don't have a default.
+        # This makes the reconstruction robust.
+        reconstruct_data = {k: v for k, v in dft_result_data.items() if k in row}
+
+        result = DFTResult(**reconstruct_data)
+
+        return atoms, result
+
+    def get_all_atoms(self) -> List[Atoms]:
+        """
+        Retrieves all Atoms objects from the database.
+
+        Returns:
+            A list of all ase.Atoms objects stored in the database.
+        """
+        return [row.toatoms() for row in self.connection.select()]

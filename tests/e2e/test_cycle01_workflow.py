@@ -1,112 +1,80 @@
-import os
-import subprocess
-from pathlib import Path
-
 import pytest
+from unittest.mock import MagicMock, patch
+from click.testing import CliRunner
+from pathlib import Path
+import yaml
+
 from ase.build import bulk
-from ase.io import write
 
-from mlip_autopipec.main_cycle01 import main
+from src.mlip_autopipec.main_cycle01 import main
+from src.mlip_autopipec.data.models import DFTResult, TrainingConfig
 
-# A minimal config file for testing purposes
-TEST_CONFIG_YAML = """
-database:
-  path: "test.db"
-
-labelling:
-  qe_command: "mock_pw.x"
-  pseudo_dir: "pseudos/"
-  ecutwfc: 60
-  kpts: [4, 4, 4]
-
-training:
-  model_type: "mace"
-  learning_rate: 0.01
-  num_epochs: 2
-  r_cut: 5.0
-  delta_learn: false
-  baseline_potential: "lj"
-"""
-
-# A mock pw.x script that produces predictable output
-MOCK_PWX_SCRIPT = f"""#!/bin/bash
-echo '!    total energy              =     -150.00000000 Ry'
-echo 'Forces acting on atoms (cartesian axes, Ry/au):'
-echo '     atom    1   fx=   0.00000000   fy=   0.00000000   fz=   0.00000000'
-echo 'total stress  (Ry/bohr**3)                       (kbar)'
-echo '  1.0   0.0   0.0'
-echo '  0.0   1.0   0.0'
-echo '  0.0   0.0   1.0'
-exit 0
-"""
-
-@pytest.fixture(scope="module")
-def setup_test_environment(tmpdir_factory):
-    """
-    Creates a temporary directory with all necessary files for an E2E run.
-    This includes a mock QE executable, a structure file, and a config file.
-    """
-    tmpdir = tmpdir_factory.mktemp("e2e_test")
-
-    # Create config file
-    config_path = tmpdir.join("test_config.yaml")
-    config_path.write(TEST_CONFIG_YAML)
-
-    # Create structure file with two identical structures to satisfy MACE's
-    # train/validation split requirement.
+@pytest.fixture
+def test_structure(tmp_path):
+    """Creates a simple structure file for testing."""
+    structure_file = tmp_path / "si.cif"
     atoms = bulk('Si', 'diamond', a=5.43)
-    structure_path = tmpdir.join("si_bulk.xyz")
-    write(str(structure_path), [atoms, atoms])
+    atoms.write(structure_file)
+    return structure_file
 
-    # Create mock executable
-    mock_pwx_path = tmpdir.join("mock_pw.x")
-    mock_pwx_path.write(MOCK_PWX_SCRIPT)
-    os.chmod(str(mock_pwx_path), 0o755)
+@pytest.fixture
+def test_config(tmp_path):
+    """Creates a detailed config file for testing."""
+    config_file = tmp_path / "config.yaml"
+    config_data = {
+        "db_path": str(tmp_path / "test.db"),
+        "qe_command": "mpirun -np 4 pw.x",
+        "training": {
+            "model_type": "MACE",
+            "learning_rate": 0.05,
+            "num_epochs": 50,
+            "r_cut": 4.5,
+            "delta_learn": False,
+            "baseline_potential": "LJ"
+        }
+    }
+    with open(config_file, 'w') as f:
+        yaml.dump(config_data, f)
+    return config_file, config_data
 
-    # Update the config to point to our mock executable
-    # and add it to the system PATH
-    original_path = os.environ['PATH']
-    os.environ['PATH'] = f"{tmpdir}:{original_path}"
+@patch('src.mlip_autopipec.orchestrator_cycle01.LabellingEngine')
+@patch('src.mlip_autopipec.orchestrator_cycle01.TrainingEngine')
+@patch('src.mlip_autopipec.orchestrator_cycle01.AseDB')
+def test_e2e_successful_workflow(mock_asedb, mock_training_engine, mock_labelling_engine, test_config):
+    config_file, config_data = test_config
+    structure_file = Path(config_file).parent / "si.cif"
+    bulk('Si', 'diamond', a=5.43).write(structure_file)
 
-    yield str(config_path), str(structure_path)
+    mock_labeller_instance = MagicMock()
+    mock_labeller_instance.execute.return_value = 1
+    mock_labelling_engine.return_value = mock_labeller_instance
 
-    # Teardown
-    os.environ['PATH'] = original_path
+    mock_trainer_instance = MagicMock()
+    mock_trainer_instance.execute.return_value = "trained_model.pt"
+    mock_training_engine.return_value = mock_trainer_instance
 
-def test_cycle01_e2e_workflow(setup_test_environment, capsys):
-    """
-    Tests the full end-to-end workflow for Cycle 01 by invoking the CLI.
-    """
-    config_path, structure_path = setup_test_environment
+    mock_db_instance = MagicMock()
+    mock_db_instance.get.return_value = (None, DFTResult(was_successful=True))
+    mock_asedb.return_value = mock_db_instance
 
-    # We use subprocess to call our CLI to simulate a user running it.
-    # This is more robust than calling the main function directly.
-    command = [
-        "python", "-m", "mlip_autopipec.main_cycle01",
-        "--config", config_path,
-        "--structure", structure_path
-    ]
-
-    # We change the working directory to the directory of the config file to
-    # ensure that the database and model files are created there.
-    process = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        cwd=os.path.dirname(config_path),
-        env={**os.environ, "PYTHONPATH": f"{os.getcwd()}/src"}
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        ['--config', str(config_file), '--structure', str(structure_file)]
     )
 
-    # Check that the process ran successfully
-    assert process.returncode == 0, f"CLI process failed with stderr: {process.stderr}"
+    assert result.exit_code == 0
+    assert "Workflow complete" in result.output
 
-    # Check that the expected output was printed
-    stdout = process.stdout
-    assert "Labelling complete." in stdout
-    assert "Workflow complete." in stdout
-    assert "trained_model.pt" in stdout
+    # Verify that the components were initialized with the correct config values
+    mock_asedb.assert_called_once_with(Path(config_data["db_path"]))
+    mock_labelling_engine.assert_called_once_with(
+        qe_command=config_data["qe_command"],
+        db=mock_db_instance
+    )
 
-    # Check that the output files were created
-    config_dir = Path(os.path.dirname(config_path))
-    assert (config_dir / "test.db").exists()
-    assert (config_dir / "models" / "trained_model.pt").exists()
+    expected_training_config = TrainingConfig(**config_data["training"])
+    mock_training_engine.assert_called_once_with(
+        config=expected_training_config,
+        db=mock_db_instance
+    )

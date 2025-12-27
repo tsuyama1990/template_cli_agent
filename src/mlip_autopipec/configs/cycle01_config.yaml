@@ -1,0 +1,17 @@
+# Configuration for MLIP-AutoPipe Cycle 01
+
+# Path to the database file.
+db_path: "mlip.db"
+
+# Path to the Quantum Espresso executable.
+# This should be the full command, including any MPI prefixes.
+qe_command: "pw.x"
+
+# Configuration for the MACE model training.
+training:
+  model_type: "MACE"
+  learning_rate: 0.01
+  num_epochs: 100
+  r_cut: 5.0
+  delta_learn: true
+  baseline_potential: "LJ"
