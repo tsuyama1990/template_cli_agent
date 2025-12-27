@@ -32,6 +32,7 @@ dependencies = [
     "pyyaml",
     "mace-torch",
     "click",
+    "numpy",
 ]
 
 [tool.uv]
@@ -75,6 +76,7 @@ ignore = ["S101"]
 [tool.pytest.ini_options]
 addopts = "--cov=dev_src --cov=src --cov-report=term-missing"
 testpaths = ["tests"]
+pythonpath = ["src"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["dev_src/ac_cdd_core"]

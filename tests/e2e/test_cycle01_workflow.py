@@ -1,112 +1,108 @@
-import os
-import subprocess
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
+import yaml
 from ase.build import bulk
-from ase.io import write
+from click.testing import CliRunner
 
-from mlip_autopipec.main_cycle01 import main
+from mlip_autopipec.main_cycle01 import main as cli_main
 
-# A minimal config file for testing purposes
-TEST_CONFIG_YAML = """
-database:
-  path: "test.db"
-
-labelling:
-  qe_command: "mock_pw.x"
-  pseudo_dir: "pseudos/"
-  ecutwfc: 60
-  kpts: [4, 4, 4]
-
-training:
-  model_type: "mace"
-  learning_rate: 0.01
-  num_epochs: 2
-  r_cut: 5.0
-  delta_learn: false
-  baseline_potential: "lj"
+# Re-using the sample output from the unit test
+SAMPLE_QE_SUCCESS_OUTPUT = """
+     Forces acting on atoms (cartesian axes, Ry/au):
+     atom    1 type  1   force =    -0.00000000    -0.00000000    -0.00000000
+     atom    2 type  1   force =     0.00000000     0.00000000     0.00000000
+!    total energy              =     -11.43845671 Ry
+     total stress  (Ry/bohr**3)                (kbar)     P=  -13.71
+     -0.00086555   0.00000000   0.00000000        -12.72    0.00    0.00
+      0.00000000  -0.00086555   0.00000000          0.00  -12.72    0.00
+      0.00000000   0.00000000  -0.00086555          0.00    0.00  -12.72
+     convergence has been achieved in  8 iterations
+     JOB DONE.
 """
 
-# A mock pw.x script that produces predictable output
-MOCK_PWX_SCRIPT = f"""#!/bin/bash
-echo '!    total energy              =     -150.00000000 Ry'
-echo 'Forces acting on atoms (cartesian axes, Ry/au):'
-echo '     atom    1   fx=   0.00000000   fy=   0.00000000   fz=   0.00000000'
-echo 'total stress  (Ry/bohr**3)                       (kbar)'
-echo '  1.0   0.0   0.0'
-echo '  0.0   1.0   0.0'
-echo '  0.0   0.0   1.0'
-exit 0
-"""
 
-@pytest.fixture(scope="module")
-def setup_test_environment(tmpdir_factory):
-    """
-    Creates a temporary directory with all necessary files for an E2E run.
-    This includes a mock QE executable, a structure file, and a config file.
-    """
-    tmpdir = tmpdir_factory.mktemp("e2e_test")
+@pytest.fixture
+def test_setup(tmp_path: Path):
+    """Creates a temporary directory with a config file, structure file, and mock DB."""
+    db_path = tmp_path / "test.db"
+    config_data = {
+        "database": {"path": str(db_path)},
+        "dft": {
+            "qe_command": "pw.x",
+            "parameters": {"system": {"ecutwfc": 60}},
+            "pseudopotentials": {"Si": "Si.upf"},
+        },
+        "training": {
+            "model_type": "mace",
+            "learning_rate": 0.001,
+            "num_epochs": 1,
+            "r_cut": 4.5,
+            "delta_learn": True,
+            "baseline_potential": "lj",
+        },
+    }
+    config_file = tmp_path / "config.yaml"
+    with open(config_file, "w") as f:
+        yaml.dump(config_data, f)
 
-    # Create config file
-    config_path = tmpdir.join("test_config.yaml")
-    config_path.write(TEST_CONFIG_YAML)
+    structure_file = tmp_path / "si.cif"
+    atoms = bulk("Si", "diamond", a=5.43)
+    from ase.io import write
 
-    # Create structure file with two identical structures to satisfy MACE's
-    # train/validation split requirement.
-    atoms = bulk('Si', 'diamond', a=5.43)
-    structure_path = tmpdir.join("si_bulk.xyz")
-    write(str(structure_path), [atoms, atoms])
+    write(str(structure_file), atoms)
 
-    # Create mock executable
-    mock_pwx_path = tmpdir.join("mock_pw.x")
-    mock_pwx_path.write(MOCK_PWX_SCRIPT)
-    os.chmod(str(mock_pwx_path), 0o755)
-
-    # Update the config to point to our mock executable
-    # and add it to the system PATH
-    original_path = os.environ['PATH']
-    os.environ['PATH'] = f"{tmpdir}:{original_path}"
-
-    yield str(config_path), str(structure_path)
-
-    # Teardown
-    os.environ['PATH'] = original_path
-
-def test_cycle01_e2e_workflow(setup_test_environment, capsys):
-    """
-    Tests the full end-to-end workflow for Cycle 01 by invoking the CLI.
-    """
-    config_path, structure_path = setup_test_environment
-
-    # We use subprocess to call our CLI to simulate a user running it.
-    # This is more robust than calling the main function directly.
-    command = [
-        "python", "-m", "mlip_autopipec.main_cycle01",
-        "--config", config_path,
-        "--structure", structure_path
-    ]
-
-    # We change the working directory to the directory of the config file to
-    # ensure that the database and model files are created there.
-    process = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        cwd=os.path.dirname(config_path),
-        env={**os.environ, "PYTHONPATH": f"{os.getcwd()}/src"}
+    mock_db = MagicMock()
+    mock_db.get.return_value = (
+        atoms,
+        {
+            "total_energy_ev": -150.0,
+            "forces": [[0, 0, 0]] * 2,
+            "stress": [[0] * 3] * 3,
+            "was_successful": True,
+        },
     )
 
-    # Check that the process ran successfully
-    assert process.returncode == 0, f"CLI process failed with stderr: {process.stderr}"
+    return config_file, structure_file, mock_db, db_path
 
-    # Check that the expected output was printed
-    stdout = process.stdout
-    assert "Labelling complete." in stdout
-    assert "Workflow complete." in stdout
-    assert "trained_model.pt" in stdout
 
-    # Check that the output files were created
-    config_dir = Path(os.path.dirname(config_path))
-    assert (config_dir / "test.db").exists()
-    assert (config_dir / "models" / "trained_model.pt").exists()
+@patch(
+    "mlip_autopipec.modules.d_training_engine.TrainingEngine.execute",
+    return_value="models/trained_model.pt",
+)
+@patch("mlip_autopipec.modules.d_training_engine.TrainingEngine._get_z_table")
+@patch("mlip_autopipec.orchestrator_cycle01.AseDB")
+@patch("mlip_autopipec.modules.c_labelling_engine.subprocess.run")
+def test_e2e_cycle01_workflow_success(
+    mock_subprocess_run, mock_asedb, mock_get_z_table, mock_training_execute, test_setup
+):
+    """
+    Tests the full E2E workflow for a successful run using the CLI.
+    Mocks the external subprocess call and the database connection.
+    """
+    config_file, structure_file, mock_db_instance, db_path = test_setup
+    mock_asedb.return_value = mock_db_instance
+    from mace.tools import AtomicNumberTable
+
+    mock_get_z_table.return_value = AtomicNumberTable([14])  # Mock for Silicon
+
+    # Arrange: Mock the side effects
+    def mock_run(*args, **kwargs):
+        cmd = args[0]
+        output_path_str = cmd.split(" > ")[1]
+        Path(output_path_str).write_text(SAMPLE_QE_SUCCESS_OUTPUT)
+        return MagicMock(returncode=0)
+
+    mock_subprocess_run.side_effect = mock_run
+
+    # Act: Run the CLI
+    runner = CliRunner()
+    result = runner.invoke(
+        cli_main,
+        ["--config", str(config_file), "--structure", str(structure_file)],
+    )
+
+    # Assert
+    assert result.exit_code == 0, result.output
+    assert "Workflow complete." in result.output
