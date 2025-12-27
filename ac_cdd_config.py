@@ -49,8 +49,8 @@ class JulesConfig(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
     # Default to regular command name 'jules'
     executable: str = "jules"
-    timeout_seconds: int = 3600
-    polling_interval_seconds: int = 10
+    timeout_seconds: int = 7200
+    polling_interval_seconds: int = 30
 
 
 class ToolsConfig(BaseSettings):
