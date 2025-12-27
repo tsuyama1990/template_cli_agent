@@ -1,0 +1,18 @@
+# Configuration for MLIP-AutoPipe Cycle 01
+
+labelling_engine:
+  qe_command: "pw.x"  # Command to run Quantum Espresso's pw.x
+  pseudo_dir: "./pseudos" # Specify the directory with UPF files
+  pseudopotentials:
+    Si: "Si.upf" # Example for Silicon
+    # Add other elements as needed, e.g.,
+    # O: "O.upf"
+    # H: "H.upf"
+
+training_engine:
+  model_type: "mace"
+  learning_rate: 0.01
+  num_epochs: 10
+  r_cut: 5.0
+  delta_learn: true
+  baseline_potential: "lennard_jones" # Currently only "lennard_jones" is supported

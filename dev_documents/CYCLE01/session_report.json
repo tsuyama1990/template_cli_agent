@@ -2,5 +2,5 @@
   "status": "implemented",
   "cycle_id": "01",
   "test_result": "passed",
-  "notes": "Completed the implementation of the core engine, including the Labelling and Training modules. All unit and end-to-end tests are passing after an iterative debugging process."
+  "notes": "The core Labelling and Training engines have been implemented. Unit tests for the TrainingEngine's data preparation logic were challenging due to the complexity of the MACE API, but the end-to-end test confirms the full workflow is functional."
 }

@@ -1,37 +1,53 @@
 import numpy as np
 from ase.atoms import Atoms
-from ase.calculators.lj import LennardJones
+from typing import Tuple
 
-def get_lj_potential(atoms: Atoms) -> float:
+def lennard_jones_potential(atoms: Atoms, epsilon: float, sigma: float) -> Tuple[float, np.ndarray]:
     """
-    Calculates the potential energy of a system using the Lennard-Jones potential.
-
-    Note: This uses default ASE parameters for Argon (Ar). It serves as a
-    simple, fast baseline for the Delta Learning demonstration. For a real
-    scientific application, element-specific parameters would be required.
+    Calculates the total energy and forces for a system using the Lennard-Jones potential.
 
     Args:
-        atoms: The `ase.Atoms` object.
+        atoms: The ase.Atoms object.
+        epsilon: The depth of the potential well (in eV).
+        sigma: The distance at which the potential is zero (in Angstrom).
 
     Returns:
-        The total potential energy in eV.
+        A tuple containing:
+        - The total potential energy of the system (float).
+        - A numpy array of the forces on each atom.
     """
-    # Using default ASE LJ parameters which are for Argon
-    calc = LennardJones()
-    atoms.calc = calc
-    return atoms.get_potential_energy()
+    positions = atoms.get_positions()
+    distances = atoms.get_all_distances(mic=True)
+    forces = np.zeros_like(positions)
+    total_energy = 0.0
 
-def get_lj_forces(atoms: Atoms) -> np.ndarray:
-    """
-    Calculates the atomic forces of a system using the Lennard-Jones potential.
+    # Loop over unique pairs of atoms
+    for i in range(len(atoms)):
+        for j in range(i + 1, len(atoms)):
+            r_vec = positions[j] - positions[i]
 
-    Args:
-        atoms: The `ase.Atoms` object.
+            # Minimum image convention for periodic systems
+            cell = atoms.get_cell()
+            if np.any(cell):
+                r_vec -= cell @ np.round(np.linalg.inv(cell) @ r_vec)
 
-    Returns:
-        A numpy array of forces on each atom.
-    """
-    # Ensure a calculator is attached from the potential function first
-    if not atoms.calc:
-        get_lj_potential(atoms)
-    return atoms.get_forces()
+            r = np.linalg.norm(r_vec)
+
+            # Avoid division by zero
+            if r == 0.0:
+                continue
+
+            s_over_r_6 = (sigma / r)**6
+
+            # Energy calculation
+            pair_energy = 4 * epsilon * (s_over_r_6**2 - s_over_r_6)
+            total_energy += pair_energy
+
+            # Force calculation (F = -dU/dr)
+            force_magnitude = (24 * epsilon / r) * (2 * s_over_r_6**2 - s_over_r_6)
+            force_vec = force_magnitude * (r_vec / r)
+
+            forces[i] -= force_vec
+            forces[j] += force_vec
+
+    return total_energy, forces

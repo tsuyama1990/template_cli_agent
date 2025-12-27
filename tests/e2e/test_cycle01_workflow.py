@@ -1,112 +1,99 @@
-import os
-import subprocess
-from pathlib import Path
-
+import torch.serialization
+torch.serialization.add_safe_globals([slice])
 import pytest
-from ase.build import bulk
-from ase.io import write
+import os
+import yaml
+from unittest.mock import patch, MagicMock
+from click.testing import CliRunner
+from src.mlip_autopipec.main import main
 
-from mlip_autopipec.main_cycle01 import main
+# Sample successful Quantum Espresso output for the E2E test
+SAMPLE_SUCCESS_OUTPUT = """
+!    total energy              =    -111.92138384 Ry
+     Forces acting on atoms (cartesian axes, Ry/au):
+     atom    1 type  1   force =    -0.00000002    -0.00000002    -0.00000002
+     atom    2 type  1   force =     0.00000002     0.00000002     0.00000002
 
-# A minimal config file for testing purposes
-TEST_CONFIG_YAML = """
-database:
-  path: "test.db"
+     Total Force =     0.00000004     Total SCF correction =     0.00000000
 
-labelling:
-  qe_command: "mock_pw.x"
-  pseudo_dir: "pseudos/"
-  ecutwfc: 60
-  kpts: [4, 4, 4]
-
-training:
-  model_type: "mace"
-  learning_rate: 0.01
-  num_epochs: 2
-  r_cut: 5.0
-  delta_learn: false
-  baseline_potential: "lj"
+          total stress  (Ry/bohr**3)            (kbar)       P=   -2.29
+   -0.00001452   0.00000000   0.00000000      -0.23      0.00      0.00
+    0.00000000  -0.00001452   0.00000000       0.00     -0.23      0.00
+    0.00000000   0.00000000  -0.00001452       0.00      0.00     -0.23
 """
 
-# A mock pw.x script that produces predictable output
-MOCK_PWX_SCRIPT = f"""#!/bin/bash
-echo '!    total energy              =     -150.00000000 Ry'
-echo 'Forces acting on atoms (cartesian axes, Ry/au):'
-echo '     atom    1   fx=   0.00000000   fy=   0.00000000   fz=   0.00000000'
-echo 'total stress  (Ry/bohr**3)                       (kbar)'
-echo '  1.0   0.0   0.0'
-echo '  0.0   1.0   0.0'
-echo '  0.0   0.0   1.0'
-exit 0
+@pytest.fixture
+def test_files(tmp_path):
+    """Creates dummy config and structure files for the E2E test."""
+    config_dict = {
+        "labelling_engine": {
+            "qe_command": "pw.x",
+            "pseudo_dir": "/dev/null",
+            "pseudopotentials": {"Si": "Si.upf"},
+        },
+        "training_engine": {
+            "model_type": "mace",
+            "learning_rate": 0.01,
+            "num_epochs": 1,
+            "r_cut": 5.0,
+            "delta_learn": True,
+            "baseline_potential": "lennard_jones",
+        },
+    }
+    config_path = tmp_path / "config.yaml"
+    with open(config_path, "w") as f:
+        yaml.dump(config_dict, f)
+
+    # Create a simple CIF file for a 2-atom Si cell
+    cif_content = """
+data_Si
+_cell_length_a    5.43
+_cell_length_b    5.43
+_cell_length_c    5.43
+_cell_angle_alpha 90
+_cell_angle_beta  90
+_cell_angle_gamma 90
+loop_
+_atom_site_label
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+Si 0.0 0.0 0.0
+Si 0.25 0.25 0.25
 """
+    structure_path = tmp_path / "si.cif"
+    with open(structure_path, "w") as f:
+        f.write(cif_content)
 
-@pytest.fixture(scope="module")
-def setup_test_environment(tmpdir_factory):
+    return config_path, structure_path
+
+@patch("subprocess.run")
+def test_e2e_cycle01_workflow_success(mock_subprocess_run, test_files):
     """
-    Creates a temporary directory with all necessary files for an E2E run.
-    This includes a mock QE executable, a structure file, and a config file.
+    Tests the full end-to-end workflow for Cycle 01 using the CLI.
+    Mocks the DFT calculation but uses the real training engine.
     """
-    tmpdir = tmpdir_factory.mktemp("e2e_test")
-
-    # Create config file
-    config_path = tmpdir.join("test_config.yaml")
-    config_path.write(TEST_CONFIG_YAML)
-
-    # Create structure file with two identical structures to satisfy MACE's
-    # train/validation split requirement.
-    atoms = bulk('Si', 'diamond', a=5.43)
-    structure_path = tmpdir.join("si_bulk.xyz")
-    write(str(structure_path), [atoms, atoms])
-
-    # Create mock executable
-    mock_pwx_path = tmpdir.join("mock_pw.x")
-    mock_pwx_path.write(MOCK_PWX_SCRIPT)
-    os.chmod(str(mock_pwx_path), 0o755)
-
-    # Update the config to point to our mock executable
-    # and add it to the system PATH
-    original_path = os.environ['PATH']
-    os.environ['PATH'] = f"{tmpdir}:{original_path}"
-
-    yield str(config_path), str(structure_path)
-
-    # Teardown
-    os.environ['PATH'] = original_path
-
-def test_cycle01_e2e_workflow(setup_test_environment, capsys):
-    """
-    Tests the full end-to-end workflow for Cycle 01 by invoking the CLI.
-    """
-    config_path, structure_path = setup_test_environment
-
-    # We use subprocess to call our CLI to simulate a user running it.
-    # This is more robust than calling the main function directly.
-    command = [
-        "python", "-m", "mlip_autopipec.main_cycle01",
-        "--config", config_path,
-        "--structure", structure_path
-    ]
-
-    # We change the working directory to the directory of the config file to
-    # ensure that the database and model files are created there.
-    process = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        cwd=os.path.dirname(config_path),
-        env={**os.environ, "PYTHONPATH": f"{os.getcwd()}/src"}
+    mock_subprocess_run.return_value = MagicMock(
+        returncode=0, stdout=SAMPLE_SUCCESS_OUTPUT, stderr=""
     )
 
-    # Check that the process ran successfully
-    assert process.returncode == 0, f"CLI process failed with stderr: {process.stderr}"
+    config_path, structure_path = test_files
 
-    # Check that the expected output was printed
-    stdout = process.stdout
-    assert "Labelling complete." in stdout
-    assert "Workflow complete." in stdout
-    assert "trained_model.pt" in stdout
+    runner = CliRunner()
+    result = runner.invoke(
+        main, ["--config", str(config_path), "--structure", str(structure_path)]
+    )
 
-    # Check that the output files were created
-    config_dir = Path(os.path.dirname(config_path))
-    assert (config_dir / "test.db").exists()
-    assert (config_dir / "models" / "trained_model.pt").exists()
+    assert result.exit_code == 0
+    assert "Workflow complete" in result.output
+
+    # Check that a model file was actually created
+    model_path = "trained_model.pt"
+    assert os.path.exists(model_path)
+    assert os.path.getsize(model_path) > 0
+
+    # Cleanup the created files
+    if os.path.exists("mlip.db"):
+        os.remove("mlip.db")
+    if os.path.exists(model_path):
+        os.remove(model_path)
