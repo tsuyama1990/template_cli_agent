@@ -40,6 +40,12 @@ Your goal is to implement and test the features for **CYCLE {{cycle_id}}**.
    - Run tests to ensure they pass.
    - Fix any bugs found during testing.
 
+4. **Strict Linting & Formatting**
+   - You MUST run the linter and fixer before finishing.
+   - Command: `uv run ruff check --fix .`
+   - Command: `uv run ruff format .`
+   - Ensure there are NO remaining linting errors. CI/CD will fail if linting is not perfect.
+
 ## Output Rules
 - **Create the files directly.**
 - Do not forget to create `dev_documents/CYCLE{{cycle_id}}/session_report.json` when you are done.
