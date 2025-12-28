@@ -68,6 +68,8 @@ class AiderClient:
         if settings.JULES_API_KEY: 
              # Just in case Aider uses it or generic google key
              env_vars["GOOGLE_API_KEY"] = settings.JULES_API_KEY
+             # Litellm often prefers GEMINI_API_KEY for AI Studio (non-Vertex) models
+             env_vars["GEMINI_API_KEY"] = settings.JULES_API_KEY
         if os.getenv("ANTHROPIC_API_KEY"):
             env_vars["ANTHROPIC_API_KEY"] = os.getenv("ANTHROPIC_API_KEY")
         if os.getenv("OPENAI_API_KEY"):
