@@ -5,6 +5,7 @@ from typing import Tuple
 
 import numpy as np
 from ase.atoms import Atoms
+from ase.data import atomic_masses, atomic_numbers
 
 from mlip_autopipec.data.models import DFTResult
 
@@ -16,93 +17,98 @@ RY_BOHR3_TO_EV_A3 = RY_TO_EV / (0.529177210903**3)
 
 def generate_qe_input(
     atoms: Atoms,
-    pseudo_dir: str | Path,
-    ecutwfc: int,
-    kpts: Tuple[int, int, int],
+    calculation: str = 'scf',
+    ecutwfc: float = 30.0,
+    kpts: Tuple[int, int, int] = (4, 4, 4),
+    pseudo_dir: str | Path = "./",
     pseudopotentials: dict[str, str] | None = None,
 ) -> str:
     """
-    Generates a Quantum Espresso input file content string for a given ASE Atoms object.
+    Generates a Quantum Espresso input string for the given atomic structure.
 
     Args:
-        atoms: The atomic structure.
-        pseudo_dir: Path to the directory containing pseudopotential files.
-        ecutwfc: The plane-wave energy cutoff.
+        atoms: The ASE Atoms object.
+        calculation: The type of calculation (e.g., 'scf', 'relax').
+        ecutwfc: The wavefunction cutoff energy in Ry.
         kpts: The k-point mesh dimensions.
+        pseudo_dir: Path to the directory containing pseudopotential files.
         pseudopotentials: A dictionary mapping atomic symbols to pseudopotential filenames.
-                          If None, it assumes a simple convention (e.g., 'Si' -> 'Si.UPF').
+                          If None, it assumes a convention like 'Si' -> 'Si.pbe.UPF'.
 
     Returns:
-        A string containing the formatted Quantum Espresso input.
+        A string containing the formatted QE input file.
     """
     if pseudopotentials is None:
-        symbols = sorted(list(set(atoms.get_chemical_symbols())))
-        pseudopotentials = {s: f"{s}.UPF" for s in symbols}
+        unique_symbols = sorted(list(set(atoms.get_chemical_symbols())))
+        pseudopotentials = {s: f"{s}.pbe.UPF" for s in unique_symbols}
 
-    atom_types = sorted(pseudopotentials.keys())
-    atom_type_map = {symbol: i + 1 for i, symbol in enumerate(atom_types)}
+    # &CONTROL section
+    control_lines = [
+        "&CONTROL",
+        f"    calculation = '{calculation}',",
+        f"    pseudo_dir = '{pseudo_dir}',",
+        "    outdir = './out',",
+        "/",
+    ]
 
-    input_lines = []
-    input_lines.append(
-        """
-&CONTROL
-    calculation = 'scf'
-    restart_mode = 'from_scratch'
-    prefix = 'mlip'
-    outdir = './out'
-    wfcdir = './wfc'
-    pseudo_dir = '{}'
-    verbosity = 'high'
-/
-""".format(
-            pseudo_dir
-        )
-    )
+    # &SYSTEM section
+    system_lines = [
+        "&SYSTEM",
+        "    ibrav = 0,",
+        f"    nat = {len(atoms)},",
+        f"    ntyp = {len(pseudopotentials)},",
+        f"    ecutwfc = {ecutwfc},",
+        "/",
+    ]
 
-    input_lines.append(
-        """
-&SYSTEM
-    ibrav = 0
-    nat = {}
-    ntyp = {}
-    ecutwfc = {}
-/
-""".format(
-            len(atoms), len(atom_types), ecutwfc
-        )
-    )
+    # &ELECTRONS section
+    electrons_lines = [
+        "&ELECTRONS",
+        "    conv_thr = 1.0e-8,",
+        "/",
+    ]
 
-    input_lines.append(
-        """
-&ELECTRONS
-    mixing_beta = 0.7
-    conv_thr = 1.0e-10
-/
-"""
-    )
-
-    input_lines.append("ATOMIC_SPECIES")
-    for symbol in atom_types:
-        # A placeholder for atomic mass, QE doesn't use it for SCF.
-        atomic_mass = 28.0855
+    # ATOMIC_SPECIES section
+    species_lines = ["ATOMIC_SPECIES"]
+    for symbol in sorted(pseudopotentials.keys()):
+        atomic_number = atomic_numbers[symbol]
+        mass = atomic_masses[atomic_number]
         pseudo_file = pseudopotentials[symbol]
-        input_lines.append(f" {symbol}  {atomic_mass:.4f}  {pseudo_file}")
+        species_lines.append(f"    {symbol}  {mass:.4f}  {pseudo_file}")
 
-    input_lines.append("\nCELL_PARAMETERS (angstrom)")
-    for vector in atoms.get_cell():
-        input_lines.append(f" {vector[0]:14.9f} {vector[1]:14.9f} {vector[2]:14.9f}")
+    # ATOMIC_POSITIONS section
+    symbols = atoms.get_chemical_symbols()
+    positions_lines = ["ATOMIC_POSITIONS {crystal}"]
+    scaled_positions = atoms.get_scaled_positions()
+    for i in range(len(atoms)):
+        symbol = symbols[i]
+        pos = scaled_positions[i]
+        positions_lines.append(f"    {symbol}  {pos[0]:.8f}  {pos[1]:.8f}  {pos[2]:.8f}")
 
-    input_lines.append("\nATOMIC_POSITIONS (angstrom)")
-    for atom in atoms:
-        pos = atom.position
-        input_lines.append(
-            f" {atom.symbol}  {pos[0]:14.9f} {pos[1]:14.9f} {pos[2]:14.9f}"
-        )
+    # CELL_PARAMETERS section
+    cell_lines = ["CELL_PARAMETERS {angstrom}"]
+    cell = atoms.get_cell()
+    for vector in cell:
+        cell_lines.append(f"    {vector[0]:.8f}  {vector[1]:.8f}  {vector[2]:.8f}")
 
-    input_lines.append("\nK_POINTS (automatic)")
-    input_lines.append(f" {kpts[0]} {kpts[1]} {kpts[2]} 0 0 0")
+    # K_POINTS section
+    k_points_lines = [
+        "K_POINTS {automatic}",
+        f"    {kpts[0]} {kpts[1]} {kpts[2]} 0 0 0",
+    ]
 
-    return "\n".join(input_lines)
+    # Combine all sections
+    input_parts = [
+        "\n".join(control_lines),
+        "\n".join(system_lines),
+        "\n".join(electrons_lines),
+        "\n".join(species_lines),
+        "\n".join(positions_lines),
+        "\n".join(cell_lines),
+        "\n".join(k_points_lines),
+    ]
+
+    return "\n\n".join(input_parts) + "\n"
 
 
 def parse_qe_output(output: str) -> DFTResult:
