@@ -358,9 +358,10 @@ class GraphBuilder:
                 cleaned = []
                 # Simple heuristic: remove lines that look like pip/uv ops
                 block_keywords = [
-                    "Uninstalling", "Successfully installed", "Attempting uninstall", 
-                    "Found existing", "Obtaining file://", "Built autonomous-dev-env",
-                    "Uninstalled", "Installed"
+                    "Uninstalling", "Successfully installed", "Successfully uninstalled", 
+                    "Attempting uninstall", "Found existing", "Obtaining file://", 
+                    "Built autonomous-dev-env", "Uninstalled", "Installed",
+                    "Downloading", "Using cached", "Requirement already satisfied"
                 ]
                 for line in lines:
                     if not any(k in line for k in block_keywords):
