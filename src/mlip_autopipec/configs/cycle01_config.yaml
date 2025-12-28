@@ -1,0 +1,14 @@
+# Configuration for Cycle 01
+
+# Settings for the Labelling Engine (Quantum Espresso)
+labelling_engine:
+  qe_command: "mpirun -np 4 pw.x -in QE_input.in > QE_output.out"
+
+# Settings for the Training Engine
+training_engine:
+  model_type: "MACE"
+  learning_rate: 0.01
+  num_epochs: 100
+  r_cut: 5.0
+  delta_learn: true
+  baseline_potential: "ZBL"

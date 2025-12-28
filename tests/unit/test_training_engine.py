@@ -1,13 +1,14 @@
 import os
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
+
+import numpy as np
 import pytest
 from ase.build import bulk
-from ase.io import read
-import numpy as np
 
-from mlip_autopipec.modules.d_training_engine import TrainingEngine
 from mlip_autopipec.data.models import TrainingConfig
+from mlip_autopipec.modules.d_training_engine import TrainingEngine
 from mlip_autopipec.utils import baseline_potentials
+
 
 @pytest.fixture
 def training_config():

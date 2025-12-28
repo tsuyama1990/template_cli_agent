@@ -1,12 +1,12 @@
-import pytest
 from unittest.mock import MagicMock, patch
 
-from ase.build import bulk
 import numpy as np
+import pytest
+from ase.build import bulk
 
-from mlip_autopipec.utils import dft_utils
-from mlip_autopipec.modules.c_labelling_engine import LabellingEngine
 from mlip_autopipec.data.models import DFTResult
+from mlip_autopipec.modules.c_labelling_engine import LabellingEngine
+from mlip_autopipec.utils import dft_utils
 
 # Sample QE output for a successful run (simplified)
 SUCCESSFUL_QE_OUTPUT = """
