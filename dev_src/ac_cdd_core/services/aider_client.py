@@ -1,4 +1,3 @@
-
 import asyncio
 import os
 import shutil
@@ -11,6 +10,7 @@ from ac_cdd_core.utils import logger
 
 if TYPE_CHECKING:
     from ac_cdd_core.sandbox import SandboxRunner
+
 
 class AiderClient:
     """
@@ -40,10 +40,12 @@ class AiderClient:
         # Note: If running remotely, we assume 'aider' is in PATH or installed in sandbox
         cmd = [
             "aider",
-            "--model", self.fast_model,
+            "--model",
+            self.fast_model,
             "--read-only",
             "--no-auto-commits",
-            "--message", instruction,
+            "--message",
+            instruction,
         ]
 
         # Append files
@@ -65,7 +67,7 @@ class AiderClient:
                 # Run in Sandbox
                 stdout, stderr, code = await runner.run_command(cmd, check=False)
                 if code != 0:
-                     logger.warning(f"Remote Aider audit returned code {code}: {stderr}")
+                    logger.warning(f"Remote Aider audit returned code {code}: {stderr}")
                 return stdout
             else:
                 # Local Execution (Fallback)
@@ -94,10 +96,12 @@ class AiderClient:
 
         cmd = [
             "aider",
-            "--model", self.smart_model,
+            "--model",
+            self.smart_model,
             "--yes",  # Auto-confirm edits
-            "--no-auto-commits", # Let graph handle commits
-            "--message", instruction,
+            "--no-auto-commits",  # Let graph handle commits
+            "--message",
+            instruction,
         ]
 
         if not runner:

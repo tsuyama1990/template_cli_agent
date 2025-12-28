@@ -1,4 +1,3 @@
-from pathlib import Path
 import yaml
 from ase.io import read
 
@@ -7,42 +6,66 @@ from mlip_autopipec.data.models import TrainingConfig
 from mlip_autopipec.modules.c_labelling_engine import LabellingEngine
 from mlip_autopipec.modules.d_training_engine import TrainingEngine
 
-def run_cycle01_workflow(config_path: str | Path, structure_path: str | Path):
+
+def run_cycle01_workflow(config_path: str, structure_path: str):
     """
-    Orchestrates the simple, linear workflow for Cycle 01.
-    This version handles multiple atomic structures from the input file.
+    Orchestrates the Cycle 01 workflow: label a structure and train a model.
+
+    Args:
+        config_path: Path to the YAML configuration file.
+        structure_path: Path to the atomic structure file (e.g., XYZ, CIF).
     """
-    with open(config_path, "r") as f:
+    print("--- Starting MLIP-AutoPipe Cycle 01 Workflow ---")
+
+    # 1. Load Configuration
+    print(f"Loading configuration from {config_path}...")
+    with open(config_path) as f:
         config = yaml.safe_load(f)
 
-    db_path = Path(config["database"]["path"])
-    db = AseDB(db_path)
-    labeller = LabellingEngine(qe_command=config["labelling"]["qe_command"], db=db)
-    training_config = TrainingConfig(**config["training"])
+    qe_config = config.get("quantum_espresso", {})
+    train_config_dict = config.get("training", {})
+
+    # Validate training config with Pydantic
+    training_config = TrainingConfig(**train_config_dict)
+
+    # 2. Initialize Components
+    print("Initializing components (Database, Labelling Engine, Training Engine)...")
+    db = AseDB("mlip.db")
+    labeller = LabellingEngine(qe_command=qe_config.get("command"), db=db)
     trainer = TrainingEngine(config=training_config, db=db)
 
-    print(f"Reading initial structures from: {structure_path}")
-    # Read all structures from the file using index=':'
-    initial_structures = read(structure_path, index=':')
-    if not isinstance(initial_structures, list):
-        initial_structures = [initial_structures]
-
-    db_ids = []
-    for i, atoms in enumerate(initial_structures):
-        print(f"Starting Labelling Engine for structure {i+1}/{len(initial_structures)}...")
-        db_id = labeller.execute(
-            atoms=atoms,
-            pseudo_dir=config["labelling"]["pseudo_dir"],
-            ecutwfc=config["labelling"]["ecutwfc"],
-            kpts=tuple(config["labelling"]["kpts"]),
-        )
-        print(f"Labelling complete. Data saved with ID: {db_id}")
-        db_ids.append(db_id)
-
-    if not db_ids:
-        print("No structures were labelled. Exiting.")
+    # 3. Read Initial Structure
+    print(f"Reading initial structure from {structure_path}...")
+    try:
+        initial_structure = read(structure_path)
+    except FileNotFoundError:
+        print(f"Error: Structure file not found at {structure_path}")
         return
 
-    print("Starting Training Engine...")
-    trained_model_path = trainer.execute(ids=db_ids)
-    print(f"\nWorkflow complete. Model saved to: {trained_model_path}")
+    # 4. Run Labelling Engine
+    print("Executing Labelling Engine to perform DFT calculation...")
+    try:
+        db_id = labeller.execute(initial_structure)
+        print(f"Labelling complete. Data stored in database with ID: {db_id}")
+    except Exception as e:
+        print(f"An error occurred during labelling: {e}")
+        return
+
+    # 5. Run Training Engine
+    print("Executing Training Engine to train the MLIP model...")
+    try:
+        # Verify the calculation was successful before training
+        _, kvp = db.get(db_id)
+        if not kvp.get("was_successful", False):
+            print(f"Skipping training because labelling failed. Reason: {kvp.get('error_message')}")
+            print("--- Workflow Finished (with errors) ---")
+            return
+
+        trained_model_path = trainer.execute(ids=[db_id])
+        print("Training complete.")
+        print(f"Workflow complete. Model saved to: {trained_model_path}")
+        print("--- Workflow Finished Successfully ---")
+
+    except Exception as e:
+        print(f"An error occurred during training: {e}")
+        print("--- Workflow Finished (with errors) ---")
