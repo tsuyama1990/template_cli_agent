@@ -11,8 +11,8 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi",
     "uvicorn",
-    "pydantic>=2.0",
-    "python-dotenv",
+    "pydantic==2.11.7",
+    "python-dotenv==1.1.1",
     "pydantic-settings",
     "pydantic-ai>=0.0.18",
     "logfire>=2.0.0",
@@ -22,16 +22,16 @@ dependencies = [
     "textual>=6.10.0",
     "lancedb>=0.25.3",
     "sentence-transformers>=5.2.0",
-    "tree-sitter==0.21.3",
+    "tree-sitter==0.24.0",
     "tree-sitter-languages==1.10.2",
     "langgraph-checkpoint-sqlite>=3.0.1",
     "requests>=2.32.5",
     "httpx>=0.28.1",
-    "google-auth>=2.43.0",
+    "google-auth==2.40.3",
     "ase",
-    "pyyaml",
+    "pyyaml==6.0.2",
     "mace-torch",
-    "click",
+    "click==8.2.1",
 ]
 
 [tool.uv]
@@ -40,7 +40,7 @@ environments = ["sys_platform == 'linux'"]
 [project.scripts]
 ac-cdd = "ac_cdd_core.cli:app"
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
     "typer",
     "rich",
@@ -77,7 +77,7 @@ addopts = "--cov=dev_src --cov=src --cov-report=term-missing"
 testpaths = ["tests"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["dev_src/ac_cdd_core"]
+packages = ["dev_src/ac_cdd_core", "src/mlip_autopipec"]
 
 [tool.mypy]
 strict = true
