@@ -178,6 +178,10 @@ def parse_qe_output(output: str) -> DFTResult:
         was_successful = False
         error_message = f"An unexpected parsing error occurred: {e}"
 
+    # Generic error if parsing fails without a specific reason
+    if not was_successful and error_message is None:
+        error_message = "Malformed or empty QE output."
+
     return DFTResult(
         total_energy_ev=total_energy_ev if total_energy_ev is not None else 0.0,
         forces=forces,

@@ -7,6 +7,7 @@ from pathlib import Path
 from ase.atoms import Atoms
 
 from mlip_autopipec.data.database import AseDB
+from mlip_autopipec.data.models import DFTResult
 from mlip_autopipec.utils.dft_utils import generate_qe_input, parse_qe_output
 
 
@@ -90,18 +91,17 @@ class LabellingEngine:
             result = parse_qe_output(process.stdout)
 
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
-            # Handle cases where the QE run fails or output is not generated
+            # If the subprocess fails, create a failed result directly
             error_message = f"QE execution failed: {e}"
             if hasattr(e, "stderr"):
                 error_message += f"\nStderr: {e.stderr}"
-            output_str = (
-                output_filepath.read_text() if output_filepath.exists() else ""
+            result = DFTResult(
+                total_energy_ev=0.0,
+                forces=[],
+                stress=[],
+                was_successful=False,
+                error_message=error_message,
             )
-            # Try parsing the output anyway, it might contain a QE error message
-            result = parse_qe_output(output_str)
-            if result.was_successful:  # If parser didn't find an error, add one
-                result.was_successful = False
-                result.error_message = error_message
 
         finally:
             # Clean up the temporary directory

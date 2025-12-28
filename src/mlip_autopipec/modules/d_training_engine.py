@@ -1,7 +1,5 @@
 # Description: The Training Engine (Module D) for MLIP model training.
-import ast
 from pathlib import Path
-from typing import List
 
 import numpy as np
 import torch
@@ -36,7 +34,7 @@ class TrainingEngine:
         self._db = db
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    def execute(self, ids: List[int]) -> str:
+    def execute(self, ids: list[int]) -> str:
         """
         Trains and saves an MLIP model using the data specified by database IDs.
 
@@ -46,39 +44,48 @@ class TrainingEngine:
         Returns:
             The file path to the saved, trained model.
         """
-        # 1. Load and prepare data
-        configs = self._load_and_prepare_data(ids)
+        try:
+            # 1. Load and prepare data
+            configs = self._load_and_prepare_data(ids)
 
-        # If model_type is None, skip training and save a placeholder
-        if self._config.model_type.lower() == "none":
-            print("Model type is 'None', skipping training.")
-            model_path = self._save_placeholder_model()
+            # If model_type is None, skip training and save a placeholder
+            if self._config.model_type.lower() == "none":
+                print("Model type is 'None', skipping training.")
+                model_path = self._save_placeholder_model()
+                return model_path
+
+            if not configs:
+                raise ValueError("No valid configurations found for training.")
+
+            z_table = AtomicNumberTable(
+                [int(z) for z in sorted(list(set(configs[0].atomic_numbers)))]
+            )
+            atomic_data = [
+                AtomicData.from_config(c, z_table=z_table, cutoff=self._config.r_cut)
+                for c in configs
+            ]
+
+            # 2. Setup model and optimizer
+            model = self._setup_model(z_table)
+            loss_fn = WeightedEnergyForcesLoss(energy_weight=1.0, forces_weight=10.0)
+            optimizer = Adam(model.parameters(), lr=self._config.learning_rate)
+
+            # 3. Run training loop
+            self._run_training_loop(atomic_data, model, loss_fn, optimizer)
+
+            # 4. Save the model
+            output_dir = Path("./models/")
+            output_dir.mkdir(exist_ok=True)
+            model_path = str(output_dir / "trained_model.pt")
+
+            torch.save(model, model_path)
+
             return model_path
-
-        z_table = AtomicNumberTable(
-            [int(z) for z in sorted(list(set(configs[0].atomic_numbers)))]
-        )
-        atomic_data = [
-            AtomicData.from_config(c, z_table=z_table, cutoff=self._config.r_cut)
-            for c in configs
-        ]
-
-        # 2. Setup model and optimizer
-        model = self._setup_model(z_table)
-        loss_fn = WeightedEnergyForcesLoss(energy_weight=1.0, forces_weight=10.0)
-        optimizer = Adam(model.parameters(), lr=self._config.learning_rate)
-
-        # 3. Run training loop
-        self._run_training_loop(atomic_data, model, loss_fn, optimizer)
-
-        # 4. Save the model
-        output_dir = Path("./models/")
-        output_dir.mkdir(exist_ok=True)
-        model_path = str(output_dir / "trained_model.pt")
-
-        torch.save(model, model_path)
-
-        return model_path
+        except Exception as e:
+            print(f"An error occurred during training: {e}")
+            # In a more complex scenario, you might want to raise a custom exception
+            # or handle the error in a more specific way.
+            return ""
 
     def _save_placeholder_model(self) -> str:
         """Saves a simple placeholder file and returns the path."""
@@ -89,7 +96,7 @@ class TrainingEngine:
             f.write("This is a placeholder model.")
         return model_path
 
-    def _load_and_prepare_data(self, ids: List[int]) -> List[Configuration]:
+    def _load_and_prepare_data(self, ids: list[int]) -> list[Configuration]:
         """
         Loads data from the database and applies Delta Learning adjustments.
         """
@@ -152,24 +159,28 @@ class TrainingEngine:
 
     def _run_training_loop(self, atomic_data, model, loss_fn, optimizer):
         """Performs the training iterations."""
-        loader = torch_geometric.dataloader.DataLoader(
-            dataset=atomic_data, batch_size=1, shuffle=True
-        )
+        try:
+            loader = torch_geometric.dataloader.DataLoader(
+                dataset=atomic_data, batch_size=1, shuffle=True
+            )
 
-        for epoch in range(self._config.num_epochs):
-            for batch in loader:
-                optimizer.zero_grad()
-                batch_data = batch.to(self.device).to_dict()
+            for epoch in range(self._config.num_epochs):
+                for batch in loader:
+                    optimizer.zero_grad()
+                    batch_data = batch.to(self.device).to_dict()
 
-                # Forward pass
-                output = model(batch_data)
+                    # Forward pass
+                    output = model(batch_data)
 
-                # Calculate loss
-                loss = loss_fn(pred=output, ref=batch.to(self.device))
+                    # Calculate loss
+                    loss = loss_fn(pred=output, ref=batch.to(self.device))
 
-                # Backward pass and optimization
-                loss.backward()
-                optimizer.step()
+                    # Backward pass and optimization
+                    loss.backward()
+                    optimizer.step()
 
-            if epoch % 10 == 0:
-                print(f"Epoch {epoch}, Loss: {loss.item()}")
+                if epoch % 10 == 0:
+                    print(f"Epoch {epoch}, Loss: {loss.item()}")
+        except Exception as e:
+            print(f"An error occurred during the training loop: {e}")
+            raise  # Re-raise the exception to be caught by the main execute method

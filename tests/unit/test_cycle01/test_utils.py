@@ -58,6 +58,36 @@ def test_parse_qe_output_not_converged():
     assert result.error_message == "SCF did not converge."
 
 
+def test_parse_qe_output_missing_energy():
+    """Tests parsing output where the final energy line is missing."""
+    mock_output = """
+     JOB DONE.
+     Forces acting on atoms (Ry/au):
+     atom    1 type  1   force =    -0.001   0.002   0.003
+    """
+    result = parse_qe_output(mock_output)
+    assert result.was_successful is False
+    assert "Could not find energy" in result.error_message
+
+
+def test_parse_qe_output_missing_forces():
+    """Tests parsing output where the forces block is missing."""
+    mock_output = """
+     JOB DONE.
+     !    total energy              =     -11.234 Ry
+    """
+    result = parse_qe_output(mock_output)
+    assert result.was_successful is False
+    assert "Could not find energy or forces" in result.error_message
+
+
+def test_parse_qe_output_malformed():
+    """Tests parsing completely malformed or empty output."""
+    result = parse_qe_output("This is not QE output")
+    assert result.was_successful is False
+    assert result.error_message is not None
+
+
 # --- Tests for baseline_potentials.py ---
 def test_zbl_potential_two_atoms():
     """Tests the ZBL potential calculation for a simple two-atom system."""
