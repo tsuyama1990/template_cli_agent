@@ -115,10 +115,12 @@ class GitManager:
         Checks out the Pull Request branch using GitHub CLI.
         """
         logger.info(f"Checking out PR: {pr_url}...")
-        await self.runner.run_command(
+        _, _, code = await self.runner.run_command(
             [self.gh_cmd, "pr", "checkout", pr_url, "--force"],
             check=True,
         )
+        if code != 0:
+            raise RuntimeError(f"Failed to checkout PR {pr_url}")
         logger.info(f"Checked out PR {pr_url} successfully.")
 
     async def pull_changes(self) -> None:

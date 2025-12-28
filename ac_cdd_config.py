@@ -73,8 +73,8 @@ class SandboxConfig(BaseSettings):
     timeout: int = 3600  # Default timeout in seconds (increased to 2 hours)
     cwd: str = "/home/user"
     dirs_to_sync: list[str] = ["src", "tests", "contracts", "dev_documents", "dev_src"]
-    files_to_sync: list[str] = ["pyproject.toml", "uv.lock", ".auditignore", "README.md"]
-    install_cmd: str = "pip install uv pytest python-dotenv aider-chat && pip install -e ."
+    files_to_sync: list[str] = ["pyproject.toml", "uv.lock", ".auditignore", "README.md", "ac_cdd_config.py"]
+    install_cmd: str = "sudo apt-get update && sudo apt-get install -y git && pip install -U uv pytest python-dotenv aider-chat && pip install -e ."
     test_cmd: list[str] = ["uv", "run", "pytest"]
     lint_check_cmd: list[str] = ["uv", "run", "ruff", "check", "--fix", "."]
     type_check_cmd: list[str] = ["uv", "run", "mypy", "src/"]
