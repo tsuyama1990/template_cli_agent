@@ -1,0 +1,18 @@
+# Configuration for Cycle 01 of MLIP-AutoPipe
+
+# Settings for the Quantum Espresso Labelling Engine
+quantum_espresso:
+  command: "pw.x"
+  pseudo_dir: "/path/to/your/sssp_pseudos/"
+  k_points: [2, 2, 2]
+  ecutwfc: 60
+  ecutrho: 240
+
+# Settings for the MACE Training Engine
+training:
+  model_type: "mace"
+  learning_rate: 0.01
+  num_epochs: 100
+  r_cut: 5.0
+  delta_learn: true
+  baseline_potential: "lj"

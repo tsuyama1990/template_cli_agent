@@ -6,8 +6,6 @@ import pytest
 from ase.build import bulk
 from ase.io import write
 
-from mlip_autopipec.main_cycle01 import main
-
 # A minimal config file for testing purposes
 TEST_CONFIG_YAML = """
 database:
@@ -29,7 +27,7 @@ training:
 """
 
 # A mock pw.x script that produces predictable output
-MOCK_PWX_SCRIPT = f"""#!/bin/bash
+MOCK_PWX_SCRIPT = """#!/bin/bash
 echo '!    total energy              =     -150.00000000 Ry'
 echo 'Forces acting on atoms (cartesian axes, Ry/au):'
 echo '     atom    1   fx=   0.00000000   fy=   0.00000000   fz=   0.00000000'
@@ -39,6 +37,7 @@ echo '  0.0   1.0   0.0'
 echo '  0.0   0.0   1.0'
 exit 0
 """
+
 
 @pytest.fixture(scope="module")
 def setup_test_environment(tmpdir_factory):
@@ -54,7 +53,7 @@ def setup_test_environment(tmpdir_factory):
 
     # Create structure file with two identical structures to satisfy MACE's
     # train/validation split requirement.
-    atoms = bulk('Si', 'diamond', a=5.43)
+    atoms = bulk("Si", "diamond", a=5.43)
     structure_path = tmpdir.join("si_bulk.xyz")
     write(str(structure_path), [atoms, atoms])
 
@@ -65,13 +64,14 @@ def setup_test_environment(tmpdir_factory):
 
     # Update the config to point to our mock executable
     # and add it to the system PATH
-    original_path = os.environ['PATH']
-    os.environ['PATH'] = f"{tmpdir}:{original_path}"
+    original_path = os.environ["PATH"]
+    os.environ["PATH"] = f"{tmpdir}:{original_path}"
 
     yield str(config_path), str(structure_path)
 
     # Teardown
-    os.environ['PATH'] = original_path
+    os.environ["PATH"] = original_path
+
 
 def test_cycle01_e2e_workflow(setup_test_environment, capsys):
     """
@@ -82,9 +82,13 @@ def test_cycle01_e2e_workflow(setup_test_environment, capsys):
     # We use subprocess to call our CLI to simulate a user running it.
     # This is more robust than calling the main function directly.
     command = [
-        "python", "-m", "mlip_autopipec.main_cycle01",
-        "--config", config_path,
-        "--structure", structure_path
+        "python",
+        "-m",
+        "mlip_autopipec.main_cycle01",
+        "--config",
+        config_path,
+        "--structure",
+        structure_path,
     ]
 
     # We change the working directory to the directory of the config file to
@@ -94,7 +98,7 @@ def test_cycle01_e2e_workflow(setup_test_environment, capsys):
         capture_output=True,
         text=True,
         cwd=os.path.dirname(config_path),
-        env={**os.environ, "PYTHONPATH": f"{os.getcwd()}/src"}
+        env={**os.environ, "PYTHONPATH": f"{os.getcwd()}/src"},
     )
 
     # Check that the process ran successfully

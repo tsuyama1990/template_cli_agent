@@ -43,9 +43,9 @@ class SandboxRunner:
 
         logger.info("Creating new E2B Sandbox...")
         self.sandbox = Sandbox.create(
-            api_key=self.api_key, 
+            api_key=self.api_key,
             template=settings.sandbox.template,
-            timeout=settings.sandbox.timeout  # Pass explicit timeout for keep-alive
+            timeout=settings.sandbox.timeout,  # Pass explicit timeout for keep-alive
         )
 
         # Initial setup: install UV and sync files
@@ -77,7 +77,7 @@ class SandboxRunner:
                 await self._sync_to_sandbox(sandbox)
 
                 command_str = " ".join(cmd)
-                logger.info(f"[Sandbox] Running (Attempt {attempt+1}): {command_str}")
+                logger.info(f"[Sandbox] Running (Attempt {attempt + 1}): {command_str}")
 
                 exec_result = sandbox.commands.run(
                     command_str, cwd=self.cwd, envs=env or {}, timeout=settings.sandbox.timeout
@@ -85,7 +85,7 @@ class SandboxRunner:
                 stdout = exec_result.stdout
                 stderr = exec_result.stderr
                 exit_code = exec_result.exit_code or 0
-                
+
                 # 成功したらループ終了
                 break
 
@@ -93,10 +93,12 @@ class SandboxRunner:
                 # タイムアウトやSandbox消失のエラーか判定
                 err_msg = str(e).lower()
                 is_sandbox_error = "sandbox was not found" in err_msg or "timeout" in err_msg
-                
+
                 if is_sandbox_error and attempt < max_retries:
-                    logger.warning(f"Sandbox disconnection detected: {e}. Re-initializing sandbox...")
-                    
+                    logger.warning(
+                        f"Sandbox disconnection detected: {e}. Re-initializing sandbox..."
+                    )
+
                     # 既存のインスタンスを破棄
                     if self.sandbox:
                         try:
@@ -104,7 +106,7 @@ class SandboxRunner:
                         except:
                             pass
                         self.sandbox = None
-                    
+
                     # 次のループで _get_sandbox() が呼ばれ、新規作成＆install_cmdが実行される
                     continue
                 else:
@@ -114,8 +116,8 @@ class SandboxRunner:
                         stdout = e.stdout
                         stderr = e.stderr
                         exit_code = e.exit_code
-                        break 
-                    
+                        break
+
                     # 解決不能なエラーはそのまま投げる
                     raise e
         # ----------------------------------

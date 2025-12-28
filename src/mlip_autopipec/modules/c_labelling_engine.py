@@ -1,87 +1,96 @@
-from pathlib import Path
-from typing import Tuple
+import os
+import subprocess
+import tempfile
 
 from ase.atoms import Atoms
+from ase.calculators.singlepoint import SinglePointCalculator
 
 from mlip_autopipec.data.database import AseDB
-from mlip_autopipec.utils import dft_utils
+from mlip_autopipec.data.models import DFTResult
+from mlip_autopipec.utils.dft_utils import generate_qe_input, parse_qe_output
 
 
 class LabellingEngine:
     """
-    This class encapsulates the logic for performing automated Density Functional
-    Theory (DFT) calculations using Quantum Espresso. It acts as a robust wrapper
-    that handles input file generation, execution of the DFT code, parsing of the
-    output, and storage of the results in the project's database.
+    The Labelling Engine (Module C) for performing automated DFT calculations.
     """
-
-    def __init__(self, qe_command: str, db: AseDB):
+    def __init__(self, qe_command: str, db: AseDB, default_params: dict = None):
         """
-        Initialises the LabellingEngine.
+        Initializes the LabellingEngine.
 
         Args:
-            qe_command: The command-line instruction to execute Quantum Espresso's
-                        pw.x, including any MPI prefixes (e.g., "mpirun -np 4 pw.x").
-            db: An initialised AseDB object for database interactions.
+            qe_command: The command to execute Quantum Espresso (e.g., "pw.x").
+            db: An instance of the AseDB wrapper.
+            default_params: Default parameters for QE calculations.
         """
         self._qe_command = qe_command
         self._db = db
+        self._default_params = default_params or {}
 
-    def execute(
-        self,
-        atoms: Atoms,
-        pseudo_dir: str | Path,
-        ecutwfc: int = 60,
-        kpts: Tuple[int, int, int] = (4, 4, 4),
-    ) -> int:
+    def execute(self, atoms: Atoms) -> int:
         """
-        Executes the full DFT labelling workflow for a given atomic structure.
-
-        This method performs the following steps:
-        1. Generates a Quantum Espresso input file from the `ase.Atoms` object.
-        2. Runs the Quantum Espresso calculation as a subprocess.
-        3. Parses the output to extract energy, forces, and stress.
-        4. Writes the results to the ASE database.
-
-        Args:
-            atoms: The `ase.Atoms` object representing the structure to be calculated.
-            pseudo_dir: The path to the directory containing pseudopotential files.
-            ecutwfc: The plane-wave energy cutoff for the calculation (in Ry).
-            kpts: The k-point mesh for the calculation.
-
-        Returns:
-            The unique database ID of the newly created record.
+        Takes an ASE Atoms object, runs a DFT calculation, and stores the result.
         """
-        work_dir = Path.cwd()
-        input_filepath = work_dir / "QE_input.in"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            qe_input = generate_qe_input(atoms, self._default_params)
+            input_path = os.path.join(tmpdir, "QE.in")
+            output_path = os.path.join(tmpdir, "QE.out")
 
-        # 1. Generate input file
-        input_content = dft_utils.generate_qe_input(
-            atoms=atoms, pseudo_dir=pseudo_dir, ecutwfc=ecutwfc, kpts=kpts
-        )
-        with open(input_filepath, "w") as f:
-            f.write(input_content)
+            with open(input_path, "w") as f:
+                f.write(qe_input)
 
-        # 2. Run Quantum Espresso
-        success, stdout, stderr = dft_utils.run_qe(self._qe_command, input_filepath)
+            command = [self._qe_command, "-in", input_path]
 
-        if not success:
-            # Handle cases where the pw.x executable itself fails
-            # (e.g., file not found, MPI error)
-            result = dft_utils.parse_qe_output(stdout + "\n" + stderr)
-            result.was_successful = False
-            if not result.error_message:
-                result.error_message = (
-                    f"Subprocess failed with return code != 0. Stderr: {stderr}"
+            try:
+                with open(output_path, "w") as outfile:
+                    subprocess.run(
+                        command,
+                        cwd=tmpdir,
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                        stdout=outfile,
+                        stderr=subprocess.PIPE,
+                    )
+
+                with open(output_path) as f:
+                    qe_output = f.read()
+
+                energy, forces, stress, success, error = parse_qe_output(qe_output)
+
+                if not success:
+                    dft_result = DFTResult(
+                        total_energy_ev=0, forces=[], stress=[], was_successful=False,
+                        error_message=error
+                    )
+                else:
+                    calc = SinglePointCalculator(
+                        atoms, energy=energy, forces=forces, stress=stress
+                    )
+                    atoms.calc = calc
+                    dft_result = DFTResult(
+                        total_energy_ev=energy, forces=forces, stress=stress,
+                        was_successful=True
+                    )
+
+            except subprocess.CalledProcessError as e:
+                error_msg = (
+                    f"Quantum Espresso execution failed with exit code {e.returncode}.\n"
+                    f"Stderr: {e.stderr}"
                 )
-        else:
-            # 3. Parse the output
-            result = dft_utils.parse_qe_output(stdout)
+                dft_result = DFTResult(
+                    total_energy_ev=0, forces=[], stress=[], was_successful=False,
+                    error_message=error_msg
+                )
+            except FileNotFoundError:
+                error_msg = (
+                    f"Command '{self._qe_command}' not found. "
+                    "Is Quantum Espresso in your PATH?"
+                )
+                dft_result = DFTResult(
+                    total_energy_ev=0, forces=[], stress=[], was_successful=False,
+                    error_message=error_msg
+                )
 
-        # 4. Save results to the database
-        db_id = self._db.write(atoms, result)
-
-        # Clean up input file
-        input_filepath.unlink()
-
+        db_id = self._db.write(atoms, dft_result.model_dump())
         return db_id
