@@ -1,30 +1,30 @@
+# Description: CLI entry point for the Cycle 01 workflow.
 import click
 
 from mlip_autopipec.orchestrator_cycle01 import run_cycle01_workflow
 
+
 @click.command()
 @click.option(
-    '--config',
-    'config_path',
+    "--config",
+    "config_path",
     required=True,
-    type=click.Path(exists=True, dir_okay=False),
-    help="Path to the Cycle 01 YAML configuration file."
+    type=click.Path(exists=True),
+    help="Path to the YAML configuration file.",
 )
 @click.option(
-    '--structure',
-    'structure_path',
+    "--structure",
+    "structure_path",
     required=True,
-    type=click.Path(exists=True, dir_okay=False),
-    help="Path to the input atomic structure file (e.g., .xyz, .cif)."
+    type=click.Path(exists=True),
+    help="Path to the atomic structure file (e.g., CIF, XYZ).",
 )
 def main(config_path: str, structure_path: str):
     """
-    Command-line interface to run the MLIP-AutoPipe Cycle 01 workflow.
-
-    This tool takes a configuration file and a structure file as input,
-    runs the automated DFT labelling, and then trains a basic MLIP model.
+    Runs the full DFT labelling and MLIP training workflow for Cycle 01.
     """
     run_cycle01_workflow(config_path, structure_path)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

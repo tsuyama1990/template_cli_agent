@@ -1,115 +1,175 @@
-import subprocess
+# Description: The Training Engine (Module D) for MLIP model training.
+import ast
 from pathlib import Path
 from typing import List
 
-from ase.atoms import Atoms
-from ase.calculators.singlepoint import SinglePointCalculator
-from ase.io import write
 import numpy as np
+import torch
+import torch.serialization
+from ase.atoms import Atoms
+from mace.data import AtomicData, Configuration, config_from_atoms
+from mace.modules import MACE, WeightedEnergyForcesLoss
+from mace.modules.blocks import RealAgnosticInteractionBlock
+from mace.tools import AtomicNumberTable, torch_geometric
+from torch.optim import Adam
 
 from mlip_autopipec.data.database import AseDB
 from mlip_autopipec.data.models import TrainingConfig
-from mlip_autopipec.utils import baseline_potentials
+from mlip_autopipec.utils.baseline_potentials import zbl_potential
+
+# Add a safe global to handle a potential unpickling error with e3nn and torch
+torch.serialization.add_safe_globals([slice])
 
 
 class TrainingEngine:
-    """
-    This class encapsulates the logic for training a Machine Learning Interatomic
-    Potential (MLIP) model. It handles data loading, preparation for Delta
-
-    Learning, and interfacing with the underlying MLIP framework (e.g., MACE)
-    via its command-line interface.
-    """
+    """Orchestrates the MLIP model training process."""
 
     def __init__(self, config: TrainingConfig, db: AseDB):
+        """
+        Initializes the TrainingEngine.
+
+        Args:
+            config: A TrainingConfig object with training parameters.
+            db: An instance of the AseDB wrapper.
+        """
         self._config = config
         self._db = db
-        self._work_dir = Path.cwd()
-        # MACE saves the model in the current working directory based on the 'name'
-        self._model_name = "trained_model"
-        self._model_path = self._work_dir / f"{self._model_name}.model"
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
+    def execute(self, ids: List[int]) -> str:
+        """
+        Trains and saves an MLIP model using the data specified by database IDs.
 
-    def execute(self, ids: List[int]) -> Path:
-        training_data = self._load_and_prepare_data(ids)
-        train_file_path = self._work_dir / "temp_train.xyz"
+        Args:
+            ids: A list of database IDs to use for training data.
 
-        try:
-            # Save the prepared data to a temporary file for the CLI tool
-            write(train_file_path, training_data)
+        Returns:
+            The file path to the saved, trained model.
+        """
+        # 1. Load and prepare data
+        configs = self._load_and_prepare_data(ids)
 
-            # Construct the command-line arguments for mace_run_train
-            command = [
-                "mace_run_train",
-                f"--name={self._model_name}",
-                f"--train_file={train_file_path}",
-                f"--energy_key=energy",
-                f"--forces_key=forces",
-                f"--r_max={self._config.r_cut}",
-                f"--max_num_epochs={self._config.num_epochs}",
-                f"--lr={self._config.learning_rate}",
-                f"--device=cpu", # Forcing CPU for broader compatibility
-                f"--save_cpu", # Ensure model is saved in a CPU-compatible format
-                "--E0s=average", # Provide required atomic energy references
-                "--batch_size=1", # Use a batch size compatible with small test data
-                "--valid_batch_size=1",
-            ]
+        # If model_type is None, skip training and save a placeholder
+        if self._config.model_type.lower() == "none":
+            print("Model type is 'None', skipping training.")
+            model_path = self._save_placeholder_model()
+            return model_path
 
-            # Execute the training command
-            result = subprocess.run(command, capture_output=True, text=True)
+        z_table = AtomicNumberTable(
+            [int(z) for z in sorted(list(set(configs[0].atomic_numbers)))]
+        )
+        atomic_data = [
+            AtomicData.from_config(c, z_table=z_table, cutoff=self._config.r_cut)
+            for c in configs
+        ]
 
-            if result.returncode != 0:
-                error_message = (
-                    f"MACE training failed with exit code {result.returncode}.\\n"
-                    f"Stdout:\\n{result.stdout}\\n"
-                    f"Stderr:\\n{result.stderr}"
-                )
-                raise RuntimeError(error_message)
+        # 2. Setup model and optimizer
+        model = self._setup_model(z_table)
+        loss_fn = WeightedEnergyForcesLoss(energy_weight=1.0, forces_weight=10.0)
+        optimizer = Adam(model.parameters(), lr=self._config.learning_rate)
 
-        finally:
-            # Ensure the temporary file is always cleaned up
-            if train_file_path.exists():
-                train_file_path.unlink()
+        # 3. Run training loop
+        self._run_training_loop(atomic_data, model, loss_fn, optimizer)
 
-        # The actual model path is determined by MACE, using the 'name'
-        final_model_path = self._work_dir / f"{self._model_name}.model"
-        # The test expects a .pt file, so we will rename it for consistency
-        # In a real scenario, we would just use the .model file.
-        final_pt_path = self._work_dir / "models" / "trained_model.pt"
-        final_pt_path.parent.mkdir(exist_ok=True)
-        if final_model_path.exists():
-            final_model_path.rename(final_pt_path)
-            return final_pt_path
+        # 4. Save the model
+        output_dir = Path("./models/")
+        output_dir.mkdir(exist_ok=True)
+        model_path = str(output_dir / "trained_model.pt")
 
-        raise FileNotFoundError("MACE did not produce the expected model file.")
+        torch.save(model, model_path)
 
+        return model_path
 
-    def _load_and_prepare_data(self, ids: List[int]) -> List[Atoms]:
-        prepared_atoms_list = []
+    def _save_placeholder_model(self) -> str:
+        """Saves a simple placeholder file and returns the path."""
+        output_dir = Path("./models/")
+        output_dir.mkdir(exist_ok=True)
+        model_path = str(output_dir / "placeholder_model.txt")
+        with open(model_path, "w") as f:
+            f.write("This is a placeholder model.")
+        return model_path
+
+    def _load_and_prepare_data(self, ids: List[int]) -> List[Configuration]:
+        """
+        Loads data from the database and applies Delta Learning adjustments.
+        """
+        prepared_configs = []
         for db_id in ids:
-            row = self._db._db.get(id=db_id)
-            dft_energy = row.energy
-            dft_forces = row.forces
-            atoms = self._db._db.get_atoms(id=db_id)
+            atoms, kvp = self._db.get(db_id)
+            if not kvp.get("was_successful", False):
+                continue  # Skip unsuccessful calculations
 
-            target_energy = dft_energy
-            target_forces = dft_forces
+            dft_energy = atoms.get_potential_energy()
+            dft_forces = atoms.get_forces()
 
             if self._config.delta_learn:
-                if self._config.baseline_potential == "lj":
-                    baseline_energy = baseline_potentials.get_lj_potential(atoms)
-                    baseline_forces = baseline_potentials.get_lj_forces(atoms)
-                else:
-                    raise ValueError("Unsupported baseline potential specified.")
+                baseline_energy, baseline_forces = zbl_potential(atoms)
 
-                target_energy -= baseline_energy
-                target_forces -= baseline_forces
+                # The model learns the difference
+                target_energy = dft_energy - baseline_energy
+                target_forces = dft_forces - baseline_forces
+            else:
+                target_energy = dft_energy
+                target_forces = dft_forces
 
-            training_atoms = atoms.copy()
-            # ASE's XYZ writer looks for results in the .info dictionary
-            training_atoms.info['energy'] = target_energy
-            training_atoms.arrays['forces'] = np.array(target_forces)
+            # Create a new Atoms object with the target values for training
+            training_atoms = Atoms(
+                symbols=atoms.get_chemical_symbols(),
+                positions=atoms.get_positions(),
+                cell=atoms.get_cell(),
+                pbc=atoms.get_pbc(),
+            )
+            config = config_from_atoms(training_atoms)
+            config.energy = target_energy
+            config.forces = target_forces
+            prepared_configs.append(config)
 
-            prepared_atoms_list.append(training_atoms)
+        return prepared_configs
 
-        return prepared_atoms_list
+    def _setup_model(self, z_table: AtomicNumberTable) -> MACE:
+        """Initializes the MACE model with parameters from the config."""
+        atomic_numbers = z_table.zs
+        atomic_energies = np.zeros(len(atomic_numbers), dtype=float)
+        model = MACE(
+            r_max=self._config.r_cut,
+            num_bessels=8,
+            num_polynomial_cutoff=5,
+            max_ell=3,
+            interaction_cls=RealAgnosticInteractionBlock,
+            interaction_cls_first=RealAgnosticInteractionBlock,
+            num_interactions=2,
+            num_elements=len(z_table.zs),
+            atomic_energies=atomic_energies,
+            avg_num_neighbors=15,
+            atomic_numbers=z_table.zs,
+            correlation=3,
+            gate=None,
+            MLP_irreps="128x0e",
+            hidden_irreps="128x0e",
+        )
+        model.to(self.device)
+        return model
+
+    def _run_training_loop(self, atomic_data, model, loss_fn, optimizer):
+        """Performs the training iterations."""
+        loader = torch_geometric.dataloader.DataLoader(
+            dataset=atomic_data, batch_size=1, shuffle=True
+        )
+
+        for epoch in range(self._config.num_epochs):
+            for batch in loader:
+                optimizer.zero_grad()
+                batch_data = batch.to(self.device).to_dict()
+
+                # Forward pass
+                output = model(batch_data)
+
+                # Calculate loss
+                loss = loss_fn(pred=output, ref=batch.to(self.device))
+
+                # Backward pass and optimization
+                loss.backward()
+                optimizer.step()
+
+            if epoch % 10 == 0:
+                print(f"Epoch {epoch}, Loss: {loss.item()}")
