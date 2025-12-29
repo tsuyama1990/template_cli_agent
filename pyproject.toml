@@ -50,6 +50,7 @@ dev = [
     "hypothesis",
     "playwright",
     "vcrpy",
+    "pytest-mock",
     "ruff",
     "google-genai",
     "mypy",
@@ -67,7 +68,8 @@ fix = true
 # E/F/I: Basic, B: Bugbear, S: Bandit, UP: pyupgrade
 select = ["E", "F", "I", "B", "S", "UP"]
 # S101: Allow use of assert (for tests)
-ignore = ["S101"]
+# S603: subprocess call with untrusted input
+ignore = ["S101", "S603"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101"]
@@ -75,6 +77,9 @@ ignore = ["S101"]
 [tool.pytest.ini_options]
 addopts = "--cov=dev_src --cov=src --cov-report=term-missing"
 testpaths = ["tests"]
+markers = [
+    "e2e: marks tests as end-to-end",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["dev_src/ac_cdd_core", "src/mlip_autopipec"]

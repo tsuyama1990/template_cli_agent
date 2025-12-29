@@ -1,50 +1,62 @@
+# ruff: noqa: D101, D102, D103, D104, D105, D107
+import yaml
 from pathlib import Path
 
-import yaml
 from ase.io import read
 
 from mlip_autopipec.data.database import AseDB
 from mlip_autopipec.data.models import TrainingConfig
+from mlip_autopipec.infrastructure.process_runner import ProcessRunner
 from mlip_autopipec.modules.c_labelling_engine import LabellingEngine
 from mlip_autopipec.modules.d_training_engine import TrainingEngine
 
 
-def run_cycle01_workflow(config_path: str | Path, structure_path: str | Path):
+def run_cycle01_workflow(
+    config_path: Path, structure_path: Path, db_path: str = "mlip.db"
+):
     """
-    Orchestrates the simple, linear workflow for Cycle 01.
-    This version handles multiple atomic structures from the input file.
+    Orchestrates the Cycle 01 workflow: label a structure and train a model.
     """
-    with open(config_path) as f:
+    # Load configuration
+    with open(config_path, "r") as f:
         config = yaml.safe_load(f)
 
-    db_path = Path(config["database"]["path"])
+    # Initialize infrastructure
+    process_runner = ProcessRunner()
+
+    # Initialize database
     db = AseDB(db_path)
-    labeller = LabellingEngine(qe_command=config["labelling"]["qe_command"], db=db)
+
+    # Initialize Labelling Engine
+    labeller = LabellingEngine(
+        qe_command=config["qe_command"],
+        db=db,
+        process_runner=process_runner,
+        pseudo_potentials=config["pseudo_potentials"],
+        k_points=tuple(config["dft_params"]["k_points"]),
+        ecutwfc=config["dft_params"]["ecutwfc"],
+    )
+
+    # Initialize Training Engine
     training_config = TrainingConfig(**config["training"])
     trainer = TrainingEngine(config=training_config, db=db)
 
-    print(f"Reading initial structures from: {structure_path}")
-    # Read all structures from the file using index=':'
-    initial_structures = read(structure_path, index=':')
-    if not isinstance(initial_structures, list):
-        initial_structures = [initial_structures]
+    # --- Execute Workflow ---
+    print(f"Reading initial structure from: {structure_path}")
+    initial_structure = read(structure_path)
 
-    db_ids = []
-    for i, atoms in enumerate(initial_structures):
-        print(f"Starting Labelling Engine for structure {i+1}/{len(initial_structures)}...")
-        db_id = labeller.execute(
-            atoms=atoms,
-            pseudo_dir=config["labelling"]["pseudo_dir"],
-            ecutwfc=config["labelling"]["ecutwfc"],
-            kpts=tuple(config["labelling"]["kpts"]),
-        )
-        print(f"Labelling complete. Data saved with ID: {db_id}")
-        db_ids.append(db_id)
+    print("Executing Labelling Engine...")
+    db_id = labeller.execute(initial_structure)
 
-    if not db_ids:
-        print("No structures were labelled. Exiting.")
+    # Check if labelling was successful before proceeding
+    _, kvp = db.get(db_id)
+    if not kvp.get("was_successful", False):
+        error_msg = kvp.get("error_message", "Unknown error")
+        print(f"ERROR: Labelling failed for {structure_path.name}. Reason: {error_msg}")
         return
 
-    print("Starting Training Engine...")
-    trained_model_path = trainer.execute(ids=db_ids)
-    print(f"\nWorkflow complete. Model saved to: {trained_model_path}")
+    print(f"Labelling complete. Data stored in DB with ID: {db_id}")
+
+    print("Executing Training Engine...")
+    trained_model_path = trainer.execute(ids=[db_id])
+    print(f"Workflow complete. Model saved to: {trained_model_path}")
