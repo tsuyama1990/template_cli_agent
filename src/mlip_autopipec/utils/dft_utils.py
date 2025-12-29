@@ -3,6 +3,79 @@ from ase.data import atomic_masses
 import numpy as np
 from typing import Dict, Optional, Tuple
 
+def _format_control_block(calculation: str, pseudo_dir: str, outdir: str) -> str:
+    """Formats the &CONTROL block for the QE input file."""
+    params = {
+        'calculation': f"'{calculation}'",
+        'pseudo_dir': f"'{pseudo_dir}'",
+        'outdir': f"'{outdir}'",
+    }
+    lines = ["&CONTROL"]
+    for key, value in params.items():
+        lines.append(f"  {key} = {value}")
+    lines.append("/")
+    return "\n".join(lines) + "\n"
+
+def _format_system_block(atoms: Atoms, ecutwfc: float) -> str:
+    """Formats the &SYSTEM block for the QE input file."""
+    if not atoms:
+        raise ValueError("Input `atoms` object is empty.")
+    params = {
+        'ibrav': 0,
+        'nat': len(atoms),
+        'ntyp': len(set(atoms.get_chemical_symbols())),
+        'ecutwfc': ecutwfc,
+    }
+    lines = ["&SYSTEM"]
+    for key, value in params.items():
+        lines.append(f"  {key} = {value}")
+    lines.append("/")
+    return "\n".join(lines) + "\n"
+
+def _format_electrons_block() -> str:
+    """Formats the &ELECTRONS block for the QE input file."""
+    params = {'conv_thr': '1.0e-8'}
+    lines = ["&ELECTRONS"]
+    for key, value in params.items():
+        lines.append(f"  {key} = {value}")
+    lines.append("/")
+    return "\n".join(lines) + "\n"
+
+def _format_atomic_species(atoms: Atoms, pseudos: Optional[Dict[str, str]]) -> str:
+    """Formats the ATOMIC_SPECIES card for the QE input file."""
+    lines = ["ATOMIC_SPECIES"]
+    unique_symbols = sorted(list(set(atoms.get_chemical_symbols())))
+    atomic_numbers = atoms.get_atomic_numbers()
+    symbols_list = np.array(atoms.get_chemical_symbols())
+    for symbol in unique_symbols:
+        atomic_number = atomic_numbers[np.where(symbols_list == symbol)[0][0]]
+        mass = atomic_masses[atomic_number]
+        pseudo_file = pseudos.get(symbol, f"{symbol}.pbe.UPF") if pseudos else f"{symbol}.pbe.UPF"
+        lines.append(f"  {symbol} {mass:.4f} {pseudo_file}")
+    return "\n".join(lines) + "\n"
+
+def _format_atomic_positions(atoms: Atoms) -> str:
+    """Formats the ATOMIC_POSITIONS card for the QE input file."""
+    lines = ["ATOMIC_POSITIONS {crystal}"]
+    scaled_positions = atoms.get_scaled_positions()
+    symbols = atoms.get_chemical_symbols()
+    for i in range(len(atoms)):
+        lines.append(f"  {symbols[i]} {scaled_positions[i, 0]:.8f} {scaled_positions[i, 1]:.8f} {scaled_positions[i, 2]:.8f}")
+    return "\n".join(lines) + "\n"
+
+def _format_k_points(k_points: Tuple[int, int, int]) -> str:
+    """Formats the K_POINTS card for the QE input file."""
+    lines = ["K_POINTS {automatic}", f"  {k_points[0]} {k_points[1]} {k_points[2]} 0 0 0"]
+    return "\n".join(lines) + "\n"
+
+def _format_cell_parameters(atoms: Atoms) -> str:
+    """Formats the CELL_PARAMETERS card for the QE input file."""
+    lines = ["CELL_PARAMETERS {angstrom}"]
+    cell = atoms.get_cell()
+    for i in range(3):
+        lines.append(f"  {cell[i, 0]:.8f} {cell[i, 1]:.8f} {cell[i, 2]:.8f}")
+    return "\n".join(lines)
+
 def generate_qe_input(
     atoms: Atoms,
     calculation: str = 'scf',
@@ -11,7 +84,7 @@ def generate_qe_input(
     pseudo_dir: str = './',
     outdir: str = './',
     pseudos: Optional[Dict[str, str]] = None
-) -> str:
+) -> Optional[str]:
     """
     Generates a Quantum Espresso input string for the given atomic structure.
 
@@ -29,78 +102,16 @@ def generate_qe_input(
         A string containing the formatted QE input file, or None if an error occurs.
     """
     try:
-        control_params = {
-            'calculation': f"'{calculation}'",
-            'pseudo_dir': f"'{pseudo_dir}'",
-            'outdir': f"'{outdir}'",
-        }
-
-        system_params = {
-            'ibrav': 0,
-            'nat': len(atoms),
-            'ntyp': len(set(atoms.get_chemical_symbols())),
-            'ecutwfc': ecutwfc,
-        }
-
-        electron_params = {
-            'conv_thr': '1.0e-8',
-        }
-
-        # Create the input string
-        input_str = ""
-
-        # Control block
-        input_str += "&CONTROL\n"
-        for key, value in control_params.items():
-            input_str += f"  {key} = {value}\n"
-        input_str += "/\n\n"
-
-        # System block
-        input_str += "&SYSTEM\n"
-        for key, value in system_params.items():
-            input_str += f"  {key} = {value}\n"
-        input_str += "/\n\n"
-
-        # Electrons block
-        input_str += "&ELECTRONS\n"
-        for key, value in electron_params.items():
-            input_str += f"  {key} = {value}\n"
-        input_str += "/\n\n"
-
-        # Atomic species
-        input_str += "ATOMIC_SPECIES\n"
-        unique_symbols = sorted(list(set(atoms.get_chemical_symbols())))
-        atomic_numbers = atoms.get_atomic_numbers()
-        symbols_list = np.array(atoms.get_chemical_symbols())
-        for symbol in unique_symbols:
-            atomic_number = atomic_numbers[np.where(symbols_list == symbol)[0][0]]
-            mass = atomic_masses[atomic_number]
-            if pseudos and symbol in pseudos:
-                pseudo_file = pseudos[symbol]
-            else:
-                pseudo_file = f"{symbol}.pbe.UPF"
-            input_str += f"  {symbol} {mass:.4f} {pseudo_file}\n"
-        input_str += "\n"
-
-        # Atomic positions
-        input_str += "ATOMIC_POSITIONS {crystal}\n"
-        scaled_positions = atoms.get_scaled_positions()
-        symbols = atoms.get_chemical_symbols()
-        for i in range(len(atoms)):
-            input_str += f"  {symbols[i]} {scaled_positions[i, 0]:.8f} {scaled_positions[i, 1]:.8f} {scaled_positions[i, 2]:.8f}\n"
-        input_str += "\n"
-
-        # K-points
-        input_str += "K_POINTS {automatic}\n"
-        input_str += f"  {k_points[0]} {k_points[1]} {k_points[2]} 0 0 0\n\n"
-
-        # Cell parameters
-        input_str += "CELL_PARAMETERS {angstrom}\n"
-        cell = atoms.get_cell()
-        for i in range(3):
-            input_str += f"  {cell[i, 0]:.8f} {cell[i, 1]:.8f} {cell[i, 2]:.8f}\n"
-
-        return input_str
+        input_parts = [
+            _format_control_block(calculation, pseudo_dir, outdir),
+            _format_system_block(atoms, ecutwfc),
+            _format_electrons_block(),
+            _format_atomic_species(atoms, pseudos),
+            _format_atomic_positions(atoms),
+            _format_k_points(k_points),
+            _format_cell_parameters(atoms)
+        ]
+        return "\n".join(input_parts)
     except Exception as e:
         print(f"An error occurred in generate_qe_input: {e}")
         return None

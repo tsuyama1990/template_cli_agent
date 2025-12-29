@@ -1,4 +1,5 @@
 import pytest
+from ase import Atoms
 from ase.build import bulk
 from mlip_autopipec.utils.dft_utils import generate_qe_input
 
@@ -63,10 +64,18 @@ def test_generate_qe_input_custom_pseudos():
     assert "Si.custom.UPF" in qe_input
     assert "Si.pbe.UPF" not in qe_input
 
-def test_generate_qe_input_error_handling():
+def test_generate_qe_input_invalid_atoms_type():
     """
-    Test case for error handling in generate_qe_input.
+    Test case for error handling when a non-ASE object is passed.
     """
     # Pass a non-ASE object to trigger an error
     qe_input = generate_qe_input("not an atoms object")
+    assert qe_input is None
+
+def test_generate_qe_input_empty_atoms_object():
+    """
+    Test case for error handling when an empty Atoms object is passed.
+    """
+    empty_atoms = Atoms()
+    qe_input = generate_qe_input(empty_atoms)
     assert qe_input is None
