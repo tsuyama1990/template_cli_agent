@@ -1,4 +1,3 @@
-
 import asyncio
 import os
 import shutil
@@ -11,6 +10,7 @@ from ac_cdd_core.utils import logger
 
 if TYPE_CHECKING:
     from ac_cdd_core.sandbox import SandboxRunner
+
 
 class AiderClient:
     """
@@ -40,9 +40,11 @@ class AiderClient:
         # Note: If running remotely, we assume 'aider' is in PATH or installed in sandbox
         cmd = [
             "aider",
-            "--model", self.fast_model,
+            "--model",
+            self.fast_model,
             "--no-auto-commits",
-            "--message", instruction,
+            "--message",
+            instruction,
         ]
 
         # Append files
@@ -76,11 +78,11 @@ class AiderClient:
             if runner:
                 # Run in Sandbox with ENV
                 stdout, stderr, code = await runner.run_command(cmd, env=env_vars, check=False)
-                
+
                 if code != 0:
                     logger.error(f"Aider audit failed (Exit {code}). Stderr: {stderr}")
                     return f"SYSTEM_ERROR: Aider failed to run (Exit Code {code}). Stderr: {stderr}"
-                
+
                 return stdout
             else:
                 # Local Execution (Fallback)
@@ -91,9 +93,11 @@ class AiderClient:
                     ),
                 )
                 if result.returncode != 0:
-                    logger.error(f"Aider audit failed (Exit {result.returncode}). Stderr: {result.stderr}")
+                    logger.error(
+                        f"Aider audit failed (Exit {result.returncode}). Stderr: {result.stderr}"
+                    )
                     return f"SYSTEM_ERROR: Aider failed to run (Exit Code {result.returncode}). Stderr: {result.stderr}"
-                
+
                 return result.stdout
 
         except Exception as e:
@@ -111,10 +115,12 @@ class AiderClient:
 
         cmd = [
             "aider",
-            "--model", self.smart_model,
+            "--model",
+            self.smart_model,
             "--yes",  # Auto-confirm edits
-            "--no-auto-commits", # Let graph handle commits
-            "--message", instruction,
+            "--no-auto-commits",  # Let graph handle commits
+            "--message",
+            instruction,
         ]
 
         if not runner:
@@ -160,7 +166,9 @@ class AiderClient:
                 )
 
                 if result.returncode != 0:
-                    logger.error(f"Aider fix failed (Exit {result.returncode}). Stderr: {result.stderr}")
+                    logger.error(
+                        f"Aider fix failed (Exit {result.returncode}). Stderr: {result.stderr}"
+                    )
                     return f"SYSTEM_ERROR: Aider failed to run (Exit Code {result.returncode}). Stderr: {result.stderr}"
 
                 return result.stdout
@@ -177,30 +185,41 @@ class AiderClient:
         """
         marker_start = "=== AUDIT REPORT START ==="
         marker_end = "=== AUDIT REPORT END ==="
-        
+
         # 1. Try to extract content between markers
         if marker_start in output:
-             content_after_start = output.split(marker_start, 1)[1]
-             if marker_end in content_after_start:
-                 report_body = content_after_start.split(marker_end, 1)[0]
-                 return report_body.strip()
-             else:
-                 # Start found but no end (maybe crashed or truncated?)
-                 return content_after_start.strip()
-                 
+            content_after_start = output.split(marker_start, 1)[1]
+            if marker_end in content_after_start:
+                report_body = content_after_start.split(marker_end, 1)[0]
+                return report_body.strip()
+            else:
+                # Start found but no end (maybe crashed or truncated?)
+                return content_after_start.strip()
+
         # 2. Fallback: Filter obvious noise lines
         clean_lines = []
         lines = output.splitlines()
         for line in lines:
             # Skip Aider/System logs
-            if any(x in line for x in ["Defined run_cmd", "Tokens:", "Git repo:", "Repo-map:", "Model:", "Aider v", "Added "]):
+            if any(
+                x in line
+                for x in [
+                    "Defined run_cmd",
+                    "Tokens:",
+                    "Git repo:",
+                    "Repo-map:",
+                    "Model:",
+                    "Aider v",
+                    "Added ",
+                ]
+            ):
                 continue
             if line.strip().startswith("<<<<<<< SEARCH"):
                 # If code edit block appears in audit (shouldn't happen but user report showed it), skip it?
                 # User report showed "LLM did not conform...".
                 # If we want JUST the report, and no markers found, we return what's left.
                 pass
-            
+
             clean_lines.append(line)
-            
+
         return "\n".join(clean_lines).strip()
