@@ -1,4 +1,5 @@
-from pathlib import Path
+import os
+from typing import Any
 
 import yaml
 from ase.io import read
@@ -9,42 +10,67 @@ from mlip_autopipec.modules.c_labelling_engine import LabellingEngine
 from mlip_autopipec.modules.d_training_engine import TrainingEngine
 
 
-def run_cycle01_workflow(config_path: str | Path, structure_path: str | Path):
-    """
-    Orchestrates the simple, linear workflow for Cycle 01.
-    This version handles multiple atomic structures from the input file.
-    """
+def load_config(config_path: str) -> dict[str, Any]:
+    """Loads the YAML configuration file."""
     with open(config_path) as f:
-        config = yaml.safe_load(f)
+        return yaml.safe_load(f)
 
-    db_path = Path(config["database"]["path"])
+def run_cycle01_workflow(config_path: str, structure_path: str):
+    """
+    Orchestrates the Cycle 01 workflow: Label -> Train.
+
+    Args:
+        config_path: Path to the YAML configuration file.
+        structure_path: Path to the initial atomic structure file (e.g., XYZ, CIF).
+    """
+    print("--- Starting Cycle 01 Workflow ---")
+
+    # 1. Load configuration
+    print(f"Loading configuration from {config_path}...")
+    config = load_config(config_path)
+
+    # Get the directory of the config file to resolve relative paths
+    config_dir = os.path.dirname(config_path)
+
+    # 2. Initialize components
+    db_path = os.path.join(config_dir, config['db_path'])
+    print(f"Initializing database at {db_path}...")
     db = AseDB(db_path)
-    labeller = LabellingEngine(qe_command=config["labelling"]["qe_command"], db=db)
-    training_config = TrainingConfig(**config["training"])
-    trainer = TrainingEngine(config=training_config, db=db)
 
-    print(f"Reading initial structures from: {structure_path}")
-    # Read all structures from the file using index=':'
-    initial_structures = read(structure_path, index=':')
-    if not isinstance(initial_structures, list):
-        initial_structures = [initial_structures]
+    print("Initializing Labelling Engine...")
+    labeller = LabellingEngine(
+        qe_command=config['qe_command'],
+        parameters=config['dft_parameters'],
+        db=db
+    )
 
-    db_ids = []
-    for i, atoms in enumerate(initial_structures):
-        print(f"Starting Labelling Engine for structure {i+1}/{len(initial_structures)}...")
-        db_id = labeller.execute(
-            atoms=atoms,
-            pseudo_dir=config["labelling"]["pseudo_dir"],
-            ecutwfc=config["labelling"]["ecutwfc"],
-            kpts=tuple(config["labelling"]["kpts"]),
-        )
-        print(f"Labelling complete. Data saved with ID: {db_id}")
-        db_ids.append(db_id)
+    print("Initializing Training Engine...")
+    training_config_model = TrainingConfig(**config['training'])
+    trainer = TrainingEngine(config=training_config_model, db=db)
 
-    if not db_ids:
-        print("No structures were labelled. Exiting.")
+    # 3. Read initial structure
+    print(f"Reading initial structure from {structure_path}...")
+    initial_structure = read(structure_path)
+
+    # 4. Execute Labelling
+    print("Executing Labelling Engine...")
+    try:
+        db_id = labeller.execute(initial_structure)
+        print(f"Labelling complete. Result saved to database with ID: {db_id}")
+    except Exception as e:
+        print(f"An error occurred during labelling: {e}")
         return
 
-    print("Starting Training Engine...")
-    trained_model_path = trainer.execute(ids=db_ids)
-    print(f"\nWorkflow complete. Model saved to: {trained_model_path}")
+    # 5. Execute Training
+    print("Executing Training Engine...")
+    # FIX: Pass an absolute path for the output directory
+    model_output_dir = os.path.join(config_dir, "models")
+    try:
+        trained_model_path = trainer.execute(ids=[db_id], output_dir=model_output_dir)
+        print(f"Workflow complete. Model saved to: {trained_model_path}")
+    except ValueError as e:
+        print(f"Skipping training due to an issue with the data: {e}")
+    except Exception as e:
+        print(f"An error occurred during training: {e}")
+
+    print("--- Cycle 01 Workflow Finished ---")

@@ -1,0 +1,51 @@
+# Configuration for the Cycle 01 Workflow
+
+# --- Labelling Engine Parameters ---
+# This command will be executed to run Quantum Espresso.
+# For local testing, you might use "pw.x".
+# For HPC, it might be "mpirun -np 16 pw.x".
+# **NOTE**: The E2E test will mock this, but a value is required.
+qe_command: "pw.x"
+
+# DFT parameters for Quantum Espresso
+dft_parameters:
+  # Directory where pseudopotential files are located.
+  pseudo_dir: "./pseudos"
+
+  # A map of element symbols to their pseudopotential filenames.
+  pseudopotentials:
+    Si: "Si.pbe-n-rrkjus_psl.1.0.0.UPF"
+    H: "H.pbe-rrkjus_psl.1.0.0.UPF"
+
+  # K-points grid for the Brillouin zone sampling.
+  k_points: [2, 2, 2]
+
+  # Plane-wave cutoff energy in Rydberg.
+  ecutwfc: 60
+
+  # Cutoff energy for the charge density and potential in Rydberg.
+  ecutrho: 240
+
+# --- Training Engine Parameters ---
+training:
+  # Type of the MLIP model to be trained.
+  model_type: "MACE"
+
+  # Learning rate for the optimizer.
+  learning_rate: 0.005
+
+  # Number of training epochs. Keep this low for testing.
+  num_epochs: 5
+
+  # Cutoff radius for atomic interactions in Angstrom.
+  r_cut: 4.5
+
+  # Whether to use Delta Learning. If true, a baseline is subtracted from DFT.
+  delta_learn: true
+
+  # The baseline potential to use for Delta Learning (e.g., "LJ" for Lennard-Jones).
+  baseline_potential: "LJ"
+
+# --- Database Path ---
+# Path to the ASE database file where results will be stored.
+db_path: "cycle01.db"
