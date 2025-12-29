@@ -6,8 +6,8 @@ def test_generate_qe_input_silicon_defaults():
     """
     Test case for generating a QE input for silicon with default settings.
     """
-    atoms = bulk('Si', 'diamond', a=5.43)
-    qe_input = generate_qe_input(atoms, calculation='scf', ecutwfc=40.0)
+    silicon_atoms = bulk('Si', 'diamond', a=5.43)
+    qe_input = generate_qe_input(silicon_atoms, calculation='scf', ecutwfc=40.0)
 
     # Verify standard sections
     assert "calculation = 'scf'" in qe_input
@@ -33,9 +33,9 @@ def test_generate_qe_input_custom_args():
     """
     Test case for generating a QE input with custom arguments.
     """
-    atoms = bulk('Si', 'diamond', a=5.43)
+    germanium_atoms = bulk('Ge', 'diamond', a=5.65)
     qe_input = generate_qe_input(
-        atoms,
+        germanium_atoms,
         k_points=(8, 8, 8),
         pseudo_dir='/tmp/pseudos',
         outdir='/tmp/output'
@@ -54,11 +54,19 @@ def test_generate_qe_input_custom_pseudos():
     """
     Test case for generating a QE input with custom pseudopotential filenames.
     """
-    atoms = bulk('Si', 'diamond', a=5.43)
+    silicon_atoms = bulk('Si', 'diamond', a=5.43)
     custom_pseudos = {'Si': 'Si.custom.UPF'}
-    qe_input = generate_qe_input(atoms, pseudos=custom_pseudos)
+    qe_input = generate_qe_input(silicon_atoms, pseudos=custom_pseudos)
 
     # Verify custom pseudopotential is used
     assert "ATOMIC_SPECIES" in qe_input
     assert "Si.custom.UPF" in qe_input
     assert "Si.pbe.UPF" not in qe_input
+
+def test_generate_qe_input_error_handling():
+    """
+    Test case for error handling in generate_qe_input.
+    """
+    # Pass a non-ASE object to trigger an error
+    qe_input = generate_qe_input("not an atoms object")
+    assert qe_input is None

@@ -26,78 +26,81 @@ def generate_qe_input(
                  If None, a default naming scheme is used (e.g., 'Si.pbe.UPF').
 
     Returns:
-        A string containing the formatted QE input file.
+        A string containing the formatted QE input file, or None if an error occurs.
     """
+    try:
+        control_params = {
+            'calculation': f"'{calculation}'",
+            'pseudo_dir': f"'{pseudo_dir}'",
+            'outdir': f"'{outdir}'",
+        }
 
-    control_params = {
-        'calculation': f"'{calculation}'",
-        'pseudo_dir': f"'{pseudo_dir}'",
-        'outdir': f"'{outdir}'",
-    }
+        system_params = {
+            'ibrav': 0,
+            'nat': len(atoms),
+            'ntyp': len(set(atoms.get_chemical_symbols())),
+            'ecutwfc': ecutwfc,
+        }
 
-    system_params = {
-        'ibrav': 0,
-        'nat': len(atoms),
-        'ntyp': len(set(atoms.get_chemical_symbols())),
-        'ecutwfc': ecutwfc,
-    }
+        electron_params = {
+            'conv_thr': '1.0e-8',
+        }
 
-    electron_params = {
-        'conv_thr': '1.0e-8',
-    }
+        # Create the input string
+        input_str = ""
 
-    # Create the input string
-    input_str = ""
+        # Control block
+        input_str += "&CONTROL\n"
+        for key, value in control_params.items():
+            input_str += f"  {key} = {value}\n"
+        input_str += "/\n\n"
 
-    # Control block
-    input_str += "&CONTROL\n"
-    for key, value in control_params.items():
-        input_str += f"  {key} = {value}\n"
-    input_str += "/\n\n"
+        # System block
+        input_str += "&SYSTEM\n"
+        for key, value in system_params.items():
+            input_str += f"  {key} = {value}\n"
+        input_str += "/\n\n"
 
-    # System block
-    input_str += "&SYSTEM\n"
-    for key, value in system_params.items():
-        input_str += f"  {key} = {value}\n"
-    input_str += "/\n\n"
+        # Electrons block
+        input_str += "&ELECTRONS\n"
+        for key, value in electron_params.items():
+            input_str += f"  {key} = {value}\n"
+        input_str += "/\n\n"
 
-    # Electrons block
-    input_str += "&ELECTRONS\n"
-    for key, value in electron_params.items():
-        input_str += f"  {key} = {value}\n"
-    input_str += "/\n\n"
+        # Atomic species
+        input_str += "ATOMIC_SPECIES\n"
+        unique_symbols = sorted(list(set(atoms.get_chemical_symbols())))
+        atomic_numbers = atoms.get_atomic_numbers()
+        symbols_list = np.array(atoms.get_chemical_symbols())
+        for symbol in unique_symbols:
+            atomic_number = atomic_numbers[np.where(symbols_list == symbol)[0][0]]
+            mass = atomic_masses[atomic_number]
+            if pseudos and symbol in pseudos:
+                pseudo_file = pseudos[symbol]
+            else:
+                pseudo_file = f"{symbol}.pbe.UPF"
+            input_str += f"  {symbol} {mass:.4f} {pseudo_file}\n"
+        input_str += "\n"
 
-    # Atomic species
-    input_str += "ATOMIC_SPECIES\n"
-    unique_symbols = sorted(list(set(atoms.get_chemical_symbols())))
-    atomic_numbers = atoms.get_atomic_numbers()
-    symbols_list = np.array(atoms.get_chemical_symbols())
-    for symbol in unique_symbols:
-        atomic_number = atomic_numbers[np.where(symbols_list == symbol)[0][0]]
-        mass = atomic_masses[atomic_number]
-        if pseudos and symbol in pseudos:
-            pseudo_file = pseudos[symbol]
-        else:
-            pseudo_file = f"{symbol}.pbe.UPF"
-        input_str += f"  {symbol} {mass:.4f} {pseudo_file}\n"
-    input_str += "\n"
+        # Atomic positions
+        input_str += "ATOMIC_POSITIONS {crystal}\n"
+        scaled_positions = atoms.get_scaled_positions()
+        symbols = atoms.get_chemical_symbols()
+        for i in range(len(atoms)):
+            input_str += f"  {symbols[i]} {scaled_positions[i, 0]:.8f} {scaled_positions[i, 1]:.8f} {scaled_positions[i, 2]:.8f}\n"
+        input_str += "\n"
 
-    # Atomic positions
-    input_str += "ATOMIC_POSITIONS {crystal}\n"
-    scaled_positions = atoms.get_scaled_positions()
-    symbols = atoms.get_chemical_symbols()
-    for i in range(len(atoms)):
-        input_str += f"  {symbols[i]} {scaled_positions[i, 0]:.8f} {scaled_positions[i, 1]:.8f} {scaled_positions[i, 2]:.8f}\n"
-    input_str += "\n"
+        # K-points
+        input_str += "K_POINTS {automatic}\n"
+        input_str += f"  {k_points[0]} {k_points[1]} {k_points[2]} 0 0 0\n\n"
 
-    # K-points
-    input_str += "K_POINTS {automatic}\n"
-    input_str += f"  {k_points[0]} {k_points[1]} {k_points[2]} 0 0 0\n\n"
+        # Cell parameters
+        input_str += "CELL_PARAMETERS {angstrom}\n"
+        cell = atoms.get_cell()
+        for i in range(3):
+            input_str += f"  {cell[i, 0]:.8f} {cell[i, 1]:.8f} {cell[i, 2]:.8f}\n"
 
-    # Cell parameters
-    input_str += "CELL_PARAMETERS {angstrom}\n"
-    cell = atoms.get_cell()
-    for i in range(3):
-        input_str += f"  {cell[i, 0]:.8f} {cell[i, 1]:.8f} {cell[i, 2]:.8f}\n"
-
-    return input_str
+        return input_str
+    except Exception as e:
+        print(f"An error occurred in generate_qe_input: {e}")
+        return None
