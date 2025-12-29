@@ -1,6 +1,5 @@
 # tests/unit/test_dft_utils.py
 import numpy as np
-import pytest
 from ase.build import bulk
 from ase.data import atomic_masses, atomic_numbers
 

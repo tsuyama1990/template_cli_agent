@@ -1,0 +1,25 @@
+# Configuration for E2E testing
+database:
+  path: "test_workflow.db"
+
+labelling:
+  qe_command: "pw.x -in pw.in > pw.out" # This will be mocked
+  parameters:
+    calculation: 'scf'
+    ecutwfc: 40
+    ecutrho: 160
+    occupations: 'smearing'
+    smearing: 'gaussian'
+    degauss: 0.01
+    mixing_beta: 0.7
+  pseudopotentials:
+    H: "H.pbe-rrkjus_psl.1.0.0.UPF"
+  kpoints: [1, 1, 1]
+
+training:
+  model_type: "mace"
+  learning_rate: 0.01
+  num_epochs: 2
+  r_cut: 4.0
+  delta_learn: true
+  baseline_potential: "lj"

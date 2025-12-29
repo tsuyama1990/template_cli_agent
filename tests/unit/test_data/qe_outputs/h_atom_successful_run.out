@@ -1,0 +1,148 @@
+
+     Program PWSCF v.6.5 (svn rev. 21129) starts on 12Jan2024 at 18:22:50
+
+     This program is part of the open-source Quantum ESPRESSO suite
+     for quantum simulation of materials; please cite
+         "P. Giannozzi et al., J. Phys.: Condens. Matter 21 395502 (2009);
+         "P. Giannozzi et al., J. Phys.: Condens. Matter 29 465901 (2017);
+         URL http://www.quantum-espresso.org",
+     in publications based on this work.
+
+     Parallel version (MPI), running on     1 processors
+
+     MPI processes distributed on     1 nodes
+     Waiting for input...
+     Reading input from standard input
+     Warning: card CELL_PARAMETERS {angstrom} is deprecated and will be removed in the future.
+              Use card CELL_PARAMETERS (angstrom) instead.
+
+     Current dimensions of program PWSCF are:
+     Max number of different atomic species (ntypx) = 10
+     Max number of atoms in the unit cell (natx) = 500
+     Max number of atomic wavefunctions (nbndx) = 5000
+     Max number of k-points (nkx) = 1000
+     Max number of G-vectors (nrxx) = 200000
+     Max number of G-vectors for augmentation charge (nr3x) = 200000
+
+     Subspace diagonalization in iterative solution of the eigenvalue problem:
+     one sub-group per k-point group will be used
+     k-point group #    1 contains    1 k-points
+
+     Parallelization info
+     --------------------
+     sticks:   dense  smooth     PW     G-vecs:    dense   smooth      PW
+     Min         1.0     1.0     1.0                 -      20257      -
+     Max         1.0     1.0     1.0                 -      20257      -
+     Avg         1.0     1.0     1.0                 -      20257.0    -
+
+     bravais-lattice index     = 0
+     lattice parameter (alat)  =  18.89726125  a.u.
+     unit-cell volume          =  1000.0000000  (a.u.)^3
+     number of atoms/cell      = 1
+     number of atomic types    = 1
+     number of electrons       = 1.00
+     number of Kohn-Sham states= 2
+     ecutwfc                   = 40.00 Ry
+     ecutrho                   = 160.00 Ry
+     kinetic-energy cutoff     = 544.2177218 eV
+     charge density cutoff     = 2176.8708872 eV
+     convergence threshold     = 1.0E-10
+     mixing beta               = 0.70
+     number of iterations used = 8, number of scf cycles = 100
+
+     celldm(1)= 18.897261  celldm(2)=  0.000000  celldm(3)=  0.000000
+     celldm(4)=  0.000000  celldm(5)=  0.000000  celldm(6)=  0.000000
+
+     crystal axes: (cart. coord. in units of alat)
+               a(1) = (   1.000000   0.000000   0.000000 )
+               a(2) = (   0.000000   1.000000   0.000000 )
+               a(3) = (   0.000000   0.000000   1.000000 )
+
+     reciprocal axes: (cart. coord. in units of 2 pi/alat)
+               b(1) = (   1.000000   0.000000  -0.000000 )
+               b(2) = (  -0.000000   1.000000   0.000000 )
+               b(3) = (   0.000000  -0.000000   1.000000 )
+
+
+     PseudoPot. # 1 for H read from file:
+     ./pseudos/H.pbe-rrkjus_psl.1.0.0.UPF
+     MD5 check sum: 21909a1523910080661c8488210950b3
+     Pseudo is Norm-conserving, Zval = 1.0
+     atomic species H frozen core electrons are 0
+
+     atomic positions (angstrom)
+     site n.     atom                  pos(1)       pos(2)       pos(3)
+        1           H             0.000000000   0.000000000   0.000000000
+
+     k-points (cart. coord. in units of 2 pi/alat)
+       k(   1) = (   0.0000000   0.0000000   0.0000000), wk = 2.0000000
+
+     starting charge 1.00000, renormalised to 1.00000
+     total cpu time spent up to now is        0.0 secs
+
+     Self-consistent field calculation
+
+     iteration #  1     ecut= 40.00 Ry     beta= 0.70
+     mixing scheme: simple
+     c_bands:   1 eigenvalues not converged
+     total energy              =      -0.45205462 Ry
+     Harris-Foulkes estimate   =      -0.45205462 Ry
+     estimated scf accuracy    <       0.12933496 Ry
+
+     iteration #  2     ecut= 40.00 Ry     beta= 0.70
+     c_bands:   1 eigenvalues not converged
+     total energy              =      -0.45206260 Ry
+     Harris-Foulkes estimate   =      -0.45206260 Ry
+     estimated scf accuracy    <       0.00000732 Ry
+
+     iteration #  3     ecut= 40.00 Ry     beta= 0.70
+     c_bands:   1 eigenvalues not converged
+     total energy              =      -0.45206260 Ry
+     Harris-Foulkes estimate   =      -0.45206260 Ry
+     estimated scf accuracy    <       0.00000000 Ry
+
+     iteration #  4     ecut= 40.00 Ry     beta= 0.70
+     c_bands:   1 eigenvalues not converged
+     total energy              =      -0.45206260 Ry
+     Harris-Foulkes estimate   =      -0.45206260 Ry
+     estimated scf accuracy    <       0.00000000 Ry
+
+     iteration #  5     ecut= 40.00 Ry     beta= 0.70
+     c_bands:   1 eigenvalues not converged
+     total energy              =      -0.45206260 Ry
+     Harris-Foulkes estimate   =      -0.45206260 Ry
+     estimated scf accuracy    <       0.00000000 Ry
+
+     convergence has been achieved in   5 iterations
+
+     Forces acting on atoms (cartesian axes, Ry/au):
+
+          atom    1 type  1   force =     0.00000000    0.00000000    0.00000000
+
+     Total force =     0.000000     Total SCF correction =     0.000000
+
+     entering subroutine stress ...
+     computing stress (Cartesian axis) and pressure
+
+     total stress  (Ry/bohr**3)  (kbar)     P=      -0.01
+     -0.00000005   0.00000000   0.00000000      -0.01    0.00    0.00
+      0.00000000  -0.00000005   0.00000000       0.00   -0.01    0.00
+      0.00000000   0.00000000  -0.00000005       0.00    0.00   -0.01
+
+
+!    total energy              =      -0.45206260 Ry
+     Harris-Foulkes estimate   =      -0.45206260 Ry
+     estimated scf accuracy    <          1.0E-11 Ry
+
+     The total energy is the sum of the following terms:
+
+     one-electron contribution =       0.51860829 Ry
+     hartree contribution      =       0.00000000 Ry
+     xc contribution           =      -0.42874136 Ry
+     ewald contribution        =      -0.54192953 Ry
+
+     convergence has been achieved in   5 iterations
+
+     JOB DONE.
+     total cpu time spent up to now is        0.1 secs
+     Program PWSCF v.6.5 stops on 12Jan2024 at 18:22:50

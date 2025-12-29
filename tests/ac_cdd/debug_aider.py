@@ -7,14 +7,13 @@ project_root = Path(__file__).resolve().parents[1] if "scripts" in str(Path(__fi
 sys.path.append(str(project_root))
 
 try:
-    from dev_src.ac_cdd_core.services.aider_client import AiderClient
-    from dev_src.ac_cdd_core.sandbox import SandboxRunner
     from dev_src.ac_cdd_core.config import settings
+    from dev_src.ac_cdd_core.sandbox import SandboxRunner
+    from dev_src.ac_cdd_core.services.aider_client import AiderClient
 except ImportError:
     sys.path.append(str(project_root / "dev_src"))
-    from ac_cdd_core.services.aider_client import AiderClient
     from ac_cdd_core.sandbox import SandboxRunner
-    from ac_cdd_core.config import settings
+    from ac_cdd_core.services.aider_client import AiderClient
 
 async def main():
     print("=== Aider Audit Simulation (SANDBOX MODE) Start ===")
@@ -43,7 +42,7 @@ async def main():
     # === 変更点: 最初の10ファイルに限定 ===
     files_to_audit = files_to_audit[:3]
     
-    print(f"Target Files (Limited to 3):")
+    print("Target Files (Limited to 3):")
     for f in files_to_audit:
         print(f" - {f}")
 

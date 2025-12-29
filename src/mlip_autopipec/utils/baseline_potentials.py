@@ -1,38 +1,55 @@
+
 import numpy as np
-from ase.atoms import Atoms
-from ase.calculators.lj import LennardJones
+from ase import Atoms
 
 
-def get_lj_potential(atoms: Atoms) -> float:
+def calculate_lj(atoms: Atoms, epsilon: float, sigma: float) -> tuple[float, np.ndarray]:
     """
-    Calculates the potential energy of a system using the Lennard-Jones potential.
-
-    Note: This uses default ASE parameters for Argon (Ar). It serves as a
-    simple, fast baseline for the Delta Learning demonstration. For a real
-    scientific application, element-specific parameters would be required.
+    Calculates the total Lennard-Jones potential energy and forces for a given
+    ASE Atoms object.
 
     Args:
-        atoms: The `ase.Atoms` object.
+        atoms: The ASE Atoms object.
+        epsilon: The depth of the potential well in eV.
+        sigma: The distance at which the potential is zero in Angstroms.
 
     Returns:
-        The total potential energy in eV.
+        A tuple containing:
+        - The total potential energy in eV.
+        - A NumPy array of the forces on each atom in eV/Angstrom.
     """
-    # Using default ASE LJ parameters which are for Argon
-    calc = LennardJones()
-    atoms.calc = calc
-    return atoms.get_potential_energy()
+    positions = atoms.get_positions()
+    n_atoms = len(atoms)
 
-def get_lj_forces(atoms: Atoms) -> np.ndarray:
-    """
-    Calculates the atomic forces of a system using the Lennard-Jones potential.
+    total_energy = 0.0
+    forces = np.zeros((n_atoms, 3))
 
-    Args:
-        atoms: The `ase.Atoms` object.
+    for i in range(n_atoms):
+        for j in range(i + 1, n_atoms):
+            dist_vec = positions[j] - positions[i]
+            r = np.linalg.norm(dist_vec)
 
-    Returns:
-        A numpy array of forces on each atom.
-    """
-    # Ensure a calculator is attached from the potential function first
-    if not atoms.calc:
-        get_lj_potential(atoms)
-    return atoms.get_forces()
+            if r == 0:
+                continue
+
+            sr = sigma / r
+            sr6 = sr**6
+            sr12 = sr6**2
+
+            # Energy
+            pair_energy = 4 * epsilon * (sr12 - sr6)
+            total_energy += pair_energy
+
+            # Force magnitude
+            # F = -dE/dr = -4 * epsilon * [-12*(sigma^12/r^13) + 6*(sigma^6/r^7)]
+            # F = (24 * epsilon / r) * [2 * (sigma/r)^12 - (sigma/r)^6]
+            force_mag = (24 * epsilon / r) * (2 * sr12 - sr6)
+
+            # Force vector
+            force_vec = force_mag * (dist_vec / r)
+
+            # Apply forces to the pair of atoms
+            forces[i] += force_vec
+            forces[j] -= force_vec
+
+    return total_energy, forces
