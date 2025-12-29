@@ -409,7 +409,18 @@ class JulesClient:
                                  return {"status": "success", "raw": data}
 
                         # Check Terminal States if no PR yet or no inquiry found
+                        # Check Terminal States if no PR yet or no inquiry found
                         if state == "FAILED":
+                            # FAIL-SAFE: Check if outputs exist despite failure state
+                            # (Sometimes session marks failed due to minor internal errors but still produces PR)
+                            if "outputs" in data:
+                                for output in data["outputs"]:
+                                    if "pullRequest" in output:
+                                        pr_url = output["pullRequest"].get("url")
+                                        if pr_url:
+                                            self.console.print(f"\n[bold green]PR Created (Despite FAILED state): {pr_url}[/bold green]")
+                                            return {"pr_url": pr_url, "status": "success", "raw": data}
+
                             logger.error(f"Full Session Data on Failure: {json.dumps(data, indent=2)}")
                             error_msg = data.get("error", {}).get("message", "Unknown error")
                             logger.error(f"Jules Session Failed: {error_msg}")
