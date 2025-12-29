@@ -1,0 +1,20 @@
+# Configuration for Cycle 01 Workflow
+qe_command: "pw.x" # Command to run Quantum Espresso (e.g., "mpirun -np 4 pw.x")
+
+# Pseudopotentials mapping for elements
+pseudo_potentials:
+  H: "H.pbe-rrkjus.UPF"
+  Si: "Si.pbe-n-rrkjus_psl.1.0.0.UPF"
+  # Add other elements as needed
+
+dft_params:
+  ecutwfc: 60.0
+  k_points: [2, 2, 2]
+
+training:
+  model_type: "mace"
+  learning_rate: 0.005
+  num_epochs: 10
+  r_cut: 5.0
+  delta_learn: true
+  baseline_potential: "lj"
