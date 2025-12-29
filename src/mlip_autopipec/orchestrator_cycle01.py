@@ -1,22 +1,28 @@
 # ruff: noqa: D101, D102, D103, D104, D105, D107
+import yaml
 from pathlib import Path
 
-import yaml
 from ase.io import read
 
 from mlip_autopipec.data.database import AseDB
 from mlip_autopipec.data.models import TrainingConfig
+from mlip_autopipec.infrastructure.process_runner import ProcessRunner
 from mlip_autopipec.modules.c_labelling_engine import LabellingEngine
 from mlip_autopipec.modules.d_training_engine import TrainingEngine
 
 
-def run_cycle01_workflow(config_path: Path, structure_path: Path, db_path: str = "mlip.db"):
+def run_cycle01_workflow(
+    config_path: Path, structure_path: Path, db_path: str = "mlip.db"
+):
     """
     Orchestrates the Cycle 01 workflow: label a structure and train a model.
     """
     # Load configuration
-    with open(config_path) as f:
+    with open(config_path, "r") as f:
         config = yaml.safe_load(f)
+
+    # Initialize infrastructure
+    process_runner = ProcessRunner()
 
     # Initialize database
     db = AseDB(db_path)
@@ -25,6 +31,7 @@ def run_cycle01_workflow(config_path: Path, structure_path: Path, db_path: str =
     labeller = LabellingEngine(
         qe_command=config["qe_command"],
         db=db,
+        process_runner=process_runner,
         pseudo_potentials=config["pseudo_potentials"],
         k_points=tuple(config["dft_params"]["k_points"]),
         ecutwfc=config["dft_params"]["ecutwfc"],

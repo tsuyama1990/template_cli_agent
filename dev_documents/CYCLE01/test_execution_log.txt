@@ -4,68 +4,66 @@ rootdir: /app
 configfile: pyproject.toml
 plugins: devtools-0.12.2, langsmith-0.4.59, mock-3.15.1, hypothesis-6.148.7, anyio-4.12.0, cov-7.0.0, logfire-4.16.0, asyncio-1.3.0
 asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
-collected 13 items
+collected 14 items
 
-tests/unit/test_data/test_database.py ..                                 [ 15%]
-tests/unit/test_modules/test_c_labelling_engine.py .                     [ 23%]
-tests/unit/test_modules/test_d_training_engine.py .                      [ 30%]
-tests/unit/test_utils/test_baseline_potentials.py .                      [ 38%]
-tests/unit/test_utils/test_dft_utils.py ......                           [ 84%]
-tests/e2e/test_cycle01_workflow.py ..                                    [100%]
+tests/unit/test_data/test_database.py ..                                 [ 14%]
+tests/unit/test_modules/test_c_labelling_engine.py .                     [ 21%]
+tests/unit/test_modules/test_d_training_engine.py .                      [ 28%]
+tests/unit/test_utils/test_baseline_potentials.py .                      [ 35%]
+tests/unit/test_utils/test_dft_utils.py ......                           [ 78%]
+tests/e2e/test_cycle01_workflow.py ...                                   [100%]
 
 =============================== warnings summary ===============================
 .venv/lib/python3.12/site-packages/e3nn/o3/_wigner.py:10
   /app/.venv/lib/python3.12/site-packages/e3nn/o3/_wigner.py:10: UserWarning: Environment variable TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD detected, since the`weights_only` argument was not explicitly passed to `torch.load`, forcing weights_only=False.
     _Jd, _W3j_flat, _W3j_indices = torch.load(os.path.join(os.path.dirname(__file__), 'constants.pt'))
 
-tests/e2e/test_cycle01_workflow.py:15
-  /app/tests/e2e/test_cycle01_workflow.py:15: PytestUnknownMarkWarning: Unknown pytest.mark.e2e - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    pytestmark = pytest.mark.e2e
-
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 ================================ tests coverage ================================
 _______________ coverage: platform linux, python 3.12.12-final-0 _______________
 
-Name                                               Stmts   Miss  Cover   Missing
---------------------------------------------------------------------------------
-dev_src/__init__.py                                    0      0   100%
-dev_src/ac_cdd_core/__init__.py                        0      0   100%
-dev_src/ac_cdd_core/agents.py                         47     47     0%   1-97
-dev_src/ac_cdd_core/cli.py                           126    126     0%   1-265
-dev_src/ac_cdd_core/config.py                         23     23     0%   1-40
-dev_src/ac_cdd_core/contracts/__init__.py              0      0   100%
-dev_src/ac_cdd_core/domain_models.py                  62     62     0%   1-120
-dev_src/ac_cdd_core/graph.py                         288    288     0%   1-597
-dev_src/ac_cdd_core/hash_utils.py                     25     25     0%   1-31
-dev_src/ac_cdd_core/presentation.py                   25     25     0%   1-55
-dev_src/ac_cdd_core/process_runner.py                 23     23     0%   1-70
-dev_src/ac_cdd_core/sandbox.py                       102    102     0%   1-192
-dev_src/ac_cdd_core/service_container.py              14     14     0%   1-18
-dev_src/ac_cdd_core/services/__init__.py               4      4     0%   1-5
-dev_src/ac_cdd_core/services/aider_client.py          88     88     0%   2-206
-dev_src/ac_cdd_core/services/artifacts.py             14     14     0%   1-28
-dev_src/ac_cdd_core/services/contracts.py             25     25     0%   1-42
-dev_src/ac_cdd_core/services/file_ops.py             107    107     0%   1-201
-dev_src/ac_cdd_core/services/git_ops.py               87     87     0%   1-164
-dev_src/ac_cdd_core/services/jules_client.py         289    289     0%   1-496
-dev_src/ac_cdd_core/services/project.py               36     36     0%   1-68
-dev_src/ac_cdd_core/state.py                          27     27     0%   1-36
-dev_src/ac_cdd_core/tools.py                          31     31     0%   1-65
-dev_src/ac_cdd_core/tools_fs.py                        9      9     0%   1-15
-dev_src/ac_cdd_core/utils.py                          28     28     0%   1-72
-src/mlip_autopipec/__init__.py                         0      0   100%
-src/mlip_autopipec/configs/__init__.py                 0      0   100%
-src/mlip_autopipec/data/__init__.py                    0      0   100%
-src/mlip_autopipec/data/database.py                   29      0   100%
-src/mlip_autopipec/data/models.py                     14      0   100%
-src/mlip_autopipec/main_cycle01.py                    11      1    91%   42
-src/mlip_autopipec/modules/__init__.py                 0      0   100%
-src/mlip_autopipec/modules/c_labelling_engine.py      30      0   100%
-src/mlip_autopipec/modules/d_training_engine.py       68      3    96%   56-57, 87
-src/mlip_autopipec/orchestrator_cycle01.py            27      0   100%
-src/mlip_autopipec/utils/__init__.py                   0      0   100%
-src/mlip_autopipec/utils/baseline_potentials.py       20      1    95%   32
-src/mlip_autopipec/utils/dft_utils.py                 42      2    95%   26-27
---------------------------------------------------------------------------------
-TOTAL                                               1721   1487    14%
-======================= 13 passed, 2 warnings in 18.68s ========================
+Name                                                  Stmts   Miss  Cover   Missing
+-----------------------------------------------------------------------------------
+dev_src/__init__.py                                       0      0   100%
+dev_src/ac_cdd_core/__init__.py                           0      0   100%
+dev_src/ac_cdd_core/agents.py                            47     47     0%   1-97
+dev_src/ac_cdd_core/cli.py                              126    126     0%   1-265
+dev_src/ac_cdd_core/config.py                            23     23     0%   1-40
+dev_src/ac_cdd_core/contracts/__init__.py                 0      0   100%
+dev_src/ac_cdd_core/domain_models.py                     62     62     0%   1-120
+dev_src/ac_cdd_core/graph.py                            288    288     0%   1-597
+dev_src/ac_cdd_core/hash_utils.py                        25     25     0%   1-31
+dev_src/ac_cdd_core/presentation.py                      25     25     0%   1-55
+dev_src/ac_cdd_core/process_runner.py                    23     23     0%   1-70
+dev_src/ac_cdd_core/sandbox.py                          102    102     0%   1-192
+dev_src/ac_cdd_core/service_container.py                 14     14     0%   1-18
+dev_src/ac_cdd_core/services/__init__.py                  4      4     0%   1-5
+dev_src/ac_cdd_core/services/aider_client.py             88     88     0%   2-206
+dev_src/ac_cdd_core/services/artifacts.py                14     14     0%   1-28
+dev_src/ac_cdd_core/services/contracts.py                25     25     0%   1-42
+dev_src/ac_cdd_core/services/file_ops.py                107    107     0%   1-201
+dev_src/ac_cdd_core/services/git_ops.py                  87     87     0%   1-164
+dev_src/ac_cdd_core/services/jules_client.py            289    289     0%   1-496
+dev_src/ac_cdd_core/services/project.py                  36     36     0%   1-68
+dev_src/ac_cdd_core/state.py                             27     27     0%   1-36
+dev_src/ac_cdd_core/tools.py                             31     31     0%   1-65
+dev_src/ac_cdd_core/tools_fs.py                           9      9     0%   1-15
+dev_src/ac_cdd_core/utils.py                             28     28     0%   1-72
+src/mlip_autopipec/__init__.py                            0      0   100%
+src/mlip_autopipec/configs/__init__.py                    0      0   100%
+src/mlip_autopipec/data/__init__.py                       0      0   100%
+src/mlip_autopipec/data/database.py                      29      0   100%
+src/mlip_autopipec/data/models.py                        14      0   100%
+src/mlip_autopipec/infrastructure/__init__.py             0      0   100%
+src/mlip_autopipec/infrastructure/process_runner.py       5      0   100%
+src/mlip_autopipec/main_cycle01.py                       11      1    91%   42
+src/mlip_autopipec/modules/__init__.py                    0      0   100%
+src/mlip_autopipec/modules/c_labelling_engine.py         31      0   100%
+src/mlip_autopipec/modules/d_training_engine.py          68      3    96%   56-57, 87
+src/mlip_autopipec/orchestrator_cycle01.py               29      0   100%
+src/mlip_autopipec/utils/__init__.py                      0      0   100%
+src/mlip_autopipec/utils/baseline_potentials.py          20      1    95%   32
+src/mlip_autopipec/utils/dft_utils.py                    42      2    95%   26-27
+-----------------------------------------------------------------------------------
+TOTAL                                                  1729   1487    14%
+======================== 14 passed, 1 warning in 16.76s ========================

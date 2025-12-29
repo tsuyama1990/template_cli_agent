@@ -1,11 +1,11 @@
 # ruff: noqa: D101, D102, D103, D104, D105, D107
-import subprocess
 import tempfile
 from pathlib import Path
 
 from ase.atoms import Atoms
 
 from mlip_autopipec.data.database import AseDB
+from mlip_autopipec.infrastructure.process_runner import ProcessRunner
 from mlip_autopipec.utils.dft_utils import generate_qe_input, parse_qe_output
 
 
@@ -16,6 +16,7 @@ class LabellingEngine:
         self,
         qe_command: str,
         db: AseDB,
+        process_runner: ProcessRunner,
         pseudo_potentials: dict[str, str],
         k_points: tuple[int, int, int] = (1, 1, 1),
         ecutwfc: float = 60.0,
@@ -25,6 +26,7 @@ class LabellingEngine:
         Args:
             qe_command: The command to execute Quantum Espresso (e.g., "pw.x").
             db: An instance of the AseDB wrapper.
+            process_runner: An instance of the ProcessRunner for executing commands.
             pseudo_potentials: A dictionary mapping element symbols to pseudopotential filenames.
             k_points: A tuple of 3 integers for the k-point grid.
             ecutwfc: The plane-wave cutoff energy in Ry.
@@ -33,6 +35,7 @@ class LabellingEngine:
             qe_command.split() if isinstance(qe_command, str) else qe_command
         )
         self._db = db
+        self._process_runner = process_runner
         self._pseudo_potentials = pseudo_potentials
         self._k_points = k_points
         self._ecutwfc = ecutwfc
@@ -59,12 +62,7 @@ class LabellingEngine:
             command = self._qe_command + ["-in", str(input_file)]
 
             # Run the QE calculation
-            process_result = subprocess.run(  # nosec
-                command,
-                capture_output=True,
-                text=True,
-                cwd=temp_path,
-            )
+            process_result = self._process_runner.run(command, cwd=temp_path)
             with open(output_file, "w") as f:
                 f.write(process_result.stdout)
 
