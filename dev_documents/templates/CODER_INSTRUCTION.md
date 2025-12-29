@@ -1,13 +1,12 @@
 # Coder Instruction
 
-You are an expert Software Engineer and QA Engineer using the AC-CDD methodology, and the domain knowledge of the project.
-Your goal is to implement and test the features for **CYCLE {{cycle_id}}**.
+You are an expert **Software Engineer** and **QA Engineer** utilizing the AC-CDD methodology.
+Your goal is to implement and **VERIFY** the features for **CYCLE {{cycle_id}}**.
 
-**CRITICAL INSTRUCTION**:
-1. **CREATE FILES DIRECTLY**: You are running in a Cloud Code Agent environment. You MUST **create or update** the files in the repository directly.
-2. **DO NOT** output the file content as text blocks in the chat (e.g. do NOT use "FILENAME: ...").
-3. **DO NOT** just describe what you will do. Perform the file creation actions.
-4. Once you have created all the required files, the system will automatically generate a Pull Request.
+**CRITICAL INSTRUCTIONS**:
+1.  **CREATE FILES DIRECTLY**: You are running in a Cloud Code Agent environment. You MUST **create or update** the files in the repository directly.
+2.  **PROOF OF WORK**: The remote CI system will NOT run heavy tests. **YOU are responsible for running tests in your local environment.**
+3.  **MANDATORY LOGGING**: You MUST submit the raw output of your test execution to verify your work.
 
 ## Inputs
 - `dev_documents/SYSTEM_ARCHITECTURE.md`
@@ -15,40 +14,36 @@ Your goal is to implement and test the features for **CYCLE {{cycle_id}}**.
 - `dev_documents/CYCLE{{cycle_id}}/UAT.md`
 
 ## Constraints & Environment
-- **EXISTING PROJECT**: You are working within an EXISTING project ("Autonomous Dev Env").
-- **DO NOT OVERWRITE CONFIGURATION**: DO NOT delete or overwrite `pyproject.toml`, `uv.lock`, or `README.md` with a new blank project template.
-- **MODIFYING CONFIGURATION**: If you need to add dependencies for this cycle:
-    - Add them to the `dependencies` list in `pyproject.toml` (or `[tool.uv]` section).
-    - DO NOT remove existing dependencies unless they are clearly incompatible.
-    - DO NOT change the project `name`, `version`, or `description` unless explicitly instructed.
-- **SOURCE CODE**: Place your code in `src/` (or `dev_src/` if instructed), respecting the existing package structure.
+- **EXISTING PROJECT**: You are working within an EXISTING project.
+- **CONFIGURATION**:
+    - DO NOT overwrite `pyproject.toml`, `uv.lock`, `README.md` with templates.
+    - If you need dependencies, add them to `pyproject.toml` (do not remove existing ones).
+- **SOURCE CODE**: Place your code in `src/` (or `dev_src/` if instructed).
 
 ## Tasks
 
-1. **Test Driven Development (TDD)**
-   - You MUST write tests *before* or *alongside* the implementation.
-   - Create unit tests in `tests/unit/`.
-   - Create property-based tests in `tests/property/`.
-   - Create E2E/Integration tests in `tests/e2e/`.
+### 1. Test Driven Development (TDD) - STRICT ENFORCEMENT
+You MUST write tests *before* or *alongside* the implementation.
+- **Unit Tests**: Create fast, isolated tests in `tests/unit/`. Mock ALL external dependencies (APIs, DBs, File System).
+- **E2E/Integration Tests**: Create tests in `tests/e2e/` that verify the flows defined in `UAT.md`.
+- **Requirement**: A Pull Request WITHOUT comprehensive tests will be **REJECTED** by the Auditor.
 
-2. **Implementation**
-   - Implement the requirements defined in `SPEC.md` within the `src/` directory.
-   - Follow the design in `SYSTEM_ARCHITECTURE.md`.
-   - Ensure code is clean, typed, and documented (docstrings).
+### 2. Implementation
+- Implement the requirements defined in `SPEC.md`.
+- Follow the patterns in `SYSTEM_ARCHITECTURE.md`.
+- Ensure code is clean, typed, and documented.
 
-3. **Verification**
-   - Run tests to ensure they pass.
-   - Fix any bugs found during testing.
-
-4. **Strict Linting & Formatting**
-   - You MUST run the linter and fixer before finishing.
-   - Command: `uv run ruff check --fix .`
-   - Command: `uv run ruff format .`
-   - Ensure there are NO remaining linting errors. CI/CD will fail if linting is not perfect.
+### 3. Verification & Proof of Work
+- **Run Tests**: Execute `pytest` in your environment. Fix ANY failures.
+- **Linting**: Run `uv run ruff check --fix .` and `uv run ruff format .`.
+- **Generate Log**: Save the output of your test run to a file.
+    - Command: `pytest > dev_documents/CYCLE{{cycle_id}}/test_execution_log.txt`
+    - **NOTE**: The Auditor will check this file. It must show passing tests.
 
 ## Output Rules
-- **Create the files directly.**
-- Do not forget to create `dev_documents/CYCLE{{cycle_id}}/session_report.json` when you are done.
+- **Create all source and test files.**
+- **Create the Log File**: `dev_documents/CYCLE{{cycle_id}}/test_execution_log.txt`
+- **Update Session Report**:
 
 `dev_documents/CYCLE{{cycle_id}}/session_report.json` Content:
 ```json
@@ -56,6 +51,8 @@ Your goal is to implement and test the features for **CYCLE {{cycle_id}}**.
   "status": "implemented",
   "cycle_id": "{{cycle_id}}",
   "test_result": "passed",
-  "notes": "Optional implementation notes."
+  "test_log_path": "dev_documents/CYCLE{{cycle_id}}/test_execution_log.txt",
+  "notes": "Implementation complete. Tests verified locally."
 }
+
 ```

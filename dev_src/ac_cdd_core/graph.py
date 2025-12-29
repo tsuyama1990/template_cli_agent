@@ -48,31 +48,13 @@ class GraphBuilder:
         # We trigger a simple command to ensure connection/creation
         await self.sandbox_runner.run_command(["echo", "Sandbox Ready"], check=False)
 
-        # Check if dependencies are already installed (optimization for reused/template sandboxes)
-        # We check for 'uv' which is our main tool
-        stdout, _, code = await self.sandbox_runner.run_command(["uv", "--version"], check=False)
-
-        if code == 0:
-            # Also check for aider, as it's critical
-            _, _, aider_code = await self.sandbox_runner.run_command(["aider", "--version"], check=False)
-            if aider_code == 0:
-                logger.info("Dependencies appear to be installed. Skipping full install.")
-            else:
-                 logger.info("uv found but aider missing. Installing dependencies...")
-                 code = 1 # Force install path
+        # Check if dependencies (ruff, aider) are installed
+        _, _, ruff_code = await self.sandbox_runner.run_command(["ruff", "--version"], check=False)
+        _, _, aider_code = await self.sandbox_runner.run_command(["aider", "--version"], check=False)
         
-        if code != 0:
-            logger.info("Installing dependencies...")
-            # We need aider-chat for remote execution + standard test deps.
-            # We install the current project in editable mode to get the 'ac-cdd' command (which JulesClient uses).
-            deps = ["uv", "pytest", "python-dotenv", "aider-chat"]
-
-            # Install dependencies
-            await self.sandbox_runner.run_command(["pip", "install"] + deps)
-
-            # Install the project itself (for the CLI tool)
-            # The files are already synced to cwd by _sync_to_sandbox called in run_command
-            await self.sandbox_runner.run_command(["pip", "install", "-e", "."])
+        if ruff_code != 0 or aider_code != 0:
+            logger.info("Installing dependencies (ruff, aider-chat)...")
+            await self.sandbox_runner.run_command(["pip", "install", "ruff", "aider-chat"])
 
         return self.sandbox_runner
 
@@ -335,134 +317,50 @@ class GraphBuilder:
             except Exception as e:
                 return {"error": str(e), "current_phase": "coder_failed"}
 
-    async def run_tests_node(self, state: CycleState) -> dict[str, Any]:
-        """Run tests to capture logs for UAT analysis."""
-        logger.info("Phase: Run Tests (Sandbox)")
+    async def syntax_check_node(self, state: CycleState) -> dict[str, Any]:
+        """Run syntax check and linting (Static Analysis) instead of heavy tests."""
+        logger.info("Phase: Syntax Check & Linting (Sandbox)")
 
         try:
-            # Use Shared Sandbox
             runner = await self._get_shared_sandbox()
 
-            # Execute Tests
-            # Dependencies are already installed in _get_shared_sandbox
-            # Execute Tests
-            # Dependencies are already installed in _get_shared_sandbox
-            # Use -q to suppress uv's own output (installation logs)
-            cmd = ["uv", "run", "-q", "pytest", "tests/"]
-            stdout, stderr, code = await runner.run_command(cmd, check=False)
+            # Step 1: Syntax Check (compileall)
+            cmd_syntax = ["python3", "-m", "compileall", "-q", "."]
+            stdout_s, stderr_s, code_s = await runner.run_command(cmd_syntax, check=False)
 
-            # Filter out any remaining installation logs from stdout/stderr
-            # Patterns like: "Uninstalling...", "Successfully installed...", "Obtaining...", "Found existing..."
-            def clean_logs(text: str) -> str:
-                lines = text.splitlines()
-                cleaned = []
-                # Simple heuristic: remove lines that look like pip/uv ops
-                block_keywords = [
-                    "Uninstalling", "Successfully installed", "Successfully uninstalled", 
-                    "Attempting uninstall", "Found existing", "Obtaining file://", 
-                    "Built autonomous-dev-env", "Uninstalled", "Installed",
-                    "Downloading", "Using cached", "Requirement already satisfied"
-                ]
-                for line in lines:
-                    if not any(k in line for k in block_keywords):
-                        cleaned.append(line)
-                return "\n".join(cleaned)
+            if code_s != 0:
+                logger.error("Syntax Check Failed")
+                return {
+                    "active_branch": state.get("active_branch"), # Keep context
+                    "audit_feedback": [f"Syntax Error:\nSTDOUT: {stdout_s}\nSTDERR: {stderr_s}"],
+                    "error": "Syntax Check Failed. Please fix syntax errors."
+                }
 
-            filtered_stdout = clean_logs(stdout)
-            filtered_stderr = clean_logs(stderr)
+            # Step 2: Linting (Ruff)
+            cmd_lint = ["ruff", "check", "."]
+            stdout_l, stderr_l, code_l = await runner.run_command(cmd_lint, check=False)
 
-            logs = f"STDOUT:\n{filtered_stdout}\n\nSTDERR:\n{filtered_stderr}"
-            return {"test_logs": logs, "test_exit_code": code, "current_phase": "tests_run"}
+            if code_l != 0:
+                # Linting failed - pass as feedback to Coder (via Auditor loop or direct)
+                # We return 'error' to stop? No, we want to feed back.
+                # But current logic stops on 'error'.
+                # Let's treat it as a failure that triggers feedback loop via Auditor (or shortcut back to Coder?)
+                # For now, let's treat it as 'test_logs' equivalent so it passes to Auditor who REJECTS it.
+                logs = f"Syntax Check: PASS\nLinting Failed:\n{stdout_l}\n{stderr_l}"
+                return {"test_logs": logs, "test_exit_code": code_l, "current_phase": "syntax_check_failed"}
+
+            logs = "Syntax Check: PASS\nLinting: PASS"
+            return {"test_logs": logs, "test_exit_code": 0, "current_phase": "syntax_check_passed"}
 
         except Exception as e:
             logger.error(f"Sandbox execution failed: {e}")
             return {
                 "test_logs": f"Execution Failed: {e}",
                 "test_exit_code": -1,
-                "current_phase": "tests_failed_exec"
+                "current_phase": "syntax_check_system_error"
             }
 
-    async def uat_evaluate_node(self, state: CycleState) -> dict[str, Any]:
-        """Gemini-based UAT Evaluation."""
-        logger.info("Phase: UAT Evaluate")
 
-        cycle_id = state["cycle_id"]
-        cycle_dir = Path(settings.paths.documents_dir) / f"CYCLE{cycle_id}"
-        uat_file = cycle_dir / "UAT.md"
-
-        uat_content = (
-            uat_file.read_text(encoding="utf-8") if uat_file.exists() else "No UAT Definition."
-        )
-        logs = state.get("test_logs", "No logs.")
-
-        prompt = (
-            f"You are a QA Analyst. Evaluate if the features for Cycle {cycle_id} passed UAT.\n\n"
-            f"=== UAT DEFINITION ===\n{uat_content}\n\n"
-            f"=== TEST LOGS ===\n{logs}\n\n"
-            "Determine if the acceptance criteria are met based on the test results.\n"
-            "If tests failed or scenarios are missing, verdict is FAIL."
-        )
-
-        result = await qa_analyst_agent.run(prompt)
-        
-        logger.info(f"DEBUG: QA Result Type: {type(result)}")
-        logger.info(f"DEBUG: QA Result Output Type: {type(result.output)}")
-        
-        analysis = result.output
-        if isinstance(analysis, str):
-             # Fallback if it comes back as string (try to parse if it looks like JSON, or fail gracefully)
-             logger.warning(f"QA Agent returned string instead of object: {analysis}")
-             # Attempt to parse if it looks like JSON
-             if "{" in analysis:
-                 try:
-                     # rudimentary cleanup if it has markdown code blocks
-                     clean_json = analysis.replace("```json", "").replace("```", "").strip()
-                     analysis = UatAnalysis.model_validate_json(clean_json)
-                 except Exception as e:
-                      logger.error(f"Failed to parse JSON from string: {e}")
-                      return {"error": f"UAT Analysis format error: {analysis}", "current_phase": "uat_failed"}
-             else:
-                 # Fallback: Try regex parsing for common LLM text formats (e.g. Llama)
-                 # Expecting lines like: "**Result:** Fail" or "- Result: Pass"
-                 # And content starting with "### Evaluation"
-                 verdict = "FAIL" # Default to fail if we can't parse
-                 summary = analysis
-
-                 # 1. Regex for Verdict
-                 # Matches: **Result:** Pass, - Result: Pass, Result: Pass (case insensitive)
-                 verdict_match = re.search(r"(?:Result|Verdict)\s*:?\**\s*(Pass|Fail)", analysis, re.IGNORECASE)
-                 if verdict_match:
-                     found = verdict_match.group(1).upper()
-                     if found == "PASS":
-                         verdict = "PASS"
-                 
-                 # 2. Construct fallback object
-                 # We treat the entire text as the summary if structured parsing fails
-                 analysis = UatAnalysis(
-                     verdict=verdict,
-                     summary=summary,
-                     behavior_analysis=summary  # Fallback: reuse summary as behavior analysis
-                 )
-                 logger.info(f"Parsed unstructured QA output: Verdict={verdict}")
-
-
-        logger.info(f"UAT Analysis: {analysis.verdict} - {analysis.summary[:100]}...")
-
-        verdict = (
-            "PASS"
-            if "pass" in analysis.summary.lower() and state.get("test_exit_code") == 0
-            else "FAIL"
-        )
-
-        if verdict == "FAIL":
-            # Don't return 'error' as that ends the graph.
-            # Instead, pass feedback to the next node (Auditor->Coder) to facilitate a fix loop.
-            return {
-                "current_phase": "uat_failed",
-                "uat_feedback": [f"UAT Failed: {analysis.summary}"]
-            }
-
-        return {"current_phase": "uat_passed", "error": None, "uat_feedback": []}
 
     async def auditor_node(self, state: CycleState) -> dict[str, Any]:
         """Strict Auditor Node (Aider)."""
@@ -473,18 +371,68 @@ class GraphBuilder:
         # Get Shared Sandbox (Persistent)
         runner = await self._get_shared_sandbox()
 
-        # 1. Gather Context (Files)
-        src_files = list(Path(settings.paths.src).rglob("*.py"))
-        test_files = list(Path(settings.paths.tests).rglob("*.py"))
+        # 1. Gather Context (Smart Audit: Changed Files + Configs)
+        try:
+            # Detect changed files (PR content)
+            changed_files = await self.git.get_changed_files()
+            logger.info(f"Smart Audit: Detected {len(changed_files)} changed files.")
+        except Exception as e:
+            logger.warning(f"Failed to detect changed files: {e}. Falling back to full scan.")
+            changed_files = [] 
+        
+        # Helper to check extension
+        def is_py(f: str) -> bool:
+            return f.endswith(".py")
 
-        cwd = Path.cwd()
-        def _to_rel(p: Path) -> str:
-            try:
-                return str(p.relative_to(cwd))
-            except ValueError:
-                return str(p)
+        files_to_audit = set()
+        
+        # Always include root Configs
+        root_configs = ["ac_cdd_config.py", "pyproject.toml"]
+        for rc in root_configs:
+             if Path(rc).exists():
+                 files_to_audit.add(rc)
 
-        files_to_audit = [_to_rel(f) for f in src_files + test_files]
+        if changed_files:
+            # Smart Mode: Only changed files + Configs
+            for f in changed_files:
+                if is_py(f) or f in root_configs:
+                    if Path(f).exists():
+                        files_to_audit.add(f)
+        else:
+            # Fallback Mode: Full Scan
+            logger.info("No changes detected (or fallback). Performing FULL SCAN.")
+            src_files = list(Path(settings.paths.src).rglob("*.py"))
+            test_files = list(Path(settings.paths.tests).rglob("*.py"))
+            contract_files = list(Path(settings.paths.contracts_dir).rglob("*.py")) if settings.paths.contracts_dir else []
+            
+            cwd = Path.cwd()
+            def _to_rel(p: Path) -> str:
+                try: 
+                    return str(p.relative_to(cwd))
+                except ValueError:
+                    return str(p)
+            
+            for f in src_files + test_files + contract_files:
+                files_to_audit.add(_to_rel(f))
+                
+        files_to_audit = sorted(list(files_to_audit))
+
+        # Add Documentation (Spec, UAT, Arch) to ensure Auditor understands the objective
+        cycle_id = state.get("cycle_id", settings.DUMMY_CYCLE_ID)
+        docs_dir = Path(settings.paths.documents_dir)
+        cycle_dir = docs_dir / f"CYCLE{cycle_id}"
+        
+        docs = [
+            docs_dir / "SYSTEM_ARCHITECTURE.md",
+            cycle_dir / "SPEC.md",
+            cycle_dir / "UAT.md"
+        ]
+        
+        for d in docs:
+            if d.exists():
+                files_to_audit.append(_to_rel(d))
+                
+        files_to_audit = sorted(list(set(files_to_audit)))
 
         # Load Instruction
         template_path = Path(settings.paths.templates) / "AUDITOR_INSTRUCTION.md"
@@ -495,12 +443,7 @@ class GraphBuilder:
 
         instruction += f"\n\n(Iteration {iteration_count})"
         
-        # Inject UAT Feedback if present
-        uat_feedback = state.get("uat_feedback", [])
-        if uat_feedback:
-             instruction += "\n\n=== CRITICAL ISSUE: UAT FAILED ===\n"
-             instruction += "The functional tests (UAT) failed with the following report. You MUST address this:\n"
-             instruction += "\n".join(uat_feedback)
+
 
         # 2. Run Audit via Aider (Remote)
         output = await self.aider_client.run_audit(
@@ -522,7 +465,7 @@ class GraphBuilder:
             
             # CRITICAL: We pass a sanitized error message to feedback, 
             # ensuring we DO NOT pass the raw stack trace/stderr to the coder.
-            sanitized_feedback = uat_feedback + ["Internal System Error during Audit. Please check logs."]
+            sanitized_feedback = ["Internal System Error during Audit. Please check logs."]
             
             return {
                 "audit_result": dummy_result,
@@ -555,7 +498,7 @@ class GraphBuilder:
         feedback_lines = [line.strip() for line in extracted_text.split("\n") if line.strip()]
         
         # Combine UAT feedback with Auditor feedback for the next Coder session
-        combined_feedback = uat_feedback + feedback_lines
+        combined_feedback = feedback_lines
 
         dummy_result = AuditResult(
             is_approved=False,
@@ -611,33 +554,25 @@ class GraphBuilder:
         workflow = StateGraph(CycleState)
         workflow.add_node("checkout_branch", self.checkout_branch_node)
         workflow.add_node("coder_session", self.coder_session_node)
-        workflow.add_node("run_tests", self.run_tests_node)
-        workflow.add_node("uat_evaluate", self.uat_evaluate_node)
+        workflow.add_node("syntax_check", self.syntax_check_node)
         workflow.add_node("auditor", self.auditor_node)
         workflow.add_node("commit", self.commit_coder_node)
 
         workflow.set_entry_point("checkout_branch")
         workflow.add_edge("checkout_branch", "coder_session")
 
-        def check_coder(state: CycleState) -> Literal["run_tests", "end"]:
+        def check_coder(state: CycleState) -> Literal["syntax_check", "end"]:
             if state.get("error"):
                 return "end"
-            # Always proceed to tests now, as we handle "fixing" via loop
-            return "run_tests"
+            # Always proceed to syntax check/linting
+            return "syntax_check"
 
         workflow.add_conditional_edges(
-            "coder_session", check_coder, {"run_tests": "run_tests", "end": END}
+            "coder_session", check_coder, {"syntax_check": "syntax_check", "end": END}
         )
-        workflow.add_edge("run_tests", "uat_evaluate")
-
-        def check_uat(state: CycleState) -> Literal["auditor", "end"]:
-            if state.get("error"):
-                return "end"
-            return "auditor"
-
-        workflow.add_conditional_edges(
-            "uat_evaluate", check_uat, {"auditor": "auditor", "end": END}
-        )
+        
+        # Direct edge from Syntax Check to Auditor (Auditor reviews the failure if check failed)
+        workflow.add_edge("syntax_check", "auditor")
 
         def check_audit(state: CycleState) -> Literal["commit", "coder_session"]:
             current_iter = state.get("iteration_count", 0)

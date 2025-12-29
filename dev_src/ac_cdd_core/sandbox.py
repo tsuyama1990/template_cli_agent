@@ -49,6 +49,7 @@ class SandboxRunner:
         )
 
         # Initial setup: Sync files FIRST, then install dependencies
+        # (Crucial for lightweight setup where we might rely on local configs, though here we just install ruff)
         await self._sync_to_sandbox(self.sandbox)
 
         if settings.sandbox.install_cmd:

@@ -96,6 +96,33 @@ class GitManager:
         """Returns the diff between HEAD and target branch."""
         return await self._run_git(["diff", f"{target_branch}...HEAD"])
 
+    async def get_changed_files(self, base_branch: str = "main") -> list[str]:
+        """
+        Returns a list of unique file paths that have changed (Committed, Staged, Unstaged, Untracked).
+        """
+        files = set()
+        
+        # 1. Diff against base branch (Committed vs Base)
+        try:
+            out = await self._run_git(["diff", "--name-only", f"{base_branch}...HEAD"], check=False)
+            if out: files.update(out.splitlines())
+        except Exception:
+            pass 
+            
+        # 2. Staged
+        out = await self._run_git(["diff", "--name-only", "--cached"], check=False)
+        if out: files.update(out.splitlines())
+        
+        # 3. Unstaged
+        out = await self._run_git(["diff", "--name-only"], check=False)
+        if out: files.update(out.splitlines())
+        
+        # 4. Untracked
+        out = await self._run_git(["ls-files", "--others", "--exclude-standard"], check=False)
+        if out: files.update(out.splitlines())
+        
+        return sorted(list(files))
+
     async def merge_pr(self, pr_url: str) -> None:
         """
         Merges a Pull Request using GitHub CLI.
