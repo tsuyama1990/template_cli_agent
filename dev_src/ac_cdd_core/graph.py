@@ -1,14 +1,12 @@
 import json
-import re
 from pathlib import Path
 from typing import Any, Literal
 
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from .agents import qa_analyst_agent
 from .config import settings
-from .domain_models import AuditResult, UatAnalysis
+from .domain_models import AuditResult
 from .sandbox import SandboxRunner
 from .service_container import ServiceContainer
 from .services.aider_client import AiderClient
@@ -50,16 +48,22 @@ class GraphBuilder:
 
         # Check if dependencies (ruff, aider) are installed
         _, _, ruff_code = await self.sandbox_runner.run_command(["ruff", "--version"], check=False)
-        _, _, aider_code = await self.sandbox_runner.run_command(["aider", "--version"], check=False)
-        
+        _, _, aider_code = await self.sandbox_runner.run_command(
+            ["aider", "--version"], check=False
+        )
+
         if ruff_code != 0 or aider_code != 0:
             logger.info("Installing dependencies (ruff, aider-chat)...")
             await self.sandbox_runner.run_command(["pip", "install", "ruff", "aider-chat"])
 
         # Init Git Repo for Aider (to avoid warnings and enable git-aware features)
         await self.sandbox_runner.run_command(["git", "init"], check=False)
-        await self.sandbox_runner.run_command(["git", "config", "user.email", "bot@ac-cdd.com"], check=False)
-        await self.sandbox_runner.run_command(["git", "config", "user.name", "AC-CDD Bot"], check=False)
+        await self.sandbox_runner.run_command(
+            ["git", "config", "user.email", "bot@ac-cdd.com"], check=False
+        )
+        await self.sandbox_runner.run_command(
+            ["git", "config", "user.name", "AC-CDD Bot"], check=False
+        )
         await self.sandbox_runner.run_command(["git", "add", "."], check=False)
         await self.sandbox_runner.run_command(["git", "commit", "-m", "init"], check=False)
 
@@ -97,6 +101,7 @@ class GraphBuilder:
 
         # Input: user requirements (ALL_SPEC.md)
         cwd = Path.cwd()
+
         def _to_rel(p: Path) -> str:
             try:
                 return str(p.relative_to(cwd))
@@ -184,10 +189,10 @@ class GraphBuilder:
 
         await self.git.ensure_clean_state()
         branch = await self.git.create_working_branch("feat", f"cycle{cycle_id}")
-        
+
         # Initialize iteration count (default to 0 if not provided in start state)
         current_iter = state.get("iteration_count", 0)
-        
+
         return {
             "current_phase": "branch_ready",
             "active_branch": branch,
@@ -210,6 +215,7 @@ class GraphBuilder:
         arch_file = Path(settings.paths.documents_dir) / "SYSTEM_ARCHITECTURE.md"
 
         cwd = Path.cwd()
+
         def _to_rel(p: Path) -> str:
             try:
                 return str(p.relative_to(cwd))
@@ -219,9 +225,11 @@ class GraphBuilder:
         # Determine if this is Initial Creation (Jules) or Fix Loop (Aider)
         if iteration_count > 1 and state.get("jules_session_name"):
             # --- FIX LOOP (Jules Reuse) ---
-            logger.info(f"Mode: Jules Fixer (Refinement/Repair) - Resuming Session {state['jules_session_name']}")
+            logger.info(
+                f"Mode: Jules Fixer (Refinement/Repair) - Resuming Session {state['jules_session_name']}"
+            )
             audit_feedback = state.get("audit_feedback", [])
-            
+
             # Get Shared Sandbox (Persistent)
             runner = await self._get_shared_sandbox()
 
@@ -234,7 +242,7 @@ class GraphBuilder:
                     f"Update the code and the PR."
                 )
             else:
-                 instruction = (
+                instruction = (
                     "The previous audit passed contextually, but we are doing another iteration.\n"
                     "Please review and optimize the code further."
                 )
@@ -242,26 +250,28 @@ class GraphBuilder:
             try:
                 # Continue Jules Session
                 result = await self.jules_client.continue_session(
-                    session_name=state["jules_session_name"],
-                    prompt=instruction
+                    session_name=state["jules_session_name"], prompt=instruction
                 )
-                
+
                 pr_url = result.get("pr_url")
                 if pr_url:
                     logger.info(f"Jules updated PR: {pr_url}")
                     # Switch to the PR branch to test the changes
                     await self.git.checkout_pr(pr_url)
-                    
+
                     return {
                         "coder_report": result,
                         "current_phase": "coder_complete",
                         "iteration_count": iteration_count,
                         # maintain session info
                         "jules_session_name": state["jules_session_name"],
-                        "pr_url": pr_url
+                        "pr_url": pr_url,
                     }
                 else:
-                    return {"error": "Jules finished but lost track of PR.", "current_phase": "coder_failed"}
+                    return {
+                        "error": "Jules finished but lost track of PR.",
+                        "current_phase": "coder_failed",
+                    }
 
             except Exception as e:
                 return {"error": str(e), "current_phase": "coder_failed"}
@@ -299,7 +309,7 @@ class GraphBuilder:
 
                 if pr_url:
                     logger.info(f"Coder PR created: {pr_url}")
-                    
+
                     # Switch to the PR branch to test the changes
                     # DO NOT MERGE YET (as per user request)
                     await self.git.checkout_pr(pr_url)
@@ -338,9 +348,9 @@ class GraphBuilder:
             if code_s != 0:
                 logger.error("Syntax Check Failed")
                 return {
-                    "active_branch": state.get("active_branch"), # Keep context
+                    "active_branch": state.get("active_branch"),  # Keep context
                     "audit_feedback": [f"Syntax Error:\nSTDOUT: {stdout_s}\nSTDERR: {stderr_s}"],
-                    "error": "Syntax Check Failed. Please fix syntax errors."
+                    "error": "Syntax Check Failed. Please fix syntax errors.",
                 }
 
             # Step 2: Linting (Ruff)
@@ -354,7 +364,11 @@ class GraphBuilder:
                 # Let's treat it as a failure that triggers feedback loop via Auditor (or shortcut back to Coder?)
                 # For now, let's treat it as 'test_logs' equivalent so it passes to Auditor who REJECTS it.
                 logs = f"Syntax Check: PASS\nLinting Failed:\n{stdout_l}\n{stderr_l}"
-                return {"test_logs": logs, "test_exit_code": code_l, "current_phase": "syntax_check_failed"}
+                return {
+                    "test_logs": logs,
+                    "test_exit_code": code_l,
+                    "current_phase": "syntax_check_failed",
+                }
 
             logs = "Syntax Check: PASS\nLinting: PASS"
             return {"test_logs": logs, "test_exit_code": 0, "current_phase": "syntax_check_passed"}
@@ -364,10 +378,8 @@ class GraphBuilder:
             return {
                 "test_logs": f"Execution Failed: {e}",
                 "test_exit_code": -1,
-                "current_phase": "syntax_check_system_error"
+                "current_phase": "syntax_check_system_error",
             }
-
-
 
     async def auditor_node(self, state: CycleState) -> dict[str, Any]:
         """Strict Auditor Node (Aider)."""
@@ -385,19 +397,19 @@ class GraphBuilder:
             logger.info(f"Smart Audit: Detected {len(changed_files)} changed files.")
         except Exception as e:
             logger.warning(f"Failed to detect changed files: {e}. Falling back to full scan.")
-            changed_files = [] 
-        
+            changed_files = []
+
         # Helper to check extension
         def is_py(f: str) -> bool:
             return f.endswith(".py")
 
         files_to_audit = set()
-        
+
         # Always include root Configs
         root_configs = ["ac_cdd_config.py", "pyproject.toml"]
         for rc in root_configs:
-             if Path(rc).exists():
-                 files_to_audit.add(rc)
+            if Path(rc).exists():
+                files_to_audit.add(rc)
 
         if changed_files:
             # Smart Mode: Only changed files + Configs
@@ -410,35 +422,36 @@ class GraphBuilder:
             logger.info("No changes detected (or fallback). Performing FULL SCAN.")
             src_files = list(Path(settings.paths.src).rglob("*.py"))
             test_files = list(Path(settings.paths.tests).rglob("*.py"))
-            contract_files = list(Path(settings.paths.contracts_dir).rglob("*.py")) if settings.paths.contracts_dir else []
-            
+            contract_files = (
+                list(Path(settings.paths.contracts_dir).rglob("*.py"))
+                if settings.paths.contracts_dir
+                else []
+            )
+
             cwd = Path.cwd()
+
             def _to_rel(p: Path) -> str:
-                try: 
+                try:
                     return str(p.relative_to(cwd))
                 except ValueError:
                     return str(p)
-            
+
             for f in src_files + test_files + contract_files:
                 files_to_audit.add(_to_rel(f))
-                
+
         files_to_audit = sorted(list(files_to_audit))
 
         # Add Documentation (Spec, UAT, Arch) to ensure Auditor understands the objective
         cycle_id = state.get("cycle_id", settings.DUMMY_CYCLE_ID)
         docs_dir = Path(settings.paths.documents_dir)
         cycle_dir = docs_dir / f"CYCLE{cycle_id}"
-        
-        docs = [
-            docs_dir / "SYSTEM_ARCHITECTURE.md",
-            cycle_dir / "SPEC.md",
-            cycle_dir / "UAT.md"
-        ]
-        
+
+        docs = [docs_dir / "SYSTEM_ARCHITECTURE.md", cycle_dir / "SPEC.md", cycle_dir / "UAT.md"]
+
         for d in docs:
             if d.exists():
                 files_to_audit.append(_to_rel(d))
-                
+
         files_to_audit = sorted(list(set(files_to_audit)))
 
         # Load Instruction
@@ -449,8 +462,6 @@ class GraphBuilder:
             instruction = "Review the code strictly."
 
         instruction += f"\n\n(Iteration {iteration_count})"
-        
-
 
         # 2. Run Audit via Aider (Remote)
         output = await self.aider_client.run_audit(
@@ -462,24 +473,24 @@ class GraphBuilder:
         # Check for System Error (Infrastructure Failure)
         if output.startswith("SYSTEM_ERROR"):
             logger.error(f"AUDIT SYSTEM ERROR DETECTED: {output}")
-            
+
             # Create a clean failure result
             dummy_result = AuditResult(
                 is_approved=False,
                 critical_issues=["Internal System Error during Audit. Please check logs."],
                 suggestions=[],
             )
-            
-            # CRITICAL: We pass a sanitized error message to feedback, 
+
+            # CRITICAL: We pass a sanitized error message to feedback,
             # ensuring we DO NOT pass the raw stack trace/stderr to the coder.
             sanitized_feedback = ["Internal System Error during Audit. Please check logs."]
-            
+
             return {
                 "audit_result": dummy_result,
                 "current_phase": "audit_system_error",
                 "audit_feedback": sanitized_feedback,
                 # Optionally set error to help debugging, though check_audit implementation dictates flow
-                "error": "Audit System Error" 
+                "error": "Audit System Error",
             }
 
         # 3. Parse Output for Structured Report
@@ -487,7 +498,7 @@ class GraphBuilder:
         extracted_text = self.aider_client.parse_audit_report(output)
 
         feedback_lines = [line.strip() for line in extracted_text.split("\n") if line.strip()]
-        
+
         # Combine UAT feedback with Auditor feedback for the next Coder session
         combined_feedback = feedback_lines
 
@@ -561,7 +572,7 @@ class GraphBuilder:
         workflow.add_conditional_edges(
             "coder_session", check_coder, {"syntax_check": "syntax_check", "end": END}
         )
-        
+
         # Direct edge from Syntax Check to Auditor (Auditor reviews the failure if check failed)
         workflow.add_edge("syntax_check", "auditor")
 
