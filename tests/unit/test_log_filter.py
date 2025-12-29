@@ -1,6 +1,4 @@
 
-import pytest
-from ac_cdd_core.graph import GraphBuilder
 
 def test_clean_logs_logic():
     """

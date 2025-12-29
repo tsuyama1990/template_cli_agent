@@ -1,13 +1,14 @@
 import argparse
 import asyncio
 from pathlib import Path
+
+from ac_cdd_core.config import settings
+from ac_cdd_core.sandbox import SandboxRunner
+from ac_cdd_core.services.aider_client import AiderClient
+from ac_cdd_core.services.git_ops import GitManager
+from ac_cdd_core.services.jules_client import JulesClient
 from rich.console import Console
 from rich.panel import Panel
-from ac_cdd_core.config import settings
-from ac_cdd_core.services.git_ops import GitManager
-from ac_cdd_core.services.aider_client import AiderClient
-from ac_cdd_core.services.jules_client import JulesClient
-from ac_cdd_core.sandbox import SandboxRunner
 
 console = Console()
 
@@ -89,7 +90,7 @@ async def main():
             
         console.print("[bold green]Feedback sent successfully![/bold green]")
 
-    except Exception as e:
+    except Exception:
         console.print_exception()
     finally:
         # Cleanup

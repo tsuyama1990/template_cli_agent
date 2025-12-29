@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 class DFTResult(BaseModel):
     """
-    A Pydantic model to represent the results of a DFT calculation.
+    Data model for storing the results of a DFT calculation.
     """
     total_energy_ev: float
     forces: list[list[float]]
@@ -14,7 +14,7 @@ class DFTResult(BaseModel):
 
 class TrainingConfig(BaseModel):
     """
-    A Pydantic model for configuring the MLIP training process.
+    Data model for configuring an MLIP training run.
     """
     model_type: str
     learning_rate: float

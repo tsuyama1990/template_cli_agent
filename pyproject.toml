@@ -32,6 +32,7 @@ dependencies = [
     "pyyaml",
     "mace-torch",
     "click",
+    "torch-geometric",
 ]
 
 [tool.uv]
