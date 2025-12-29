@@ -34,3 +34,4 @@ class CycleState(TypedDict):
     # Session Persistence
     jules_session_name: str | None
     pr_url: str | None
+    resume_mode: bool  # If True, bypasses Coder and resumes from PR

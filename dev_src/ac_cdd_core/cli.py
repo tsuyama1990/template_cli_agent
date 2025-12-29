@@ -179,6 +179,7 @@ def run_cycle(
     cycle_id: Annotated[str, typer.Option("--id", help="Cycle ID (e.g., '01')")] = "01",
     auto: Annotated[bool, typer.Option(help="Run without manual confirmation")] = False,
     start_iter: Annotated[int, typer.Option("--start-iter", help="Force start at specific iteration (0=Creator, 1=Refiner)")] = 0,
+    resume_session: Annotated[str, typer.Option("--resume", help="Resume from existing Jules Session ID")] = None,
 ) -> None:
     """
     Run a Development Cycle.
@@ -205,6 +206,32 @@ def run_cycle(
 
         # Initialize state
         initial_state = CycleState(cycle_id=cycle_id, iteration_count=start_iter)
+        
+        # Resume Logic
+        if resume_session:
+            from .services.jules_client import JulesClient
+            
+            # Normalize ID
+            session_name = resume_session if resume_session.startswith("sessions/") else f"sessions/{resume_session}"
+            console.print(f"[bold cyan]Resuming Session: {session_name}[/bold cyan]")
+            
+            jules = JulesClient()
+            try:
+                # We reuse wait_for_completion to robustly check status and get PR
+                # It handles FAILED-but-PR cases too.
+                result = await jules.wait_for_completion(session_name)
+                
+                if result.get("status") == "success" and result.get("pr_url"):
+                    initial_state["resume_mode"] = True
+                    initial_state["pr_url"] = result["pr_url"]
+                    initial_state["jules_session_name"] = session_name
+                    console.print(f"[green]✓ Found PR: {result['pr_url']}[/green]")
+                else:
+                    console.print(f"[red]Cannot resume: Session not successful or no PR found.[/red]")
+                    sys.exit(1)
+            except Exception as e:
+                console.print(f"[red]Resume failed:[/red] {e}")
+                sys.exit(1)
 
         try:
             # We iterate through events to show progress if needed, or just invoke

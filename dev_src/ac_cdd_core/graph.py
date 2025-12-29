@@ -216,6 +216,26 @@ class GraphBuilder:
             except ValueError:
                 return str(p)
 
+        # RESUME BYPASS CHECK
+        if state.get("resume_mode") and state.get("pr_url"):
+            logger.info(f"RESUMING Session: {state.get('jules_session_name')}")
+            pr_url = state["pr_url"]
+            
+            # Ensure Sandbox is ready even if skipping Jules (for Syntax Check later)
+            runner = await self._get_shared_sandbox()
+            
+            # Checkout the PR
+            logger.info(f"Checking out PR: {pr_url}...")
+            await self.git.checkout_pr(pr_url)
+            
+            return {
+                "coder_report": {"pr_url": pr_url, "status": "resumed"},
+                "current_phase": "coder_complete_resumed",
+                "iteration_count": iteration_count,
+                "jules_session_name": state.get("jules_session_name"),
+                "pr_url": pr_url
+            }
+
         # Determine if this is Initial Creation (Jules) or Fix Loop (Aider)
         if iteration_count > 1 and state.get("jules_session_name"):
             # --- FIX LOOP (Jules Reuse) ---
