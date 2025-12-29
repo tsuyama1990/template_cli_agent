@@ -1,0 +1,67 @@
+
+     Program PWSCF v.6.5 (svn rev. 21129) starts on 12Jan2024 at 18:30:00
+
+     This program is part of the open-source Quantum ESPRESSO suite
+     for quantum simulation of materials; please cite
+         "P. Giannozzi et al., J. Phys.: Condens. Matter 21 395502 (2009);
+         "P. Giannozzi et al., J. Phys.: Condens. Matter 29 465901 (2017);
+         URL http://www.quantum-espresso.org",
+     in publications based on this work.
+
+     Parallel version (MPI), running on     1 processors
+
+     MPI processes distributed on     1 nodes
+     Waiting for input...
+     Reading input from standard input
+     Warning: card CELL_PARAMETERS {angstrom} is deprecated and will be removed in the future.
+              Use card CELL_PARAMETERS (angstrom) instead.
+
+     Current dimensions of program PWSCF are:
+     Max number of different atomic species (ntypx) = 10
+     Max number of atoms in the unit cell (natx) = 500
+     Max number of atomic wavefunctions (nbndx) = 5000
+     Max number of k-points (nkx) = 1000
+     Max number of G-vectors (nrxx) = 200000
+     Max number of G-vectors for augmentation charge (nr3x) = 200000
+
+     Self-consistent field calculation
+
+     iteration #  1     ecut= 40.00 Ry     beta= 0.01
+     mixing scheme: simple
+     c_bands:   1 eigenvalues not converged
+     total energy              =      -0.45205462 Ry
+     Harris-Foulkes estimate   =      -0.45205462 Ry
+     estimated scf accuracy    <       0.12933496 Ry
+
+     iteration #  2     ecut= 40.00 Ry     beta= 0.01
+     c_bands:   1 eigenvalues not converged
+     total energy              =      -0.45206260 Ry
+     Harris-Foulkes estimate   =      -0.45206260 Ry
+     estimated scf accuracy    <       0.00000732 Ry
+
+     ... many more iterations ...
+
+     iteration # 99     ecut= 40.00 Ry     beta= 0.01
+     c_bands:   1 eigenvalues not converged
+     total energy              =      -0.45206260 Ry
+     Harris-Foulkes estimate   =      -0.45206260 Ry
+     estimated scf accuracy    <       1.2E-09 Ry
+
+     iteration #100     ecut= 40.00 Ry     beta= 0.01
+     c_bands:   1 eigenvalues not converged
+     total energy              =      -0.45206260 Ry
+     Harris-Foulkes estimate   =      -0.45206260 Ry
+     estimated scf accuracy    <       1.1E-09 Ry
+
+     convergence NOT achieved after 100 iterations: stopping
+
+     The total energy is the sum of the following terms:
+
+     one-electron contribution =       0.51860829 Ry
+     hartree contribution      =       0.00000000 Ry
+     xc contribution           =      -0.42874136 Ry
+     ewald contribution        =      -0.54192953 Ry
+
+     JOB DONE.
+     total cpu time spent up to now is        1.2 secs
+     Program PWSCF v.6.5 stops on 12Jan2024 at 18:30:01

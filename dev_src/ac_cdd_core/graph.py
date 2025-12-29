@@ -1,14 +1,12 @@
 import json
-import re
 from pathlib import Path
 from typing import Any, Literal
 
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from .agents import qa_analyst_agent
 from .config import settings
-from .domain_models import AuditResult, UatAnalysis
+from .domain_models import AuditResult
 from .sandbox import SandboxRunner
 from .service_container import ServiceContainer
 from .services.aider_client import AiderClient
