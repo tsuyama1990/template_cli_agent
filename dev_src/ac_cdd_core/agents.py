@@ -72,12 +72,12 @@ def get_model(model_name: str) -> Any:
 
 
 # --- Agents ---
-# Auditor Agent is deprecated/removed in favor of AiderClient.
+# Auditor Agent is deprecated/removed in favor of LLMReviewer.
 
 # QA Analyst Agent
 qa_analyst_agent: Agent[Any, UatAnalysis] = Agent(
     model=get_model(settings.agents.qa_analyst_model),
-    system_prompt=settings.aider.qa_analyst,
+    system_prompt=settings.reviewer.qa_analyst,
 )
 
 

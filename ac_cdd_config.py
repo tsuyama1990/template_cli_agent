@@ -77,7 +77,7 @@ class SandboxConfig(BaseSettings):
     cwd: str = "/home/user/project"
     dirs_to_sync: list[str] = ["src", "tests", "contracts", "dev_documents", "dev_src"]
     files_to_sync: list[str] = ["pyproject.toml", "uv.lock", ".auditignore", "README.md", "ac_cdd_config.py"]
-    install_cmd: str = "pip install --no-cache-dir ruff aider-chat"
+    install_cmd: str = "pip install --no-cache-dir ruff"
     test_cmd: list[str] = ["uv", "run", "pytest"]
     lint_check_cmd: list[str] = ["uv", "run", "ruff", "check", "--fix", "."]
     type_check_cmd: list[str] = ["uv", "run", "mypy", "src/"]
@@ -90,7 +90,7 @@ class AgentsConfig(BaseSettings):
     auditor_model: str = Field(default="openrouter/google/gemini-pro-1.5", validation_alias="SMART_MODEL")
     qa_analyst_model: str = Field(default="openrouter/google/gemini-flash-1.5", validation_alias="FAST_MODEL")
 
-class AiderConfig(BaseSettings):
+class ReviewerConfig(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
     smart_model: str = Field(default="claude-3-5-sonnet", description="Model for editing code (Fixer)", validation_alias="SMART_MODEL")
     fast_model: str = Field(default="openrouter/google/gemini-flash-1.5", description="Model for reading/auditing code", validation_alias="FAST_MODEL")
@@ -134,7 +134,7 @@ class Settings(BaseSettings):
     tools: ToolsConfig = ToolsConfig()
     sandbox: SandboxConfig = SandboxConfig()
     agents: AgentsConfig = AgentsConfig()
-    aider: AiderConfig = AiderConfig()
+    reviewer: ReviewerConfig = ReviewerConfig()
     prompts: PromptsConfig = PromptsConfig()
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")

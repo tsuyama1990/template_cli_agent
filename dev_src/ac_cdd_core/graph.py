@@ -1,19 +1,17 @@
 import json
-import re
 from pathlib import Path
 from typing import Any, Literal
 
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from .agents import qa_analyst_agent
 from .config import settings
-from .domain_models import AuditResult, UatAnalysis
+from .domain_models import AuditResult
 from .sandbox import SandboxRunner
 from .service_container import ServiceContainer
-from .services.aider_client import AiderClient
 from .services.git_ops import GitManager
 from .services.jules_client import JulesClient
+from .services.llm_reviewer import LLMReviewer
 from .state import CycleState
 from .utils import logger
 
@@ -24,7 +22,7 @@ class GraphBuilder:
     def __init__(self, services: ServiceContainer):
         self.services = services
         self.jules_client = JulesClient()
-        self.aider_client = AiderClient()
+        self.llm_reviewer = LLMReviewer()
         self.git = GitManager()
         # Shared sandbox for the lifecycle of the graph execution (approx. one cycle)
         self.sandbox_runner: SandboxRunner | None = None
@@ -48,18 +46,21 @@ class GraphBuilder:
         # We trigger a simple command to ensure connection/creation
         await self.sandbox_runner.run_command(["echo", "Sandbox Ready"], check=False)
 
-        # Check if dependencies (ruff, aider) are installed
+        # Check if dependencies (ruff) are installed
         _, _, ruff_code = await self.sandbox_runner.run_command(["ruff", "--version"], check=False)
-        _, _, aider_code = await self.sandbox_runner.run_command(["aider", "--version"], check=False)
         
-        if ruff_code != 0 or aider_code != 0:
-            logger.info("Installing dependencies (ruff, aider-chat)...")
-            await self.sandbox_runner.run_command(["pip", "install", "ruff", "aider-chat"])
+        if ruff_code != 0:
+            logger.info("Installing dependencies (ruff)...")
+            await self.sandbox_runner.run_command(["pip", "install", "ruff"])
 
-        # Init Git Repo for Aider (to avoid warnings and enable git-aware features)
+        # Init Git Repo for tracking (still useful for some ops, but not for Aider anymore)
         await self.sandbox_runner.run_command(["git", "init"], check=False)
-        await self.sandbox_runner.run_command(["git", "config", "user.email", "bot@ac-cdd.com"], check=False)
-        await self.sandbox_runner.run_command(["git", "config", "user.name", "AC-CDD Bot"], check=False)
+        await self.sandbox_runner.run_command(
+            ["git", "config", "user.email", "bot@ac-cdd.com"], check=False
+        )
+        await self.sandbox_runner.run_command(
+            ["git", "config", "user.name", "AC-CDD Bot"], check=False
+        )
         await self.sandbox_runner.run_command(["git", "add", "."], check=False)
         await self.sandbox_runner.run_command(["git", "commit", "-m", "init"], check=False)
 
@@ -390,13 +391,13 @@ class GraphBuilder:
 
 
     async def auditor_node(self, state: CycleState) -> dict[str, Any]:
-        """Strict Auditor Node (Aider)."""
-        logger.info("Phase: Strict Auditor (Aider)")
+        """Strict Auditor Node (Direct LLM Review)."""
+        logger.info("Phase: Strict Auditor (Direct LLM)")
 
         iteration_count = state.get("iteration_count", 1)
 
         # Get Shared Sandbox (Persistent)
-        runner = await self._get_shared_sandbox()
+        _ = await self._get_shared_sandbox()
 
         # 1. Gather Context (Smart Audit: Changed Files + Configs)
         try:
@@ -437,7 +438,11 @@ class GraphBuilder:
             logger.info("No changes detected (or fallback). Performing FULL SCAN.")
             src_files = list(Path(settings.paths.src).rglob("*.py"))
             test_files = list(Path(settings.paths.tests).rglob("*.py"))
-            contract_files = list(Path(settings.paths.contracts_dir).rglob("*.py")) if settings.paths.contracts_dir else []
+            contract_files = (
+                list(Path(settings.paths.contracts_dir).rglob("*.py")) 
+                if settings.paths.contracts_dir 
+                else []
+            )
             
             for f in src_files + test_files + contract_files:
                 files_to_audit.add(_to_rel(f))
@@ -461,7 +466,28 @@ class GraphBuilder:
                 
         files_to_audit = sorted(list(set(files_to_audit)))
 
-        # Load Instruction
+        # 2. Read File Contents
+        # Since we are sending to LLM, we need the actual content.
+        # We can try reading from local disk (since we are synced) or from sandbox if needed.
+        # We assume local is up to date because we did sync/checkout operations.
+        files_content: dict[str, str] = {}
+        for f_path in files_to_audit:
+            try:
+                # Try reading from local first
+                base_cwd = settings.paths.cwd if hasattr(settings.paths, 'cwd') else Path.cwd()
+                p = Path(base_cwd) / f_path
+                # Fallback to simple Path(f_path) if relative to cwd
+                if not p.exists():
+                     p = Path(f_path)
+                
+                if p.exists():
+                    files_content[f_path] = p.read_text(encoding="utf-8", errors="replace")
+                else:
+                    logger.warning(f"File {f_path} not found locally for audit.")
+            except Exception as e:
+                logger.warning(f"Failed to read {f_path}: {e}")
+
+        # 3. Load Instruction
         template_path = Path(settings.paths.templates) / "AUDITOR_INSTRUCTION.md"
         if template_path.exists():
             instruction = template_path.read_text(encoding="utf-8")
@@ -470,46 +496,54 @@ class GraphBuilder:
 
         instruction += f"\n\n(Iteration {iteration_count})"
         
-
-
-        # 2. Run Audit via Aider (Remote)
-        output = await self.aider_client.run_audit(
-            files=files_to_audit, instruction=instruction, runner=runner
+        # 4. Run Audit via LLMReviewer (Direct API)
+        # Use FAST_MODEL by default for reading/audit as per config
+        model_to_use = settings.reviewer.fast_model
+        
+        output = await self.llm_reviewer.review_code(
+            files=files_content, 
+            instruction=instruction, 
+            model=model_to_use
         )
 
         logger.info(f"Audit Round {iteration_count} Complete.")
 
-        # Check for System Error (Infrastructure Failure)
+        # Check for System Error
         if output.startswith("SYSTEM_ERROR"):
             logger.error(f"AUDIT SYSTEM ERROR DETECTED: {output}")
-            
-            # Create a clean failure result
-            dummy_result = AuditResult(
-                is_approved=False,
-                critical_issues=["Internal System Error during Audit. Please check logs."],
-                suggestions=[],
-            )
-            
-            # CRITICAL: We pass a sanitized error message to feedback, 
-            # ensuring we DO NOT pass the raw stack trace/stderr to the coder.
-            sanitized_feedback = ["Internal System Error during Audit. Please check logs."]
-            
             return {
-                "audit_result": dummy_result,
+                "audit_result": AuditResult(
+                    is_approved=False, 
+                    critical_issues=["System Error"], 
+                    suggestions=[]
+                ),
                 "current_phase": "audit_system_error",
-                "audit_feedback": sanitized_feedback,
-                # Optionally set error to help debugging, though check_audit implementation dictates flow
-                "error": "Audit System Error" 
+                "audit_feedback": ["Internal System Error during Audit. Please check logs."],
+                "error": "Audit System Error"
             }
 
-        # 3. Parse Output for Structured Report
-        # Use shared parser from AiderClient
-        extracted_text = self.aider_client.parse_audit_report(output)
-
-        feedback_lines = [line.strip() for line in extracted_text.split("\n") if line.strip()]
+        # 5. Parse Output (Direct from LLM Response)
+        # We expect the LLM to follow the format in AUDITOR_INSTRUCTION.md
+        # Basic parsing: look for lines starting with "- " or structured blocks if requested.
+        # But wait, existing logic used `aider_client.parse_audit_report`.
+        # The prompt asks for:
+        # === AUDIT REPORT START ===
+        # ...
+        # === AUDIT REPORT END ===
         
-        # Combine UAT feedback with Auditor feedback for the next Coder session
-        combined_feedback = feedback_lines
+        marker_start = "=== AUDIT REPORT START ==="
+        marker_end = "=== AUDIT REPORT END ==="
+        
+        report_body = output
+        if marker_start in output:
+             report_body = output.split(marker_start, 1)[1]
+             if marker_end in report_body:
+                 report_body = report_body.split(marker_end, 1)[0]
+        
+        report_body = report_body.strip()
+        
+        # Simple line splitting for "issues" list context
+        feedback_lines = [line.strip() for line in report_body.split("\n") if line.strip()]
 
         dummy_result = AuditResult(
             is_approved=False,
@@ -520,7 +554,7 @@ class GraphBuilder:
         return {
             "audit_result": dummy_result,
             "current_phase": "audit_complete",
-            "audit_feedback": combined_feedback,
+            "audit_feedback": feedback_lines,
         }
 
     async def commit_coder_node(self, state: CycleState) -> dict[str, Any]:
