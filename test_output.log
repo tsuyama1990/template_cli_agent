@@ -1,0 +1,1489 @@
+Using CPython 3.12.12 interpreter at: /home/jules/.pyenv/versions/3.12.12/bin/python3
+Creating virtual environment at: .venv
+   Building autonomous-dev-env @ file:///app
+Downloading cryptography (4.3MiB)
+Downloading lupa (2.0MiB)
+Downloading pygments (1.2MiB)
+Downloading setuptools (1.1MiB)
+Downloading nvidia-cuda-nvrtc-cu12 (84.0MiB)
+Downloading nvidia-nvjitlink-cu12 (37.4MiB)
+Downloading nvidia-curand-cu12 (60.7MiB)
+Downloading virtualenv (5.7MiB)
+Downloading nvidia-cufile-cu12 (1.1MiB)
+Downloading scipy (34.0MiB)
+Downloading sympy (6.0MiB)
+Downloading zstandard (5.3MiB)
+Downloading nvidia-cusolver-cu12 (255.1MiB)
+Downloading hf-xet (3.2MiB)
+Downloading nvidia-cuda-cupti-cu12 (9.8MiB)
+Downloading tokenizers (3.1MiB)
+Downloading numpy (15.8MiB)
+Downloading nvidia-cudnn-cu12 (674.0MiB)
+Downloading nvidia-nvshmem-cu12 (118.9MiB)
+Downloading triton (162.6MiB)
+Downloading nvidia-cusparselt-cu12 (273.9MiB)
+Downloading fastavro (3.3MiB)
+Downloading nvidia-cublas-cu12 (566.8MiB)
+Downloading nvidia-cusparse-cu12 (274.9MiB)
+Downloading scikit-learn (8.5MiB)
+Downloading grpcio (5.6MiB)
+Downloading temporalio (11.6MiB)
+Downloading matplotlib (8.3MiB)
+Downloading transformers (11.4MiB)
+Downloading tree-sitter-languages (8.0MiB)
+Downloading networkx (2.0MiB)
+Downloading nvidia-nccl-cu12 (307.4MiB)
+Downloading h5py (4.9MiB)
+Downloading torch (858.1MiB)
+Downloading fonttools (4.7MiB)
+Downloading lancedb (37.4MiB)
+Downloading ruff (13.5MiB)
+Downloading beartype (1.3MiB)
+Downloading pydantic-core (1.9MiB)
+Downloading botocore (13.9MiB)
+Downloading ase (2.8MiB)
+Downloading mypy (13.0MiB)
+Downloading playwright (43.8MiB)
+Downloading pillow (6.7MiB)
+Downloading nvidia-cufft-cu12 (184.2MiB)
+Downloading pandas (11.8MiB)
+Downloading kiwisolver (1.4MiB)
+Downloading pyarrow (45.5MiB)
+Downloading litellm (10.9MiB)
+Downloading aiohttp (1.7MiB)
+ Downloading nvidia-cufile-cu12
+Downloading tiktoken (1.1MiB)
+ Downloading kiwisolver
+Downloading openai (1.0MiB)
+ Downloading aiohttp
+ Downloading pygments
+ Downloading pydantic-core
+ Downloading lupa
+ Downloading tiktoken
+ Downloading beartype
+ Downloading setuptools
+ Downloading networkx
+ Downloading tokenizers
+ Downloading hf-xet
+ Downloading fastavro
+ Downloading cryptography
+ Downloading fonttools
+ Downloading h5py
+ Downloading zstandard
+ Downloading ase
+ Downloading virtualenv
+ Downloading grpcio
+ Downloading openai
+ Downloading pillow
+ Downloading sympy
+   Building python-hostlist==2.3.0
+ Downloading tree-sitter-languages
+ Downloading scikit-learn
+      Built autonomous-dev-env @ file:///app
+ Downloading matplotlib
+ Downloading nvidia-cuda-cupti-cu12
+      Built python-hostlist==2.3.0
+ Downloading temporalio
+ Downloading transformers
+ Downloading litellm
+ Downloading ruff
+ Downloading botocore
+ Downloading numpy
+ Downloading pandas
+ Downloading mypy
+ Downloading lancedb
+ Downloading nvidia-nvjitlink-cu12
+ Downloading scipy
+ Downloading playwright
+ Downloading pyarrow
+ Downloading nvidia-curand-cu12
+ Downloading nvidia-cuda-nvrtc-cu12
+ Downloading nvidia-nvshmem-cu12
+ Downloading triton
+ Downloading nvidia-cufft-cu12
+ Downloading nvidia-cusolver-cu12
+ Downloading nvidia-cusparselt-cu12
+ Downloading nvidia-cusparse-cu12
+ Downloading nvidia-nccl-cu12
+ Downloading nvidia-cublas-cu12
+ Downloading nvidia-cudnn-cu12
+ Downloading torch
+Installed 271 packages in 694ms
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0
+rootdir: /app
+configfile: pyproject.toml
+plugins: devtools-0.12.2, langsmith-0.4.59, hypothesis-6.148.7, anyio-4.12.0, cov-7.0.0, logfire-4.16.0, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 76 items
+
+tests/integration/test_cli_commands.py .EEEEFF                           [  9%]
+tests/integration/test_end_to_end_workflow.py .F..                       [ 14%]
+tests/unit/test_config.py ..                                             [ 17%]
+tests/unit/test_file_patcher.py ...                                      [ 21%]
+tests/unit/test_git_operations.py ...........                            [ 35%]
+tests/unit/test_graph.py FFFFFFFFFF                                      [ 48%]
+tests/unit/test_jules_client.py FFFFFFFFF                                [ 60%]
+tests/unit/test_llm_reviewer.py ..                                       [ 63%]
+tests/unit/test_sandbox.py ....FF.FF                                     [ 75%]
+tests/unit/test_session_manager.py ...FF...FF                            [ 88%]
+tests/unit/test_validators.py ......                                     [ 96%]
+tests/unit/test_workflow_refactor.py .FF                                 [100%]
+
+==================================== ERRORS ====================================
+_____________________ ERROR at setup of test_init_command ______________________
+file /app/tests/integration/test_cli_commands.py, line 82
+  def test_init_command(runner, mock_project_manager):
+E       fixture 'runner' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_scoped_runner, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, capfire, caplog, capsys, capsysbinary, capteesys, cov, doctest_namespace, event_loop_policy, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, insert_assert, insert_assert_add_to_builtins, insert_assert_maybe_fail, insert_assert_session, mock_git_manager, mock_graph_builder, mock_project_manager, mock_session_manager, mock_session_validator, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/app/tests/integration/test_cli_commands.py:82
+__________________ ERROR at setup of test_gen_cycles_command ___________________
+file /app/tests/integration/test_cli_commands.py, line 90
+  def test_gen_cycles_command(runner, mock_graph_builder, mock_session_manager):
+E       fixture 'runner' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_scoped_runner, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, capfire, caplog, capsys, capsysbinary, capteesys, cov, doctest_namespace, event_loop_policy, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, insert_assert, insert_assert_add_to_builtins, insert_assert_maybe_fail, insert_assert_session, mock_git_manager, mock_graph_builder, mock_project_manager, mock_session_manager, mock_session_validator, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/app/tests/integration/test_cli_commands.py:90
+___________________ ERROR at setup of test_run_cycle_command ___________________
+file /app/tests/integration/test_cli_commands.py, line 106
+  def test_run_cycle_command(runner, mock_graph_builder, mock_session_manager, mock_session_validator):
+E       fixture 'runner' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_scoped_runner, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, capfire, caplog, capsys, capsysbinary, capteesys, cov, doctest_namespace, event_loop_policy, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, insert_assert, insert_assert_add_to_builtins, insert_assert_maybe_fail, insert_assert_session, mock_git_manager, mock_graph_builder, mock_project_manager, mock_session_manager, mock_session_validator, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/app/tests/integration/test_cli_commands.py:106
+_______________ ERROR at setup of test_finalize_session_command ________________
+file /app/tests/integration/test_cli_commands.py, line 120
+  def test_finalize_session_command(runner, mock_session_manager, mock_git_manager):
+E       fixture 'runner' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_scoped_runner, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, capfire, caplog, capsys, capsysbinary, capteesys, cov, doctest_namespace, event_loop_policy, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, insert_assert, insert_assert_add_to_builtins, insert_assert_maybe_fail, insert_assert_session, mock_git_manager, mock_graph_builder, mock_project_manager, mock_session_manager, mock_session_validator, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/app/tests/integration/test_cli_commands.py:120
+=================================== FAILURES ===================================
+_____________________ test_check_environment_missing_keys ______________________
+
+    def test_check_environment_missing_keys():
+        """Test check_environment detects missing API keys."""
+        with (
+            patch("ac_cdd_core.utils.check_api_key", return_value=False),
+            patch("rich.console.Console.print") as mock_print,
+        ):
+            from ac_cdd_core.cli import check_environment
+
+            with pytest.raises(SystemExit):
+>               check_environment()
+
+tests/integration/test_cli_commands.py:142:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/cli.py:83: in check_environment
+    if not typer.confirm("Do you want to proceed anyway? (May cause runtime errors)"):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/click/termui.py:243: in confirm
+    value = visible_prompt_func(prompt[-1:]).lower().strip()
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <_pytest.capture.DontReadFromInput object at 0x7feba322a570>, size = -1
+
+    def read(self, size: int = -1) -> str:
+>       raise OSError(
+            "pytest: reading from stdin while output is captured!  Consider using `-s`."
+        )
+E       OSError: pytest: reading from stdin while output is captured!  Consider using `-s`.
+
+.venv/lib/python3.12/site-packages/_pytest/capture.py:229: OSError
+----------------------------- Captured stdout call -----------------------------
+Do you want to proceed anyway? (May cause runtime errors) [y/N]:
+______________________ test_check_environment_all_present ______________________
+
+    def test_check_environment_all_present():
+        """Test check_environment passes when all keys present."""
+        with (
+            patch("ac_cdd_core.utils.check_api_key", return_value=True),
+            patch("subprocess.run", return_value=MagicMock(returncode=0)),
+        ):
+            from ac_cdd_core.cli import check_environment
+
+            # Should not raise
+>           check_environment()
+
+tests/integration/test_cli_commands.py:157:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/cli.py:83: in check_environment
+    if not typer.confirm("Do you want to proceed anyway? (May cause runtime errors)"):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/click/termui.py:243: in confirm
+    value = visible_prompt_func(prompt[-1:]).lower().strip()
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <_pytest.capture.DontReadFromInput object at 0x7feba322a570>, size = -1
+
+    def read(self, size: int = -1) -> str:
+>       raise OSError(
+            "pytest: reading from stdin while output is captured!  Consider using `-s`."
+        )
+E       OSError: pytest: reading from stdin while output is captured!  Consider using `-s`.
+
+.venv/lib/python3.12/site-packages/_pytest/capture.py:229: OSError
+----------------------------- Captured stdout call -----------------------------
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ Environment Check Failed                                                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+Missing Environment Variables:
+- GEMINI_API_KEY (or GOOGLE_API_KEY / OPENROUTER_API_KEY)
+- JULES_API_KEY
+- E2B_API_KEY
+
+Please check your .env file.
+
+Do you want to proceed anyway? (May cause runtime errors) [y/N]:
+_________________________ test_full_run_cycle_workflow _________________________
+
+    @pytest.mark.asyncio
+    async def test_full_run_cycle_workflow():
+        """Test complete run-cycle workflow."""
+        with (
+            patch("ac_cdd_core.session_manager.SessionManager.load_or_reconcile_session") as mock_load,
+            patch("ac_cdd_core.services.git_ops.GitManager") as mock_git,
+            patch("ac_cdd_core.services.jules_client.JulesClient") as mock_jules,
+            patch("ac_cdd_core.sandbox.SandboxRunner") as mock_sandbox,
+            patch("ac_cdd_core.services.llm_reviewer.LLMReviewer") as mock_reviewer,
+        ):
+            # Setup session
+            mock_load.return_value = {
+                "session_id": "session-test",
+                "integration_branch": "dev/session-test"
+            }
+
+            # Setup git
+            mock_git_instance = MagicMock()
+            mock_git.return_value = mock_git_instance
+            mock_git_instance.create_session_branch.return_value = "dev/session-test/cycle01"
+
+            # Setup Jules
+            mock_jules_instance = MagicMock()
+            mock_jules.return_value = mock_jules_instance
+            mock_jules_instance.run_session = AsyncMock(return_value="https://github.com/user/repo/pull/2")
+            mock_jules_instance.continue_session = AsyncMock(return_value="https://github.com/user/repo/pull/2")
+
+            # Setup sandbox
+            mock_sandbox_instance = MagicMock()
+            mock_sandbox.return_value = mock_sandbox_instance
+            mock_sandbox_instance.run_command = AsyncMock(return_value=("", "", 0))
+
+            # Setup reviewer
+            mock_reviewer_instance = MagicMock()
+            mock_reviewer.return_value = mock_reviewer_instance
+            mock_reviewer_instance.review_code = AsyncMock(return_value="APPROVED")
+
+            # Simulate workflow
+            session = mock_load()
+            cycle_branch = mock_git_instance.create_session_branch(
+>               session["session_id"], "cycle", "01", session["integration_branch"]
+                ^^^^^^^^^^^^^^^^^^^^^
+            )
+E           TypeError: 'coroutine' object is not subscriptable
+
+tests/integration/test_end_to_end_workflow.py:86: TypeError
+________________________ test_architect_graph_structure ________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140649812063968'>, contract_manager=<MagicMock id='140649811841328'>, artifact_manager=<MagicMock id='140649812003968'>, presenter=<MagicMock id='140649812007760'>)
+
+    @pytest.mark.asyncio
+    async def test_architect_graph_structure(mock_services):
+        """Test architect graph structure."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_graph.py:8:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+__________________________ test_coder_graph_structure __________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140649807850640'>, contract_manager=<MagicMock id='140649807725152'>, artifact_manager=<MagicMock id='140649807727312'>, presenter=<MagicMock id='140649807733216'>)
+
+    @pytest.mark.asyncio
+    async def test_coder_graph_structure(mock_services):
+        """Test coder graph structure."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_graph.py:18:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+________________________ test_architect_graph_execution ________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140649808241504'>, contract_manager=<MagicMock id='140649808246352'>, artifact_manager=<MagicMock id='140649808255344'>, presenter=<MagicMock id='140649808256832'>)
+
+    @pytest.mark.asyncio
+    async def test_architect_graph_execution(mock_services):
+        """Test architect graph execution flow."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_graph.py:28:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+__________________________ test_coder_graph_execution __________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140649807739120'>, contract_manager=<MagicMock id='140649807729904'>, artifact_manager=<MagicMock id='140649807728224'>, presenter=<MagicMock id='140649807848624'>)
+
+    @pytest.mark.asyncio
+    async def test_coder_graph_execution(mock_services):
+        """Test coder graph execution flow."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_graph.py:86:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+________________________ test_syntax_check_node_success ________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140649806477408'>, contract_manager=<MagicMock id='140649807007472'>, artifact_manager=<MagicMock id='140649807009728'>, presenter=<MagicMock id='140649807009248'>)
+
+    @pytest.mark.asyncio
+    async def test_syntax_check_node_success(mock_services):
+        """Test syntax check node with successful validation."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_graph.py:96:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+________________________ test_syntax_check_node_failure ________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140649808234400'>, contract_manager=<MagicMock id='140649808234544'>, artifact_manager=<MagicMock id='140649807848720'>, presenter=<MagicMock id='140649807725680'>)
+
+    @pytest.mark.asyncio
+    async def test_syntax_check_node_failure(mock_services):
+        """Test syntax check node with validation failure."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_graph.py:118:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+__________________________ test_audit_node_execution ___________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140649807030384'>, contract_manager=<MagicMock id='140649807229056'>, artifact_manager=<MagicMock id='140649807226704'>, presenter=<MagicMock id='140649807219456'>)
+
+    @pytest.mark.asyncio
+    async def test_audit_node_execution(mock_services):
+        """Test audit node execution."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_graph.py:138:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+___________________________ test_fix_node_execution ____________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140649807020496'>, contract_manager=<MagicMock id='140649807729232'>, artifact_manager=<MagicMock id='140649807727408'>, presenter=<MagicMock id='140649807849056'>)
+
+    @pytest.mark.asyncio
+    async def test_fix_node_execution(mock_services):
+        """Test fix node execution with Jules."""
+        # Note: There is no 'fix_node' in GraphBuilder, it's 'coder_session_node'
+        # behaving as fixer when in fix loop.
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_graph.py:173:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+____________________________ test_uat_evaluate_node ____________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140649807242176'>, contract_manager=<MagicMock id='140649807244912'>, artifact_manager=<MagicMock id='140649807241360'>, presenter=<MagicMock id='140649805809952'>)
+
+    @pytest.mark.asyncio
+    async def test_uat_evaluate_node(mock_services):
+        """Test UAT evaluation node."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_graph.py:207:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+_________________________ test_graph_state_transitions _________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140649805823152'>, contract_manager=<MagicMock id='140649805845360'>, artifact_manager=<MagicMock id='140649805845744'>, presenter=<MagicMock id='140649805848528'>)
+
+    @pytest.mark.asyncio
+    async def test_graph_state_transitions(mock_services):
+        """Test graph state transitions through workflow."""
+>       GraphBuilder(mock_services)
+
+tests/unit/test_graph.py:231:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+_________________________ test_jules_url_construction __________________________
+
+    @pytest.mark.asyncio
+    async def test_jules_url_construction():
+        """Verify _send_message correctly prepends base URL."""
+>       client = JulesClient()
+                 ^^^^^^^^^^^^^
+
+tests/unit/test_jules_client.py:10:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+_______________________ test_list_activities_delegation ________________________
+
+    def test_list_activities_delegation():
+        """Verify list_activities delegates to api_client."""
+>       client = JulesClient()
+                 ^^^^^^^^^^^^^
+
+tests/unit/test_jules_client.py:27:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+___________________________ test_run_session_success ___________________________
+
+    @pytest.mark.asyncio
+    async def test_run_session_success():
+        """Test successful session run with PR creation."""
+>       client = JulesClient()
+                 ^^^^^^^^^^^^^
+
+tests/unit/test_jules_client.py:38:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+___________________________ test_run_session_timeout ___________________________
+
+    @pytest.mark.asyncio
+    async def test_run_session_timeout():
+        """Test session timeout handling."""
+        from ac_cdd_core.services.jules_client import JulesTimeoutError
+
+>       client = JulesClient()
+                 ^^^^^^^^^^^^^
+
+tests/unit/test_jules_client.py:62:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+____________________________ test_continue_session _____________________________
+
+    @pytest.mark.asyncio
+    async def test_continue_session():
+        """Test continuing an existing session."""
+>       client = JulesClient()
+                 ^^^^^^^^^^^^^
+
+tests/unit/test_jules_client.py:80:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+_____________________ test_wait_for_completion_pr_created ______________________
+
+    @pytest.mark.asyncio
+    async def test_wait_for_completion_pr_created():
+        """Test wait_for_completion when PR is created."""
+>       client = JulesClient()
+                 ^^^^^^^^^^^^^
+
+tests/unit/test_jules_client.py:96:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+_________________________ test_check_for_inquiry_found _________________________
+
+    @pytest.mark.asyncio
+    async def test_check_for_inquiry_found():
+        """Test detecting user inquiry in activities."""
+>       client = JulesClient()
+                 ^^^^^^^^^^^^^
+
+tests/unit/test_jules_client.py:118:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+_______________________ test_check_for_inquiry_not_found _______________________
+
+    @pytest.mark.asyncio
+    async def test_check_for_inquiry_not_found():
+        """Test when no inquiry is present."""
+>       client = JulesClient()
+                 ^^^^^^^^^^^^^
+
+tests/unit/test_jules_client.py:146:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+__________________________ test_send_message_success ___________________________
+
+    @pytest.mark.asyncio
+    async def test_send_message_success():
+        """Test sending message to session."""
+>       client = JulesClient()
+                 ^^^^^^^^^^^^^
+
+tests/unit/test_jules_client.py:171:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+_________________________ test_sync_to_sandbox_success _________________________
+
+    @pytest.mark.asyncio
+    async def test_sync_to_sandbox_success():
+        """Test successful sync to sandbox."""
+        runner = SandboxRunner()
+        runner.sandbox = MagicMock()
+
+        with (
+>           patch.object(runner, "_create_sync_tarball", return_value=b"tarball_data"),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            patch.object(runner, "_compute_sync_hash", return_value="hash123"),
+        ):
+
+tests/unit/test_sandbox.py:87:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1467: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <unittest.mock._patch object at 0x7feb9623dd30>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+
+        original = DEFAULT
+        local = False
+
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <ac_cdd_core.sandbox.SandboxRunner object at 0x7feb9615f500> does not have the attribute '_create_sync_tarball'
+
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1437: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:sandbox.py:21 E2B_API_KEY not found. Sandbox execution will fail.
+_____________________ test_sync_to_sandbox_hash_unchanged ______________________
+
+    @pytest.mark.asyncio
+    async def test_sync_to_sandbox_hash_unchanged():
+        """Test that sync is skipped when hash unchanged."""
+        runner = SandboxRunner()
+        runner.sandbox = MagicMock()
+        runner._last_sync_hash = "hash123"
+
+        with (
+>           patch.object(runner, "_compute_sync_hash", return_value="hash123"),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            patch.object(runner, "_create_sync_tarball") as mock_tarball,
+        ):
+
+tests/unit/test_sandbox.py:103:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1467: in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <unittest.mock._patch object at 0x7feb96249ca0>
+
+    def get_original(self):
+        target = self.getter()
+        name = self.attribute
+
+        original = DEFAULT
+        local = False
+
+        try:
+            original = target.__dict__[name]
+        except (AttributeError, KeyError):
+            original = getattr(target, name, DEFAULT)
+        else:
+            local = True
+
+        if name in _builtins and isinstance(target, ModuleType):
+            self.create = True
+
+        if not self.create and original is DEFAULT:
+>           raise AttributeError(
+                "%s does not have the attribute %r" % (target, name)
+            )
+E           AttributeError: <ac_cdd_core.sandbox.SandboxRunner object at 0x7feb962483b0> does not have the attribute '_compute_sync_hash'
+
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1437: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:sandbox.py:21 E2B_API_KEY not found. Sandbox execution will fail.
+______________________ test_run_command_retry_on_failure _______________________
+
+    @pytest.mark.asyncio
+    async def test_run_command_retry_on_failure():
+        """Test command retry logic on sandbox failure."""
+        runner = SandboxRunner()
+        runner.sandbox = MagicMock()
+
+        # First call fails (Exception), second succeeds (Mock object)
+        runner.sandbox.commands.run.side_effect = [
+            Exception("Sandbox error"),
+            MagicMock(stdout="ok", stderr="", exit_code=0)
+        ]
+
+        with (
+            patch("ac_cdd_core.sandbox.Sandbox.create", return_value=MagicMock()) as mock_create,
+            patch.object(runner, "_sync_to_sandbox", new_callable=AsyncMock),
+        ):
+>           stdout, stderr, code = await runner.run_command(["test"])
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_sandbox.py:151:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/sandbox.py:132: in run_command
+    raise e
+dev_src/ac_cdd_core/sandbox.py:91: in run_command
+    exec_result = sandbox.commands.run(
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1139: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1143: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='mock.commands.run' id='140649807851168'>
+args = ('test',)
+kwargs = {'cwd': '/home/user/project', 'envs': {}, 'timeout': 3600}
+effect = <list_iterator object at 0x7feb95dbb5b0>
+result = Exception('Sandbox error')
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                result = next(effect)
+                if _is_exception(result):
+>                   raise result
+E                   Exception: Sandbox error
+
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1202: Exception
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:sandbox.py:21 E2B_API_KEY not found. Sandbox execution will fail.
+_____________________________ test_cleanup_sandbox _____________________________
+
+    @pytest.mark.asyncio
+    async def test_cleanup_sandbox():
+        """Test sandbox cleanup."""
+        runner = SandboxRunner()
+        runner.sandbox = MagicMock()
+
+>       await runner.cleanup()
+              ^^^^^^^^^^^^^^
+E       AttributeError: 'SandboxRunner' object has no attribute 'cleanup'
+
+tests/unit/test_sandbox.py:169: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:sandbox.py:21 E2B_API_KEY not found. Sandbox execution will fail.
+________________________ test_validate_session_success _________________________
+
+    def test_validate_session_success():
+        """Test session validation with valid state."""
+        session_id = "session-20251230-120000"
+        integration_branch = "dev/session-20251230-120000"
+
+        with patch("subprocess.run") as mock_run:
+            # Mock git branch --list to return the integration branch
+            mock_run.return_value = MagicMock(
+                stdout=integration_branch,
+                returncode=0
+            )
+
+            is_valid, error = SessionManager.validate_session(session_id, integration_branch)
+            assert is_valid
+>           assert error is None
+E           AssertionError: assert '' is None
+
+tests/unit/test_session_manager.py:68: AssertionError
+____________________ test_validate_session_branch_mismatch _____________________
+
+    def test_validate_session_branch_mismatch():
+        """Test session validation when branch doesn't exist."""
+        session_id = "session-20251230-120000"
+        integration_branch = "dev/session-20251230-120000"
+
+        with patch("subprocess.run") as mock_run:
+            # Mock git branch --list to return empty (branch doesn't exist)
+            mock_run.return_value = MagicMock(
+                stdout="",
+                returncode=0
+            )
+
+>           is_valid, error = SessionManager.validate_session(session_id, integration_branch)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_session_manager.py:83:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+cls = <class 'ac_cdd_core.session_manager.SessionManager'>
+session_id = 'session-20251230-120000'
+integration_branch = 'dev/session-20251230-120000'
+
+    @classmethod
+    def validate_session(cls, session_id: str, integration_branch: str) -> tuple[bool, str]:
+        """
+        Validate that session state is consistent with Git state.
+
+        Returns:
+            (is_valid, error_message)
+        """
+        # Check if integration branch exists locally
+        result = subprocess.run(
+            ["git", "rev-parse", "--verify", integration_branch],
+            capture_output=True,
+            check=False,
+        )
+
+        if result.returncode != 0:
+            from ac_cdd_core.error_messages import RecoveryMessages
+            error_msg = f"Session validation failed: {RecoveryMessages.branch_not_found(integration_branch, str(cls.SESSION_FILE))}"
+            return False, error_msg
+
+        # Check if branch exists on remote
+        result = subprocess.run(
+            ["git", "ls-remote", "--heads", "origin", integration_branch],
+            capture_output=True,
+            check=False,
+        )
+
+        if result.returncode != 0 or not result.stdout.strip():
+>           from ac_cdd_core.error_messages import RecoveryMessages
+E           ModuleNotFoundError: No module named 'ac_cdd_core.error_messages'
+
+dev_src/ac_cdd_core/session_manager.py:81: ModuleNotFoundError
+___________________ test_load_or_reconcile_with_explicit_id ____________________
+
+temp_session_file = PosixPath('/tmp/pytest-of-jules/pytest-0/test_load_or_reconcile_with_ex0/.ac_cdd_session.json')
+
+    def test_load_or_reconcile_with_explicit_id(temp_session_file):
+        """Test loading session with explicit session ID."""
+        session_id = "session-explicit"
+
+        with patch.object(SessionManager, "validate_session", return_value=(True, None)):
+            result = SessionManager.load_or_reconcile_session(session_id=session_id)
+>           assert result["session_id"] == session_id
+                   ^^^^^^^^^^^^^^^^^^^^
+E           TypeError: 'coroutine' object is not subscriptable
+
+tests/unit/test_session_manager.py:130: TypeError
+_______________________ test_load_or_reconcile_from_file _______________________
+
+temp_session_file = PosixPath('/tmp/pytest-of-jules/pytest-0/test_load_or_reconcile_from_fi0/.ac_cdd_session.json')
+
+    def test_load_or_reconcile_from_file(temp_session_file):
+        """Test loading session from file when no explicit ID provided."""
+        # Save a session first
+        SessionManager.save_session("session-from-file", "dev/session-from-file")
+
+        with patch.object(SessionManager, "validate_session", return_value=(True, None)):
+            result = SessionManager.load_or_reconcile_session()
+>           assert result["session_id"] == "session-from-file"
+                   ^^^^^^^^^^^^^^^^^^^^
+E           TypeError: 'coroutine' object is not subscriptable
+
+tests/unit/test_session_manager.py:140: TypeError
+____________________________ test_syntax_check_node ____________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140649807008912'>, contract_manager=<MagicMock id='140649808249152'>, artifact_manager=<MagicMock id='140649811843344'>, presenter=<MagicMock id='140649811842720'>)
+
+    @pytest.mark.asyncio
+    async def test_syntax_check_node(mock_services):
+        """Verify syntax_check_node executes compileall and ruff."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_workflow_refactor.py:20:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+____________________________ test_coder_graph_build ____________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140649808239248'>, contract_manager=<MagicMock id='140649813631936'>, artifact_manager=<MagicMock id='140649812010400'>, presenter=<MagicMock id='140649812005792'>)
+
+    @pytest.mark.asyncio
+    async def test_coder_graph_build(mock_services):
+        """Verify the coder graph builds without uat_evaluate_node."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_workflow_refactor.py:74:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:149: in __init__
+    from ac_cdd_core.agents import manager_agent
+dev_src/ac_cdd_core/agents.py:79: in <module>
+    model=get_model(settings.agents.qa_analyst_model),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+model_name = 'openrouter/google/gemini-flash-1.5'
+
+    def get_model(model_name: str) -> Any:
+        """
+        Parses the model name and returns an OpenAIModel with appropriate settings
+        if it is an OpenRouter model.
+        """
+        if model_name.startswith("openrouter/"):
+            # Example: openrouter/anthropic/claude-3.5-sonnet -> anthropic/claude-3.5-sonnet
+            real_model_name = model_name.replace("openrouter/", "", 1)
+
+            # Get API key from settings
+            api_key = settings.OPENROUTER_API_KEY
+            if not api_key:
+>               raise ValueError("OPENROUTER_API_KEY is not set but OpenRouter model is requested.")
+E               ValueError: OPENROUTER_API_KEY is not set but OpenRouter model is requested.
+
+dev_src/ac_cdd_core/agents.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:323
+  /app/.venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:323: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.12-final-0 _______________
+
+Name                                           Stmts   Miss  Cover   Missing
+----------------------------------------------------------------------------
+dev_src/__init__.py                                0      0   100%
+dev_src/ac_cdd_core/__init__.py                    0      0   100%
+dev_src/ac_cdd_core/agents.py                     47     31    34%   14-17, 22-42, 60-71, 84-102
+dev_src/ac_cdd_core/cli.py                       200    144    28%   44, 68-71, 84-86, 112-114, 128-179, 201-320, 326, 336-402
+dev_src/ac_cdd_core/config.py                     23      7    70%   17-21, 29, 35-36
+dev_src/ac_cdd_core/contracts/__init__.py          0      0   100%
+dev_src/ac_cdd_core/domain_models.py              62      0   100%
+dev_src/ac_cdd_core/graph.py                     356    322    10%   23-26, 33-36, 43-75, 79-113, 119-137, 146-232, 240-241, 247-264, 274-478, 488-527, 537-692, 702-722, 727-745, 748-813, 818, 822
+dev_src/ac_cdd_core/hash_utils.py                 25      4    84%   15-16, 29-30
+dev_src/ac_cdd_core/messages.py                   51     51     0%   4-159
+dev_src/ac_cdd_core/presentation.py               25     16    36%   15, 21-34, 45-55
+dev_src/ac_cdd_core/process_runner.py             23      8    65%   54-62, 66-70
+dev_src/ac_cdd_core/sandbox.py                   102     18    82%   35-40, 115-116, 126-129, 136, 153-154, 194-196
+dev_src/ac_cdd_core/service_container.py          14      1    93%   18
+dev_src/ac_cdd_core/services/__init__.py           5      0   100%
+dev_src/ac_cdd_core/services/artifacts.py         14      8    43%   17-28
+dev_src/ac_cdd_core/services/contracts.py         25     20    20%   16-42
+dev_src/ac_cdd_core/services/file_ops.py         107     52    51%   42, 64-74, 80-92, 139-172, 183-201
+dev_src/ac_cdd_core/services/git_ops.py          164     68    59%   21, 33, 49-65, 73-83, 89-112, 115, 119, 123, 137-139, 162-170, 176-183, 189-191, 195-196, 223-238, 266-268, 302-303
+dev_src/ac_cdd_core/services/jules_client.py     291    240    18%   38-59, 62-83, 86-87, 90-94, 97-101, 106-109, 112-118, 140-141, 151-154, 160, 163-178, 195-273, 279-294, 303-319, 325-519, 527-550
+dev_src/ac_cdd_core/services/llm_reviewer.py      28      0   100%
+dev_src/ac_cdd_core/services/project.py           36     19    47%   17-40, 65
+dev_src/ac_cdd_core/session_manager.py           107     51    52%   41-43, 69-71, 82-83, 107-108, 171-249
+dev_src/ac_cdd_core/state.py                      52      8    85%   66-72, 78-84
+dev_src/ac_cdd_core/tools.py                      31     31     0%   1-65
+dev_src/ac_cdd_core/tools_fs.py                    9      9     0%   1-15
+dev_src/ac_cdd_core/utils.py                      28     19    32%   25-49, 57-72
+dev_src/ac_cdd_core/validators.py                 38      1    97%   23
+----------------------------------------------------------------------------
+TOTAL                                           1863   1128    39%
+=========================== short test summary info ============================
+FAILED tests/integration/test_cli_commands.py::test_check_environment_missing_keys
+FAILED tests/integration/test_cli_commands.py::test_check_environment_all_present
+FAILED tests/integration/test_end_to_end_workflow.py::test_full_run_cycle_workflow
+FAILED tests/unit/test_graph.py::test_architect_graph_structure - ValueError:...
+FAILED tests/unit/test_graph.py::test_coder_graph_structure - ValueError: OPE...
+FAILED tests/unit/test_graph.py::test_architect_graph_execution - ValueError:...
+FAILED tests/unit/test_graph.py::test_coder_graph_execution - ValueError: OPE...
+FAILED tests/unit/test_graph.py::test_syntax_check_node_success - ValueError:...
+FAILED tests/unit/test_graph.py::test_syntax_check_node_failure - ValueError:...
+FAILED tests/unit/test_graph.py::test_audit_node_execution - ValueError: OPEN...
+FAILED tests/unit/test_graph.py::test_fix_node_execution - ValueError: OPENRO...
+FAILED tests/unit/test_graph.py::test_uat_evaluate_node - ValueError: OPENROU...
+FAILED tests/unit/test_graph.py::test_graph_state_transitions - ValueError: O...
+FAILED tests/unit/test_jules_client.py::test_jules_url_construction - ValueEr...
+FAILED tests/unit/test_jules_client.py::test_list_activities_delegation - Val...
+FAILED tests/unit/test_jules_client.py::test_run_session_success - ValueError...
+FAILED tests/unit/test_jules_client.py::test_run_session_timeout - ValueError...
+FAILED tests/unit/test_jules_client.py::test_continue_session - ValueError: O...
+FAILED tests/unit/test_jules_client.py::test_wait_for_completion_pr_created
+FAILED tests/unit/test_jules_client.py::test_check_for_inquiry_found - ValueE...
+FAILED tests/unit/test_jules_client.py::test_check_for_inquiry_not_found - Va...
+FAILED tests/unit/test_jules_client.py::test_send_message_success - ValueErro...
+FAILED tests/unit/test_sandbox.py::test_sync_to_sandbox_success - AttributeEr...
+FAILED tests/unit/test_sandbox.py::test_sync_to_sandbox_hash_unchanged - Attr...
+FAILED tests/unit/test_sandbox.py::test_run_command_retry_on_failure - Except...
+FAILED tests/unit/test_sandbox.py::test_cleanup_sandbox - AttributeError: 'Sa...
+FAILED tests/unit/test_session_manager.py::test_validate_session_success - As...
+FAILED tests/unit/test_session_manager.py::test_validate_session_branch_mismatch
+FAILED tests/unit/test_session_manager.py::test_load_or_reconcile_with_explicit_id
+FAILED tests/unit/test_session_manager.py::test_load_or_reconcile_from_file
+FAILED tests/unit/test_workflow_refactor.py::test_syntax_check_node - ValueEr...
+FAILED tests/unit/test_workflow_refactor.py::test_coder_graph_build - ValueEr...
+ERROR tests/integration/test_cli_commands.py::test_init_command
+ERROR tests/integration/test_cli_commands.py::test_gen_cycles_command
+ERROR tests/integration/test_cli_commands.py::test_run_cycle_command
+ERROR tests/integration/test_cli_commands.py::test_finalize_session_command
+======== 32 failed, 40 passed, 1 warning, 4 errors in 82.14s (0:01:22) =========

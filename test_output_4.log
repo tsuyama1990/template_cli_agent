@@ -1,0 +1,1389 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0
+rootdir: /app
+configfile: pyproject.toml
+plugins: devtools-0.12.2, langsmith-0.4.59, hypothesis-6.148.7, anyio-4.12.0, cov-7.0.0, logfire-4.16.0, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 76 items
+
+tests/integration/test_cli_commands.py .EEEEFF                           [  9%]
+tests/integration/test_end_to_end_workflow.py ....                       [ 14%]
+tests/unit/test_config.py ..                                             [ 17%]
+tests/unit/test_file_patcher.py ...                                      [ 21%]
+tests/unit/test_git_operations.py ...........                            [ 35%]
+tests/unit/test_graph.py FFFFFFFFFF                                      [ 48%]
+tests/unit/test_jules_client.py FFFFFFFFF                                [ 60%]
+tests/unit/test_llm_reviewer.py ..                                       [ 63%]
+tests/unit/test_sandbox.py .......FF                                     [ 75%]
+tests/unit/test_session_manager.py ...FF.....                            [ 88%]
+tests/unit/test_validators.py ......                                     [ 96%]
+tests/unit/test_workflow_refactor.py .FF                                 [100%]
+
+==================================== ERRORS ====================================
+_____________________ ERROR at setup of test_init_command ______________________
+file /app/tests/integration/test_cli_commands.py, line 82
+  def test_init_command(runner, mock_project_manager):
+E       fixture 'runner' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_scoped_runner, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, capfire, caplog, capsys, capsysbinary, capteesys, cov, doctest_namespace, event_loop_policy, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, insert_assert, insert_assert_add_to_builtins, insert_assert_maybe_fail, insert_assert_session, mock_git_manager, mock_graph_builder, mock_project_manager, mock_session_manager, mock_session_validator, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/app/tests/integration/test_cli_commands.py:82
+__________________ ERROR at setup of test_gen_cycles_command ___________________
+file /app/tests/integration/test_cli_commands.py, line 90
+  def test_gen_cycles_command(runner, mock_graph_builder, mock_session_manager):
+E       fixture 'runner' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_scoped_runner, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, capfire, caplog, capsys, capsysbinary, capteesys, cov, doctest_namespace, event_loop_policy, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, insert_assert, insert_assert_add_to_builtins, insert_assert_maybe_fail, insert_assert_session, mock_git_manager, mock_graph_builder, mock_project_manager, mock_session_manager, mock_session_validator, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/app/tests/integration/test_cli_commands.py:90
+___________________ ERROR at setup of test_run_cycle_command ___________________
+file /app/tests/integration/test_cli_commands.py, line 106
+  def test_run_cycle_command(runner, mock_graph_builder, mock_session_manager, mock_session_validator):
+E       fixture 'runner' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_scoped_runner, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, capfire, caplog, capsys, capsysbinary, capteesys, cov, doctest_namespace, event_loop_policy, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, insert_assert, insert_assert_add_to_builtins, insert_assert_maybe_fail, insert_assert_session, mock_git_manager, mock_graph_builder, mock_project_manager, mock_session_manager, mock_session_validator, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/app/tests/integration/test_cli_commands.py:106
+_______________ ERROR at setup of test_finalize_session_command ________________
+file /app/tests/integration/test_cli_commands.py, line 120
+  def test_finalize_session_command(runner, mock_session_manager, mock_git_manager):
+E       fixture 'runner' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_scoped_runner, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, capfire, caplog, capsys, capsysbinary, capteesys, cov, doctest_namespace, event_loop_policy, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, insert_assert, insert_assert_add_to_builtins, insert_assert_maybe_fail, insert_assert_session, mock_git_manager, mock_graph_builder, mock_project_manager, mock_session_manager, mock_session_validator, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/app/tests/integration/test_cli_commands.py:120
+=================================== FAILURES ===================================
+_____________________ test_check_environment_missing_keys ______________________
+
+    def test_check_environment_missing_keys():
+        """Test check_environment detects missing API keys."""
+        with (
+            patch("ac_cdd_core.utils.check_api_key", return_value=False),
+            patch("rich.console.Console.print") as mock_print,
+        ):
+            from ac_cdd_core.cli import check_environment
+
+            with pytest.raises(SystemExit):
+>               check_environment()
+
+tests/integration/test_cli_commands.py:142:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def check_environment() -> None:
+        """Checks for required tools and API keys."""
+        import os
+        import shutil
+
+        from dotenv import load_dotenv
+
+        load_dotenv()
+
+        missing_tools = []
+        missing_vars = []
+
+        # 1. Executables
+        # Removing 'aider' and 'jules' from local requirements as we aim for fully remote architecture.
+        # 'git' and 'uv' are still needed for local project management.
+        # 'gh' is optional but recommended for PRs.
+        required_tools = ["uv", "git"]
+        for tool in required_tools:
+            if not shutil.which(tool):
+                missing_tools.append(tool)
+
+        # 2. Environment Variables
+        # Check strict requirements. Note: OpenRouter is optional if Gemini is used directly,
+        # but we should check at least one LLM key.
+        # Jules requires JULES_API_KEY.
+        required_vars = ["JULES_API_KEY", "E2B_API_KEY"]
+
+        # We need at least one model provider
+        if (
+            not os.environ.get("GEMINI_API_KEY")
+            and not os.environ.get("GOOGLE_API_KEY")
+            and not os.environ.get("OPENROUTER_API_KEY")
+        ):
+            missing_vars.append("GEMINI_API_KEY (or GOOGLE_API_KEY / OPENROUTER_API_KEY)")
+
+        for var in required_vars:
+            if not os.environ.get(var):
+                missing_vars.append(var)
+
+        if missing_tools or missing_vars:
+            console.print(Panel("Environment Check Failed", style="bold red"))
+
+            if missing_tools:
+                console.print("[bold red]Missing Executables:[/bold red]")
+                for tool in missing_tools:
+                    console.print(f"- {tool}")
+                console.print(
+                    "\n[yellow]Please install these tools and ensure they are in your PATH.[/yellow]\n"
+                )
+
+            if missing_vars:
+                console.print("[bold red]Missing Environment Variables:[/bold red]")
+                for var in missing_vars:
+                    console.print(f"- {var}")
+                console.print("\n[yellow]Please check your .env file.[/yellow]\n")
+
+            # We don't exit strict here to allow users to fix while running,
+            # but we prompt them heavily.
+            # Check if running in non-interactive mode (e.g. CI/Test)
+            if os.environ.get("NON_INTERACTIVE") or not sys.stdin.isatty():
+                 # Fail if missing and non-interactive
+>                raise typer.Exit(code=1)
+E                click.exceptions.Exit
+
+dev_src/ac_cdd_core/cli.py:86: Exit
+______________________ test_check_environment_all_present ______________________
+
+    def test_check_environment_all_present():
+        """Test check_environment passes when all keys present."""
+        with (
+            patch("ac_cdd_core.utils.check_api_key", return_value=True),
+            patch("subprocess.run", return_value=MagicMock(returncode=0)),
+        ):
+            from ac_cdd_core.cli import check_environment
+
+            # Should not raise
+>           check_environment()
+
+tests/integration/test_cli_commands.py:157:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def check_environment() -> None:
+        """Checks for required tools and API keys."""
+        import os
+        import shutil
+
+        from dotenv import load_dotenv
+
+        load_dotenv()
+
+        missing_tools = []
+        missing_vars = []
+
+        # 1. Executables
+        # Removing 'aider' and 'jules' from local requirements as we aim for fully remote architecture.
+        # 'git' and 'uv' are still needed for local project management.
+        # 'gh' is optional but recommended for PRs.
+        required_tools = ["uv", "git"]
+        for tool in required_tools:
+            if not shutil.which(tool):
+                missing_tools.append(tool)
+
+        # 2. Environment Variables
+        # Check strict requirements. Note: OpenRouter is optional if Gemini is used directly,
+        # but we should check at least one LLM key.
+        # Jules requires JULES_API_KEY.
+        required_vars = ["JULES_API_KEY", "E2B_API_KEY"]
+
+        # We need at least one model provider
+        if (
+            not os.environ.get("GEMINI_API_KEY")
+            and not os.environ.get("GOOGLE_API_KEY")
+            and not os.environ.get("OPENROUTER_API_KEY")
+        ):
+            missing_vars.append("GEMINI_API_KEY (or GOOGLE_API_KEY / OPENROUTER_API_KEY)")
+
+        for var in required_vars:
+            if not os.environ.get(var):
+                missing_vars.append(var)
+
+        if missing_tools or missing_vars:
+            console.print(Panel("Environment Check Failed", style="bold red"))
+
+            if missing_tools:
+                console.print("[bold red]Missing Executables:[/bold red]")
+                for tool in missing_tools:
+                    console.print(f"- {tool}")
+                console.print(
+                    "\n[yellow]Please install these tools and ensure they are in your PATH.[/yellow]\n"
+                )
+
+            if missing_vars:
+                console.print("[bold red]Missing Environment Variables:[/bold red]")
+                for var in missing_vars:
+                    console.print(f"- {var}")
+                console.print("\n[yellow]Please check your .env file.[/yellow]\n")
+
+            # We don't exit strict here to allow users to fix while running,
+            # but we prompt them heavily.
+            # Check if running in non-interactive mode (e.g. CI/Test)
+            if os.environ.get("NON_INTERACTIVE") or not sys.stdin.isatty():
+                 # Fail if missing and non-interactive
+>                raise typer.Exit(code=1)
+E                click.exceptions.Exit
+
+dev_src/ac_cdd_core/cli.py:86: Exit
+----------------------------- Captured stdout call -----------------------------
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ Environment Check Failed                                                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+Missing Environment Variables:
+- GEMINI_API_KEY (or GOOGLE_API_KEY / OPENROUTER_API_KEY)
+- JULES_API_KEY
+- E2B_API_KEY
+
+Please check your .env file.
+
+________________________ test_architect_graph_structure ________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140541968049952'>, contract_manager=<MagicMock id='140541968042080'>, artifact_manager=<MagicMock id='140541965999744'>, presenter=<MagicMock id='140541966006992'>)
+
+    @pytest.mark.asyncio
+    async def test_architect_graph_structure(mock_services):
+        """Test architect graph structure."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_graph.py:8:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd27a14ea80>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+WARNING  AC-CDD:agents.py:58 OPENROUTER_API_KEY is not set but OpenRouter model is requested. Agents initializing with this model will fail if run.
+WARNING  AC-CDD:agents.py:58 OPENROUTER_API_KEY is not set but OpenRouter model is requested. Agents initializing with this model will fail if run.
+__________________________ test_coder_graph_structure __________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140541962287488'>, contract_manager=<MagicMock id='140541962284368'>, artifact_manager=<MagicMock id='140541962288592'>, presenter=<MagicMock id='140541962767728'>)
+
+    @pytest.mark.asyncio
+    async def test_coder_graph_structure(mock_services):
+        """Test coder graph structure."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_graph.py:18:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd279bcc6e0>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+________________________ test_architect_graph_execution ________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140541962779536'>, contract_manager=<MagicMock id='140541962521200'>, artifact_manager=<MagicMock id='140541962524992'>, presenter=<MagicMock id='140541962528784'>)
+
+    @pytest.mark.asyncio
+    async def test_architect_graph_execution(mock_services):
+        """Test architect graph execution flow."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_graph.py:28:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd279c47800>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+__________________________ test_coder_graph_execution __________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140541962465936'>, contract_manager=<MagicMock id='140541962461520'>, artifact_manager=<MagicMock id='140541962465744'>, presenter=<MagicMock id='140541962503088'>)
+
+    @pytest.mark.asyncio
+    async def test_coder_graph_execution(mock_services):
+        """Test coder graph execution flow."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_graph.py:86:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd279bf9310>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+________________________ test_syntax_check_node_success ________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140541962526336'>, contract_manager=<MagicMock id='140541962530848'>, artifact_manager=<MagicMock id='140541962526528'>, presenter=<MagicMock id='140541962522112'>)
+
+    @pytest.mark.asyncio
+    async def test_syntax_check_node_success(mock_services):
+        """Test syntax check node with successful validation."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_graph.py:96:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd279c0b5f0>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+________________________ test_syntax_check_node_failure ________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140541962285472'>, contract_manager=<MagicMock id='140541962286624'>, artifact_manager=<MagicMock id='140541962766912'>, presenter=<MagicMock id='140541962774784'>)
+
+    @pytest.mark.asyncio
+    async def test_syntax_check_node_failure(mock_services):
+        """Test syntax check node with validation failure."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_graph.py:118:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd279bce8a0>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+__________________________ test_audit_node_execution ___________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140541962517296'>, contract_manager=<MagicMock id='140541960080368'>, artifact_manager=<MagicMock id='140541960084160'>, presenter=<MagicMock id='140541960087952'>)
+
+    @pytest.mark.asyncio
+    async def test_audit_node_execution(mock_services):
+        """Test audit node execution."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_graph.py:138:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd279c07530>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+___________________________ test_fix_node_execution ____________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140541962515328'>, contract_manager=<MagicMock id='140541962766288'>, artifact_manager=<MagicMock id='140541962771760'>, presenter=<MagicMock id='140541962779872'>)
+
+    @pytest.mark.asyncio
+    async def test_fix_node_execution(mock_services):
+        """Test fix node execution with Jules."""
+        # Note: There is no 'fix_node' in GraphBuilder, it's 'coder_session_node'
+        # behaving as fixer when in fix loop.
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_graph.py:173:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd279c06fc0>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+____________________________ test_uat_evaluate_node ____________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140541962527536'>, contract_manager=<MagicMock id='140541962522448'>, artifact_manager=<MagicMock id='140541962527968'>, presenter=<MagicMock id='140541962533680'>)
+
+    @pytest.mark.asyncio
+    async def test_uat_evaluate_node(mock_services):
+        """Test UAT evaluation node."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_graph.py:207:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd279c08bc0>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+_________________________ test_graph_state_transitions _________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140541959962592'>, contract_manager=<MagicMock id='140541959957360'>, artifact_manager=<MagicMock id='140541960159600'>, presenter=<MagicMock id='140541960163392'>)
+
+    @pytest.mark.asyncio
+    async def test_graph_state_transitions(mock_services):
+        """Test graph state transitions through workflow."""
+>       GraphBuilder(mock_services)
+
+tests/unit/test_graph.py:231:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd279995700>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+_________________________ test_jules_url_construction __________________________
+
+    @pytest.mark.asyncio
+    async def test_jules_url_construction():
+        """Verify _send_message correctly prepends base URL."""
+>       client = JulesClient()
+                 ^^^^^^^^^^^^^
+
+tests/unit/test_jules_client.py:10:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd2799b7740>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+_______________________ test_list_activities_delegation ________________________
+
+    def test_list_activities_delegation():
+        """Verify list_activities delegates to api_client."""
+>       client = JulesClient()
+                 ^^^^^^^^^^^^^
+
+tests/unit/test_jules_client.py:27:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd2799b6720>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+___________________________ test_run_session_success ___________________________
+
+    @pytest.mark.asyncio
+    async def test_run_session_success():
+        """Test successful session run with PR creation."""
+>       client = JulesClient()
+                 ^^^^^^^^^^^^^
+
+tests/unit/test_jules_client.py:38:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd2799b55b0>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+___________________________ test_run_session_timeout ___________________________
+
+    @pytest.mark.asyncio
+    async def test_run_session_timeout():
+        """Test session timeout handling."""
+        from ac_cdd_core.services.jules_client import JulesTimeoutError
+
+>       client = JulesClient()
+                 ^^^^^^^^^^^^^
+
+tests/unit/test_jules_client.py:62:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd27af44d40>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+____________________________ test_continue_session _____________________________
+
+    @pytest.mark.asyncio
+    async def test_continue_session():
+        """Test continuing an existing session."""
+>       client = JulesClient()
+                 ^^^^^^^^^^^^^
+
+tests/unit/test_jules_client.py:80:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd27f516c90>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+_____________________ test_wait_for_completion_pr_created ______________________
+
+    @pytest.mark.asyncio
+    async def test_wait_for_completion_pr_created():
+        """Test wait_for_completion when PR is created."""
+>       client = JulesClient()
+                 ^^^^^^^^^^^^^
+
+tests/unit/test_jules_client.py:96:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd279995100>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+_________________________ test_check_for_inquiry_found _________________________
+
+    @pytest.mark.asyncio
+    async def test_check_for_inquiry_found():
+        """Test detecting user inquiry in activities."""
+>       client = JulesClient()
+                 ^^^^^^^^^^^^^
+
+tests/unit/test_jules_client.py:118:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd27a24e0f0>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+_______________________ test_check_for_inquiry_not_found _______________________
+
+    @pytest.mark.asyncio
+    async def test_check_for_inquiry_not_found():
+        """Test when no inquiry is present."""
+>       client = JulesClient()
+                 ^^^^^^^^^^^^^
+
+tests/unit/test_jules_client.py:146:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd2799b51f0>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+__________________________ test_send_message_success ___________________________
+
+    @pytest.mark.asyncio
+    async def test_send_message_success():
+        """Test sending message to session."""
+>       client = JulesClient()
+                 ^^^^^^^^^^^^^
+
+tests/unit/test_jules_client.py:171:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd2799b7d70>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+______________________ test_run_command_retry_on_failure _______________________
+
+    @pytest.mark.asyncio
+    async def test_run_command_retry_on_failure():
+        """Test command retry logic on sandbox failure."""
+        runner = SandboxRunner()
+        runner.sandbox = MagicMock()
+
+        # First call fails (Exception), second succeeds (Mock object)
+        runner.sandbox.commands.run.side_effect = [
+            Exception("Sandbox error"),
+            MagicMock(stdout="ok", stderr="", exit_code=0)
+        ]
+
+        with (
+            patch("ac_cdd_core.sandbox.Sandbox.create", return_value=MagicMock()) as mock_create,
+            patch.object(runner, "_sync_to_sandbox", new_callable=AsyncMock),
+        ):
+>           stdout, stderr, code = await runner.run_command(["test"])
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_sandbox.py:151:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/sandbox.py:132: in run_command
+    raise e
+dev_src/ac_cdd_core/sandbox.py:91: in run_command
+    exec_result = sandbox.commands.run(
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1139: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1143: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='mock.commands.run' id='140541968047216'>
+args = ('test',)
+kwargs = {'cwd': '/home/user/project', 'envs': {}, 'timeout': 3600}
+effect = <list_iterator object at 0x7fd279c09f60>
+result = Exception('Sandbox error')
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                result = next(effect)
+                if _is_exception(result):
+>                   raise result
+E                   Exception: Sandbox error
+
+/home/jules/.pyenv/versions/3.12.12/lib/python3.12/unittest/mock.py:1202: Exception
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:sandbox.py:21 E2B_API_KEY not found. Sandbox execution will fail.
+_____________________________ test_cleanup_sandbox _____________________________
+
+    @pytest.mark.asyncio
+    async def test_cleanup_sandbox():
+        """Test sandbox cleanup."""
+        runner = SandboxRunner()
+        runner.sandbox = MagicMock()
+
+        await runner.cleanup()
+
+        # Should call kill on sandbox
+>       runner.sandbox.kill.assert_called_once()
+        ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'NoneType' object has no attribute 'kill'
+
+tests/unit/test_sandbox.py:172: AttributeError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:sandbox.py:21 E2B_API_KEY not found. Sandbox execution will fail.
+________________________ test_validate_session_success _________________________
+
+    def test_validate_session_success():
+        """Test session validation with valid state."""
+        session_id = "session-20251230-120000"
+        integration_branch = "dev/session-20251230-120000"
+
+        with patch("subprocess.run") as mock_run:
+            # Mock git branch --list to return the integration branch
+            mock_run.return_value = MagicMock(
+                stdout=integration_branch,
+                returncode=0
+            )
+
+            is_valid, error = SessionManager.validate_session(session_id, integration_branch)
+            assert is_valid
+>           assert error is None
+E           AssertionError: assert '' is None
+
+tests/unit/test_session_manager.py:68: AssertionError
+____________________ test_validate_session_branch_mismatch _____________________
+
+    def test_validate_session_branch_mismatch():
+        """Test session validation when branch doesn't exist."""
+        session_id = "session-20251230-120000"
+        integration_branch = "dev/session-20251230-120000"
+
+        with patch("subprocess.run") as mock_run:
+            # Mock git branch --list to return empty (branch doesn't exist)
+            mock_run.return_value = MagicMock(
+                stdout="",
+                returncode=0
+            )
+
+            is_valid, error = SessionManager.validate_session(session_id, integration_branch)
+>           assert not is_valid
+E           assert not True
+
+tests/unit/test_session_manager.py:84: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:session_manager.py:83 Warning: Branch 'dev/session-20251230-120000' does not exist on origin.
+You might be working in a detached state or offline.
+Ensure you push your branch: git push -u origin {branch_name}
+____________________________ test_syntax_check_node ____________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140541960512736'>, contract_manager=<MagicMock id='140541960518496'>, artifact_manager=<MagicMock id='140541960428464'>, presenter=<MagicMock id='140541960437488'>)
+
+    @pytest.mark.asyncio
+    async def test_syntax_check_node(mock_services):
+        """Verify syntax_check_node executes compileall and ruff."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_workflow_refactor.py:20:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd279a1e240>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+____________________________ test_coder_graph_build ____________________________
+
+mock_services = ServiceContainer(file_patcher=<MagicMock id='140541960411984'>, contract_manager=<MagicMock id='140541960089536'>, artifact_manager=<MagicMock id='140541968049424'>, presenter=<MagicMock id='140541968045536'>)
+
+    @pytest.mark.asyncio
+    async def test_coder_graph_build(mock_services):
+        """Verify the coder graph builds without uat_evaluate_node."""
+>       builder = GraphBuilder(mock_services)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/unit/test_workflow_refactor.py:74:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+dev_src/ac_cdd_core/graph.py:32: in __init__
+    self.jules_client = JulesClient()
+                        ^^^^^^^^^^^^^
+dev_src/ac_cdd_core/services/jules_client.py:154: in __init__
+    self.api_client = JulesApiClient(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <ac_cdd_core.services.jules_client.JulesApiClient object at 0x7fd279a06780>
+api_key = None
+
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or settings.JULES_API_KEY
+        if not self.api_key:
+            from dotenv import load_dotenv
+
+            load_dotenv()
+            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        if not self.api_key:
+            # Last ditch attempt
+            try:
+                if Path(".env").exists():
+                    content = Path(".env").read_text()
+                    for line in content.splitlines():
+                        if line.startswith("JULES_API_KEY="):
+                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+            except Exception:
+                logger.debug("Skipping malformed .env line during key check.")
+
+        if not self.api_key:
+>           raise ValueError("API Key not found for Jules API.")
+E           ValueError: API Key not found for Jules API.
+
+dev_src/ac_cdd_core/services/jules_client.py:57: ValueError
+------------------------------ Captured log call -------------------------------
+WARNING  AC-CDD:jules_client.py:143 Could not load Google Credentials: Your default credentials were not found. To set up Application Default Credentials, see https://cloud.google.com/docs/authentication/external/set-up-adc for more information.. Falling back to API Key if available.
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:323
+  /app/.venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:323: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.12-final-0 _______________
+
+Name                                           Stmts   Miss  Cover   Missing
+----------------------------------------------------------------------------
+dev_src/__init__.py                                0      0   100%
+dev_src/ac_cdd_core/__init__.py                    0      0   100%
+dev_src/ac_cdd_core/agents.py                     51     25    51%   15-18, 23-43, 73, 86-89, 104, 120
+dev_src/ac_cdd_core/cli.py                       207    150    28%   44, 68-71, 88-91, 117-119, 133-184, 206-329, 335, 345-414
+dev_src/ac_cdd_core/config.py                     23      7    70%   17-21, 29, 35-36
+dev_src/ac_cdd_core/contracts/__init__.py          0      0   100%
+dev_src/ac_cdd_core/domain_models.py              62      0   100%
+dev_src/ac_cdd_core/error_messages.py              8      1    88%   8
+dev_src/ac_cdd_core/graph.py                     356    322    10%   23-26, 33-36, 43-75, 79-113, 119-137, 146-232, 240-241, 247-264, 274-478, 488-527, 537-692, 702-722, 727-745, 748-813, 818, 822
+dev_src/ac_cdd_core/hash_utils.py                 25      4    84%   15-16, 29-30
+dev_src/ac_cdd_core/messages.py                   51     51     0%   4-159
+dev_src/ac_cdd_core/presentation.py               25     16    36%   15, 21-34, 45-55
+dev_src/ac_cdd_core/process_runner.py             23      8    65%   54-62, 66-70
+dev_src/ac_cdd_core/sandbox.py                   114     15    87%   35-40, 115-116, 126-129, 136, 150-151
+dev_src/ac_cdd_core/service_container.py          14      1    93%   18
+dev_src/ac_cdd_core/services/__init__.py           5      0   100%
+dev_src/ac_cdd_core/services/artifacts.py         14      8    43%   17-28
+dev_src/ac_cdd_core/services/contracts.py         25     20    20%   16-42
+dev_src/ac_cdd_core/services/file_ops.py         107     52    51%   42, 64-74, 80-92, 139-172, 183-201
+dev_src/ac_cdd_core/services/git_ops.py          164     68    59%   21, 33, 49-65, 73-83, 89-112, 115, 119, 123, 137-139, 162-170, 176-183, 189-191, 195-196, 223-238, 266-268, 302-303
+dev_src/ac_cdd_core/services/jules_client.py     291    228    22%   49-54, 59, 62-83, 86-87, 90-94, 97-101, 106-109, 112-118, 140-141, 160, 163-178, 195-273, 279-294, 303-319, 325-519, 527-550
+dev_src/ac_cdd_core/services/llm_reviewer.py      28      0   100%
+dev_src/ac_cdd_core/services/project.py           36     19    47%   17-40, 65
+dev_src/ac_cdd_core/session_manager.py           111     44    60%   41-43, 69-71, 107-108, 181-193, 210-268
+dev_src/ac_cdd_core/state.py                      52      8    85%   66-72, 78-84
+dev_src/ac_cdd_core/tools.py                      31     31     0%   1-65
+dev_src/ac_cdd_core/tools_fs.py                    9      9     0%   1-15
+dev_src/ac_cdd_core/utils.py                      28     19    32%   25-49, 57-72
+dev_src/ac_cdd_core/validators.py                 38      1    97%   23
+----------------------------------------------------------------------------
+TOTAL                                           1898   1107    42%
+=========================== short test summary info ============================
+FAILED tests/integration/test_cli_commands.py::test_check_environment_missing_keys
+FAILED tests/integration/test_cli_commands.py::test_check_environment_all_present
+FAILED tests/unit/test_graph.py::test_architect_graph_structure - ValueError:...
+FAILED tests/unit/test_graph.py::test_coder_graph_structure - ValueError: API...
+FAILED tests/unit/test_graph.py::test_architect_graph_execution - ValueError:...
+FAILED tests/unit/test_graph.py::test_coder_graph_execution - ValueError: API...
+FAILED tests/unit/test_graph.py::test_syntax_check_node_success - ValueError:...
+FAILED tests/unit/test_graph.py::test_syntax_check_node_failure - ValueError:...
+FAILED tests/unit/test_graph.py::test_audit_node_execution - ValueError: API ...
+FAILED tests/unit/test_graph.py::test_fix_node_execution - ValueError: API Ke...
+FAILED tests/unit/test_graph.py::test_uat_evaluate_node - ValueError: API Key...
+FAILED tests/unit/test_graph.py::test_graph_state_transitions - ValueError: A...
+FAILED tests/unit/test_jules_client.py::test_jules_url_construction - ValueEr...
+FAILED tests/unit/test_jules_client.py::test_list_activities_delegation - Val...
+FAILED tests/unit/test_jules_client.py::test_run_session_success - ValueError...
+FAILED tests/unit/test_jules_client.py::test_run_session_timeout - ValueError...
+FAILED tests/unit/test_jules_client.py::test_continue_session - ValueError: A...
+FAILED tests/unit/test_jules_client.py::test_wait_for_completion_pr_created
+FAILED tests/unit/test_jules_client.py::test_check_for_inquiry_found - ValueE...
+FAILED tests/unit/test_jules_client.py::test_check_for_inquiry_not_found - Va...
+FAILED tests/unit/test_jules_client.py::test_send_message_success - ValueErro...
+FAILED tests/unit/test_sandbox.py::test_run_command_retry_on_failure - Except...
+FAILED tests/unit/test_sandbox.py::test_cleanup_sandbox - AttributeError: 'No...
+FAILED tests/unit/test_session_manager.py::test_validate_session_success - As...
+FAILED tests/unit/test_session_manager.py::test_validate_session_branch_mismatch
+FAILED tests/unit/test_workflow_refactor.py::test_syntax_check_node - ValueEr...
+FAILED tests/unit/test_workflow_refactor.py::test_coder_graph_build - ValueEr...
+ERROR tests/integration/test_cli_commands.py::test_init_command
+ERROR tests/integration/test_cli_commands.py::test_gen_cycles_command
+ERROR tests/integration/test_cli_commands.py::test_run_cycle_command
+ERROR tests/integration/test_cli_commands.py::test_finalize_session_command
+======== 27 failed, 45 passed, 1 warning, 4 errors in 80.92s (0:01:20) =========

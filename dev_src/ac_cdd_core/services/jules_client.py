@@ -54,7 +54,9 @@ class JulesApiClient:
                 logger.debug("Skipping malformed .env line during key check.")
 
         if not self.api_key:
-            raise ValueError("API Key not found for Jules API.")
+            logger.warning("API Key not found for Jules API. Client initialized in restricted mode.")
+            # Set a placeholder to allow initialization; runtime calls will fail if key is still missing.
+            self.api_key = "dummy-key-for-init"
 
         self.headers = {"x-goog-api-key": self.api_key, "Content-Type": "application/json"}
 

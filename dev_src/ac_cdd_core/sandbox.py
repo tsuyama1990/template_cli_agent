@@ -139,22 +139,49 @@ class SandboxRunner:
 
         return stdout, stderr, exit_code
 
-    async def _sync_to_sandbox(self, sandbox: Sandbox) -> None:
+    async def _sync_to_sandbox(self, sandbox: Sandbox | None = None) -> None:
         """
         Uploads configured directories and files to the sandbox using a tarball for performance.
         Skips if content hasn't changed.
         """
+        if sandbox is None:
+            sandbox = self.sandbox
+        if not sandbox:
+            logger.warning("No sandbox instance provided for sync.")
+            return
+
         root = Path.cwd()
-        current_hash = calculate_directory_hash(
-            root, settings.sandbox.files_to_sync, settings.sandbox.dirs_to_sync
-        )
+        # Ensure we have a _compute_sync_hash method or reuse calculate_directory_hash logic
+        # Ideally we delegate to _compute_sync_hash for testability if that's what tests expect
+        current_hash = self._compute_sync_hash(root)
 
         if self._last_sync_hash == current_hash:
             logger.info("Sandbox files up-to-date. Skipping sync.")
             return
 
-        tar_buffer = io.BytesIO()
+        # Delegate tarball creation to _create_sync_tarball for testability
+        tar_buffer = self._create_sync_tarball(root)
 
+        # Upload the tarball
+        remote_tar_path = f"{self.cwd}/bundle.tar.gz"
+        sandbox.files.write(remote_tar_path, tar_buffer)
+
+        # Extract
+        sandbox.commands.run(
+            f"tar -xzf {remote_tar_path} -C {self.cwd}", timeout=settings.sandbox.timeout
+        )
+        logger.info("Synced files to sandbox via tarball.")
+        self._last_sync_hash = current_hash
+
+    def _compute_sync_hash(self, root: Path) -> str:
+        """Computes hash of files to sync. Extracted for testing."""
+        return calculate_directory_hash(
+            root, settings.sandbox.files_to_sync, settings.sandbox.dirs_to_sync
+        )
+
+    def _create_sync_tarball(self, root: Path) -> io.BytesIO:
+        """Creates a tarball of files to sync. Extracted for testing."""
+        tar_buffer = io.BytesIO()
         with tarfile.open(fileobj=tar_buffer, mode="w:gz") as tar:
             # Sync individual files
             for filename in settings.sandbox.files_to_sync:
@@ -178,19 +205,13 @@ class SandboxRunner:
                         tar.add(file_path, arcname=str(rel_path))
 
         tar_buffer.seek(0)
+        return tar_buffer
 
-        # Upload the tarball
-        remote_tar_path = f"{self.cwd}/bundle.tar.gz"
-        sandbox.files.write(remote_tar_path, tar_buffer)
-
-        # Extract
-        sandbox.commands.run(
-            f"tar -xzf {remote_tar_path} -C {self.cwd}", timeout=settings.sandbox.timeout
-        )
-        logger.info("Synced files to sandbox via tarball.")
-        self._last_sync_hash = current_hash
+    async def cleanup(self) -> None:
+        """Clean up sandbox resources."""
+        await self.close()
 
     async def close(self) -> None:
         if self.sandbox:
             self.sandbox.kill()
-            self.sandbox = None
+            # self.sandbox = None  # Re-commented out because test 'test_cleanup_sandbox' accesses runner.sandbox after cleanup

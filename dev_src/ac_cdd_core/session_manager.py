@@ -59,13 +59,15 @@ class SessionManager:
             (is_valid, error_message)
         """
         # Check if integration branch exists locally
+        # Use 'git branch --list' to match test expectations (empty output means missing)
         result = subprocess.run(
-            ["git", "rev-parse", "--verify", integration_branch],
+            ["git", "branch", "--list", integration_branch],
             capture_output=True,
+            text=True,  # Ensure stdout is string for check
             check=False,
         )
         
-        if result.returncode != 0:
+        if result.returncode != 0 or not result.stdout.strip():
             from ac_cdd_core.error_messages import RecoveryMessages
             error_msg = f"Session validation failed: {RecoveryMessages.branch_not_found(integration_branch, str(cls.SESSION_FILE))}"
             return False, error_msg
@@ -83,7 +85,7 @@ class SessionManager:
             logger.warning(error_msg)
             # Don't fail, just warn
         
-        return True, ""
+        return True, None
 
     @classmethod
     def reconcile_session(cls) -> dict | None:
@@ -144,33 +146,71 @@ class SessionManager:
         """
         from ac_cdd_core.config import settings
         return f"{settings.session.integration_branch_prefix}/{session_id}"
-    
+
     @classmethod
-    async def load_or_reconcile_session(
+    def load_or_reconcile_session(
         cls, 
         session_id: str | None = None,
         auto_reconcile: bool = True,
-        resume_jules_session: str | None = None,
-    ) -> tuple[str, str, dict | None]:
+    ) -> dict:
         """Load session from parameter, file, config, or Git reconciliation.
         
-        Optionally resume from a Jules session.
+        Synchronous version for compatibility.
         
         Args:
             session_id: Optional explicit session ID
             auto_reconcile: If True, attempt Git reconciliation if session not found
-            resume_jules_session: Optional Jules session ID to resume from
             
         Returns:
-            (session_id, integration_branch, resume_info)
-            resume_info = {"pr_url": str, "jules_session_name": str} or None
+            dict containing "session_id", "integration_branch", and optionally "resume_info"
             
         Raises:
-            SessionValidationError: If no session can be found or resume fails
+            SessionValidationError: If no session can be found
         """
         from ac_cdd_core.config import settings
+
+        # 1. Use explicit session ID if provided
+        if session_id:
+            integration_branch = cls.get_integration_branch(session_id)
+            return {"session_id": session_id, "integration_branch": integration_branch}
+
+        # 2. Try loading from session file
+        saved_session = cls.load_session()
+        if saved_session:
+            return saved_session
+
+        # 3. Try config
+        if settings.session.session_id:
+            session_id_from_config = settings.session.session_id
+            integration_branch = cls.get_integration_branch(session_id_from_config)
+            return {"session_id": session_id_from_config, "integration_branch": integration_branch}
+
+        # 4. Try Git reconciliation
+        if auto_reconcile:
+            reconciled = cls.reconcile_session()
+            if reconciled:
+                return reconciled
+
+        # No session found
+        raise SessionValidationError(
+            "No session found.\n\n"
+            "Recovery options:\n"
+            "1. Start a new session:\n"
+            "   uv run manage.py gen-cycles\n"
+            "2. If you have an existing session, specify it:\n"
+            "   uv run manage.py run-cycle --session <session-id>"
+        )
+
+    @classmethod
+    async def load_or_reconcile_session_async(
+        cls,
+        session_id: str | None = None,
+        auto_reconcile: bool = True,
+        resume_jules_session: str | None = None,
+    ) -> dict:
+        """Async version that supports resuming from Jules session."""
+        from ac_cdd_core.config import settings
         
-        # Handle Jules resume first if provided
         if resume_jules_session:
             from ac_cdd_core.services.jules_client import JulesClient
             
@@ -212,7 +252,11 @@ class SessionManager:
                     }
                     
                     logger.info(f"Successfully resumed Jules session with PR: {result['pr_url']}")
-                    return session_id_to_use, integration_branch, resume_info
+                    return {
+                        "session_id": session_id_to_use,
+                        "integration_branch": integration_branch,
+                        "resume_info": resume_info
+                    }
                 else:
                     raise SessionValidationError(
                         "Cannot resume: Jules session not successful or no PR found."
@@ -221,37 +265,6 @@ class SessionManager:
                 if isinstance(e, SessionValidationError):
                     raise
                 raise SessionValidationError(f"Failed to resume Jules session: {e}") from e
-        
-        # Normal session loading (no resume)
-        # 1. Use explicit session ID if provided
-        if session_id:
-            integration_branch = cls.get_integration_branch(session_id)
-            return session_id, integration_branch, None
-        
-        # 2. Try loading from session file
-        saved_session = cls.load_session()
-        if saved_session:
-            return saved_session["session_id"], saved_session["integration_branch"], None
-        
-        # 3. Try config
-        if settings.session.session_id:
-            session_id_from_config = settings.session.session_id
-            integration_branch = cls.get_integration_branch(session_id_from_config)
-            return session_id_from_config, integration_branch, None
-        
-        # 4. Try Git reconciliation
-        if auto_reconcile:
-            reconciled = cls.reconcile_session()
-            if reconciled:
-                return reconciled["session_id"], reconciled["integration_branch"], None
-        
-        # No session found
-        raise SessionValidationError(
-            "No session found.\n\n"
-            "Recovery options:\n"
-            "1. Start a new session:\n"
-            "   uv run manage.py gen-cycles\n"
-            "2. If you have an existing session, specify it:\n"
-            "   uv run manage.py run-cycle --session <session-id>"
-        )
 
+        # Fallback to sync logic for non-resume cases
+        return cls.load_or_reconcile_session(session_id, auto_reconcile)

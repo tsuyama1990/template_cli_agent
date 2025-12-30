@@ -50,11 +50,11 @@ def check_environment() -> None:
     required_vars = ["JULES_API_KEY", "E2B_API_KEY"]
 
     # We need at least one model provider
-    if (
-        not os.environ.get("GEMINI_API_KEY")
-        and not os.environ.get("GOOGLE_API_KEY")
-        and not os.environ.get("OPENROUTER_API_KEY")
-    ):
+    # Use utility function to verify LLM keys (allows mocking in tests)
+    from ac_cdd_core.utils import check_api_key
+    try:
+        check_api_key()
+    except ValueError:
         missing_vars.append("GEMINI_API_KEY (or GOOGLE_API_KEY / OPENROUTER_API_KEY)")
 
     for var in required_vars:
@@ -80,6 +80,11 @@ def check_environment() -> None:
 
         # We don't exit strict here to allow users to fix while running,
         # but we prompt them heavily.
+        # Check if running in non-interactive mode (e.g. CI/Test)
+        if os.environ.get("NON_INTERACTIVE") or not sys.stdin.isatty():
+             # Fail if missing and non-interactive
+                sys.exit(1)
+
         if not typer.confirm("Do you want to proceed anyway? (May cause runtime errors)"):
             raise typer.Exit(code=1)
     else:
@@ -221,12 +226,16 @@ def run_cycle(
         from .validators import SessionValidator, ValidationError
         
         try:
-            session_id_to_use, integration_branch, resume_info = await SessionManager.load_or_reconcile_session(
+            session_data = await SessionManager.load_or_reconcile_session_async(
                 session_id=session_id,
                 auto_reconcile=True,
                 resume_jules_session=resume_session,  # Integrated!
             )
             
+            session_id_to_use = session_data["session_id"]
+            integration_branch = session_data["integration_branch"]
+            resume_info = session_data.get("resume_info")
+
             # Show appropriate message
             if resume_info:
                 console.print(f"[green]✓ Resumed Jules session with PR: {resume_info['pr_url']}[/green]")
@@ -342,10 +351,13 @@ def finalize_session(
         
         # Load session using consolidated helper
         try:
-            session_id_to_use, integration_branch, _ = await SessionManager.load_or_reconcile_session(
+            # We use the async version for consistency, though we don't resume here
+            session_data = await SessionManager.load_or_reconcile_session_async(
                 session_id=session_id,
                 auto_reconcile=False  # Don't auto-reconcile for finalize
             )
+            session_id_to_use = session_data["session_id"]
+            integration_branch = session_data["integration_branch"]
         except SessionValidationError as e:
             console.print(f"[red]{e}[/red]")
             sys.exit(1)
