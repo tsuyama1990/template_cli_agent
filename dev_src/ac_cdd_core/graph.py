@@ -131,7 +131,7 @@ class GraphBuilder:
         # Simplified: We run DIRECTLY on the integration branch.
         # Jules will create its own ephemeral agent-branch from here.
         active_branch = integration_branch
-        
+
         return {
             "current_phase": "branch_ready",
             "active_branch": active_branch,
