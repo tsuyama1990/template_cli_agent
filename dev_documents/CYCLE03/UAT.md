@@ -1,0 +1,73 @@
+# Cycle 03 User Acceptance Test (UAT): High-Throughput Exploration and Sampling
+
+## 1. Test Scenarios
+
+This document outlines the User Acceptance Tests for Cycle 03. The focus is on verifying the new dynamic exploration capabilities of the pipeline from a user's perspective. The tests will ensure that the system can correctly use a universal surrogate potential (MACE) to explore the conformational space of a material, and then intelligently select a diverse subset of structures for the expensive DFT analysis. The performance improvements from Numba are implicitly tested by the successful execution of these computationally intensive tasks within a reasonable timeframe, which is a key non-functional requirement for this cycle. These UATs are designed to give the user confidence that the data being generated is not only plentiful but also of high quality and relevance.
+
+| Scenario ID | Description                                                              | Priority |
+|-------------|--------------------------------------------------------------------------|----------|
+| UAT-03-001  | **Successful MACE-driven MD Simulation:** Verify that the system can correctly load the pre-trained MACE model and run a stable molecular dynamics simulation for a given initial structure, producing a valid trajectory. This test confirms the correct integration of the core surrogate potential. | High     |
+| UAT-03-002  | **Correct DIRECT Sampling Execution:** Verify that the system correctly processes a long MD trajectory, calculates descriptors, and then selects a smaller, specified number of diverse candidate structures for the next stage. This test validates the intelligent down-sampling capability, which is key to the system's efficiency. | High     |
+| UAT-03-003  | **End-to-End Workflow with Exploration:** Verify that the full pipeline, now including the Explorer & Sampler module, runs successfully from a minimal input and produces a final MLIP that has been trained on the intelligently selected data. This is the capstone test for this cycle's functionality. | High     |
+| UAT-03-004  | **GPU Acceleration for MACE:** Verify that if a GPU is available, the MACE MD simulation is automatically offloaded to it, resulting in a significant and measurable performance increase compared to a CPU-only run. This test confirms that the system can leverage available high-performance hardware. | Medium   |
+
+## 2. Behaviour Definitions
+
+The following Gherkin-style definitions describe the expected behaviour for each test scenario in detail.
+
+---
+
+### **Scenario: UAT-03-001 - Successful MACE-driven MD Simulation**
+
+This scenario tests the fundamental capability of the new `Explorer` module: its ability to use the MACE surrogate potential to perform a molecular dynamics simulation. The stability of this simulation and the physical plausibility of the resulting trajectory are paramount. If the surrogate model is not correctly integrated or is unstable, the data generated will be meaningless. This test ensures that the technical integration of the `mace-torch` library is correct and that the simulation produces a useful starting point for the sampling stage.
+
+**GIVEN** a user has an ASE database containing a single, well-formed initial structure for bulk silicon, which was created by the `StructureGenerator`.
+**AND** the user's `exec_config_dump.yaml` specifies running a MACE-driven MD simulation in the NVT ensemble at a temperature of 600K for 1000 steps.
+**WHEN** the user executes the `Explorer` module of the pipeline.
+**THEN** the system should log a clear message indicating that it is initialising the MACE model and starting a molecular dynamics simulation.
+**AND** the simulation should run to completion without crashing or raising any numerical instability errors.
+**AND** the system should produce a trajectory (either in memory or as a temporary file) containing exactly 1001 frames (the initial structure plus the 1000 MD steps).
+**AND** a visual inspection of this trajectory (e.g., by saving it to an XYZ file and viewing it in a visualisation tool) should show physically plausible atomic motion: the silicon atoms should be seen to be vibrating around their equilibrium lattice sites, and the crystal structure should remain intact, consistent with the behaviour of a solid at 600K.
+
+---
+
+### **Scenario: UAT-03-002 - Correct DIRECT Sampling Execution**
+
+This scenario tests the intelligence of the `Explorer` module. Running a long MD simulation is only useful if the system can effectively extract the most important information from it. This test verifies that the DIRECT sampling algorithm is working as intended, correctly processing a large trajectory, calculating descriptors, and, most importantly, selecting a diverse and representative subset of structures. This is the core of the computational efficiency gain in this cycle.
+
+**GIVEN** a trajectory containing 10,000 frames of a material, which has been generated by a MACE MD simulation.
+**AND** the `exec_config_dump.yaml` file specifies that the system should select 200 candidate structures via the DIRECT sampling method.
+**WHEN** the `Explorer` module is executed to process this trajectory.
+**THEN** the system should log that it is calculating structural descriptors for all 10,000 frames. This step should complete in a reasonable amount of time, demonstrating the effectiveness of the Numba optimisations.
+**AND** the system should then log that it is performing clustering and DIRECT sampling to select the final candidates.
+**AND** upon completion of the module, exactly 200 new structures should have been added to the ASE database, and each should have been assigned the state "unlabelled".
+**AND** the original structure that was used to seed the MD run should have its state updated in the database to "explored", to prevent it from being processed again.
+**AND** an analysis of the indices of the selected structures should show that they are temporally diverse, i.e., they are drawn from various points throughout the simulation's timeline, not just clustered at the beginning or the end.
+
+---
+
+### **Scenario: UAT-03-003 - End-to-End Workflow with Exploration**
+
+This is the main integration test for this cycle from a user's perspective. It confirms that the new `Explorer & Sampler` module is not just functional on its own, but is correctly integrated into the main pipeline, and that data flows correctly through all the stages, from initial configuration to the final trained model.
+
+**GIVEN** a user creates a minimal `input.yaml` for a simple alloy like SiGe.
+**AND** the user starts with an empty database and an empty output directory.
+**WHEN** the user executes the main orchestrator script for the entire pipeline.
+**THEN** the system should execute the full, five-stage workflow without crashing or requiring any user intervention.
+**AND** the log files should clearly show the execution of the new `Explorer & Sampler` module. The logs should appear after the `StructureGenerator` has finished and before the `LabellingEngine` begins its work.
+**AND** the log messages from the `LabellingEngine` should indicate that it is processing the structures that were selected by the `Explorer` module, confirming the correct data hand-off.
+**AND** the entire workflow should complete successfully, resulting in a final trained MLIP file (`model.ace`) in the output directory. The existence of this file proves that the data generated by the new module was successfully processed by the rest of the pipeline.
+
+---
+
+### **Scenario: UAC-03-004 - GPU Acceleration for MACE**
+
+This scenario tests a critical non-functional requirement: the ability of the system to leverage high-performance hardware. For the large MD simulations performed by the `Explorer` module, using a GPU can result in a speed-up of 10-100x, making the difference between a feasible and an infeasible calculation. This test verifies that the system can automatically detect and utilise a GPU.
+
+**GIVEN** a user is running the pipeline on a machine with a compatible and visible NVIDIA GPU, with the necessary CUDA libraries installed.
+**AND** the user provides an `input.yaml` for a moderately large system (e.g., more than 100 atoms) to make the performance difference obvious.
+**WHEN** the user executes the `Explorer` module.
+**THEN** the underlying `mace-torch` library should automatically detect and use the available GPU for the neural network calculations.
+**AND** the system's log file should contain a clear message indicating that the MACE calculation is running on the GPU device (e.g., "MACE model initialised on device: cuda:0").
+**AND** the time taken to complete the MD simulation should be significantly shorter (e.g., at least 5x faster) compared to running the exact same simulation on a high-end CPU-only machine.
+**AND** the final results (the set of selected structures) should be numerically identical to the results of a CPU-only run, ensuring that the use of the GPU does not affect the scientific outcome.
