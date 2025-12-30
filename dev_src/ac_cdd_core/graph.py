@@ -78,33 +78,38 @@ class GraphBuilder:
         """Explicitly close the sandbox runner with retry logic."""
         if self.sandbox_runner:
             logger.info("Cleaning up shared sandbox...")
-            
+
             # Retry logic with exponential backoff
             max_retries = 3
             retry_delay = 1  # seconds
-            
+
             for attempt in range(max_retries):
                 try:
                     # Add timeout to prevent hanging
                     import asyncio
+
                     await asyncio.wait_for(
                         self.sandbox_runner.close(),
-                        timeout=30.0  # 30 second timeout
+                        timeout=30.0,  # 30 second timeout
                     )
                     logger.info("Sandbox cleanup successful.")
                     self.sandbox_runner = None
                     return
                 except TimeoutError:
-                    logger.warning(f"Sandbox cleanup timed out (attempt {attempt + 1}/{max_retries})")
+                    logger.warning(
+                        f"Sandbox cleanup timed out (attempt {attempt + 1}/{max_retries})"
+                    )
                     if attempt < max_retries - 1:
                         await asyncio.sleep(retry_delay)
                         retry_delay *= 2  # Exponential backoff
                 except Exception as e:
-                    logger.warning(f"Sandbox cleanup failed (attempt {attempt + 1}/{max_retries}): {e}")
+                    logger.warning(
+                        f"Sandbox cleanup failed (attempt {attempt + 1}/{max_retries}): {e}"
+                    )
                     if attempt < max_retries - 1:
                         await asyncio.sleep(retry_delay)
                         retry_delay *= 2
-            
+
             # If all retries failed, log error but don't crash
             logger.error(
                 "Failed to cleanup sandbox after multiple retries. "
@@ -208,7 +213,8 @@ class GraphBuilder:
 
                 except Exception:
                     # CRITICAL: Merge failure should stop the workflow
-                    from ac_cdd_core.error_messages import RecoveryMessages
+                    from ac_cdd_core.messages import RecoveryMessages
+
                     error_msg = RecoveryMessages.architect_merge_failed(pr_url)
                     logger.error(error_msg)
                     return {"error": error_msg, "current_phase": "architect_merge_failed"}
@@ -249,9 +255,7 @@ class GraphBuilder:
 
         # Ensure we have session context
         if not state.session_id or not state.integration_branch:
-            raise ValueError(
-                "Session not initialized. Run gen-cycles first to create a session."
-            )
+            raise ValueError("Session not initialized. Run gen-cycles first to create a session.")
 
         # Create cycle branch from integration branch
         cycle_branch = await self.git.create_session_branch(
@@ -532,12 +536,12 @@ class GraphBuilder:
 
     async def auditor_node(self, state: CycleState) -> dict[str, Any]:
         """Strict Auditor Node (Direct LLM Review)."""
-        
+
         # Get committee state (Pydantic provides defaults)
         auditor_idx = state.current_auditor_index
         review_count = state.current_auditor_review_count
         iteration_count = state.iteration_count
-        
+
         logger.info(
             f"Phase: Auditor #{auditor_idx} - Review {review_count}/{settings.REVIEWS_PER_AUDITOR} "
             f"(Iteration {iteration_count})"
@@ -712,7 +716,8 @@ class GraphBuilder:
                 logger.info(f"Successfully merged cycle {cycle_id} to integration branch.")
             except Exception:
                 # CRITICAL: Merge failure should stop the workflow
-                from ac_cdd_core.error_messages import RecoveryMessages
+                from ac_cdd_core.messages import RecoveryMessages
+
                 error_msg = RecoveryMessages.cycle_merge_failed(pr_url)
                 logger.error(error_msg)
                 return {"error": error_msg, "current_phase": "merge_failed"}

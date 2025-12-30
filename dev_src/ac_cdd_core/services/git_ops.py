@@ -23,7 +23,7 @@ class GitManager:
 
     async def ensure_clean_state(self, force_stash: bool = False) -> None:
         """Ensures the working directory is clean.
-        
+
         Args:
             force_stash: If True, auto-stash without prompting (for --auto mode)
         """
@@ -37,7 +37,7 @@ class GitManager:
                 )
                 # In non-interactive mode, we'll proceed with stash
                 # In future, could add interactive prompt here
-            
+
             logger.info("Stashing uncommitted changes...")
             await self._run_git(["stash", "push", "-u", "-m", "Auto-stash before workflow run"])
             logger.info("Changes stashed. Use 'git stash pop' to recover them.")
@@ -100,14 +100,15 @@ class GitManager:
         except RuntimeError as e:
             logger.error(f"Merge conflict detected: {e}")
             await self._run_git(["merge", "--abort"], check=False)
-            
+
             # Return to original branch
             try:
                 await self._run_git(["checkout", original_branch])
             except Exception:
                 pass  # Best effort
-            
-            from ac_cdd_core.error_messages import RecoveryMessages
+
+            from ac_cdd_core.messages import RecoveryMessages
+
             error_msg = RecoveryMessages.merge_conflict(source, target, original_branch)
             raise RuntimeError(error_msg) from e
 
@@ -194,10 +195,10 @@ class GitManager:
         """Pushes the specified branch to origin."""
         logger.info(f"Pushing branch {branch} to origin...")
         await self._run_git(["push", "-u", "origin", branch])
-    
+
     async def validate_remote_branch(self, branch: str) -> tuple[bool, str]:
         """Validate that branch exists on remote and is up-to-date.
-        
+
         Returns:
             (is_valid, error_message)
         """
@@ -206,22 +207,22 @@ class GitManager:
             ["git", "ls-remote", "--heads", "origin", branch],
             check=False,
         )
-        
+
         if code != 0 or not stdout.strip():
             return False, f"Branch '{branch}' does not exist on remote 'origin'"
-        
+
         # Check if local is behind remote
         try:
             await self._run_git(["fetch", "origin", branch])
-            
+
             # Compare local and remote
             local_hash = await self._run_git(["rev-parse", branch])
             remote_hash = await self._run_git(["rev-parse", f"origin/{branch}"])
-            
+
             if local_hash != remote_hash:
                 # Check if local is behind
                 merge_base = await self._run_git(["merge-base", branch, f"origin/{branch}"])
-                
+
                 if merge_base == local_hash:
                     return False, (
                         f"Branch '{branch}' is behind remote.\n"
@@ -236,7 +237,7 @@ class GitManager:
                     )
         except Exception as e:
             logger.warning(f"Could not validate remote branch state: {e}")
-        
+
         return True, ""
 
     # Session-Based Branch Operations
@@ -345,7 +346,7 @@ class GitManager:
             ],
             check=False,
         )
-        
+
         if code == 0 and stdout.strip():
             existing_pr_url = stdout.strip()
             logger.info(f"PR already exists: {existing_pr_url}")

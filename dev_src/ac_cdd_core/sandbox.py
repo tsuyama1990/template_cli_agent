@@ -139,20 +139,16 @@ class SandboxRunner:
 
         return stdout, stderr, exit_code
 
-    async def _sync_to_sandbox(self, sandbox: Sandbox) -> None:
-        """
-        Uploads configured directories and files to the sandbox using a tarball for performance.
-        Skips if content hasn't changed.
-        """
+    def _compute_sync_hash(self) -> str:
+        """Computes the hash of the directories to sync."""
         root = Path.cwd()
-        current_hash = calculate_directory_hash(
+        return calculate_directory_hash(
             root, settings.sandbox.files_to_sync, settings.sandbox.dirs_to_sync
         )
 
-        if self._last_sync_hash == current_hash:
-            logger.info("Sandbox files up-to-date. Skipping sync.")
-            return
-
+    def _create_sync_tarball(self) -> io.BytesIO:
+        """Creates a tarball of the directories to sync."""
+        root = Path.cwd()
         tar_buffer = io.BytesIO()
 
         with tarfile.open(fileobj=tar_buffer, mode="w:gz") as tar:
@@ -178,6 +174,20 @@ class SandboxRunner:
                         tar.add(file_path, arcname=str(rel_path))
 
         tar_buffer.seek(0)
+        return tar_buffer
+
+    async def _sync_to_sandbox(self, sandbox: Sandbox) -> None:
+        """
+        Uploads configured directories and files to the sandbox using a tarball for performance.
+        Skips if content hasn't changed.
+        """
+        current_hash = self._compute_sync_hash()
+
+        if self._last_sync_hash == current_hash:
+            logger.info("Sandbox files up-to-date. Skipping sync.")
+            return
+
+        tar_buffer = self._create_sync_tarball()
 
         # Upload the tarball
         remote_tar_path = f"{self.cwd}/bundle.tar.gz"
@@ -194,3 +204,7 @@ class SandboxRunner:
         if self.sandbox:
             self.sandbox.kill()
             self.sandbox = None
+
+    async def cleanup(self) -> None:
+        """Alias for close."""
+        await self.close()

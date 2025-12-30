@@ -66,9 +66,7 @@ class CycleState(BaseModel):
         from .config import settings
 
         if v > settings.NUM_AUDITORS:
-            raise ValueError(
-                f"Auditor index {v} exceeds NUM_AUDITORS={settings.NUM_AUDITORS}"
-            )
+            raise ValueError(f"Auditor index {v} exceeds NUM_AUDITORS={settings.NUM_AUDITORS}")
         return v
 
     @field_validator("current_auditor_review_count")

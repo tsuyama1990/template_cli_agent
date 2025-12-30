@@ -175,6 +175,7 @@ class Settings(BaseSettings):
     agents: AgentsConfig = AgentsConfig()
     reviewer: ReviewerConfig = ReviewerConfig()
     prompts: PromptsConfig = PromptsConfig()
+
     # Computed Properties
     @property
     def current_session_id(self) -> str:
