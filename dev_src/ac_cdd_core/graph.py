@@ -128,17 +128,13 @@ class GraphBuilder:
             session_id=session_id, prefix=settings.session.integration_branch_prefix
         )
 
-        # Create architecture branch from integration
-        arch_branch = await self.git.create_session_branch(
-            session_id=session_id,
-            branch_type="arch",
-            branch_id="",  # Just "arch"
-            integration_branch=integration_branch,
-        )
-
+        # Simplified: We run DIRECTLY on the integration branch.
+        # Jules will create its own ephemeral agent-branch from here.
+        active_branch = integration_branch
+        
         return {
             "current_phase": "branch_ready",
-            "active_branch": arch_branch,
+            "active_branch": active_branch,
             "session_id": session_id,
             "integration_branch": integration_branch,
         }
@@ -179,7 +175,7 @@ class GraphBuilder:
                 files=files,
                 completion_signal_file=signal_file,
                 runner=runner,
-                target_branch=state.integration_branch,  # NEW: Target integration branch
+                # target_branch=state.integration_branch, # REMOVED
             )
 
             # Since Jules now returns a PR URL (or status dict) instead of file content directly,
@@ -255,17 +251,14 @@ class GraphBuilder:
         if not state.session_id or not state.integration_branch:
             raise ValueError("Session not initialized. Run gen-cycles first to create a session.")
 
-        # Create cycle branch from integration branch
-        cycle_branch = await self.git.create_session_branch(
-            session_id=state.session_id,
-            branch_type="cycle",
-            branch_id=cycle_id,
-            integration_branch=state.integration_branch,
-        )
+        # Simplified: We use the integration branch directly.
+        # We ensure we are on it.
+        await self.git.checkout_branch(state.integration_branch)
+        active_branch = state.integration_branch
 
         return {
             "current_phase": "branch_ready",
-            "active_branch": cycle_branch,
+            "active_branch": active_branch,
             "iteration_count": state.iteration_count,
             "current_auditor_index": 1,
             "current_auditor_review_count": 1,
@@ -437,7 +430,7 @@ class GraphBuilder:
                     files=files,
                     completion_signal_file=signal_file,
                     runner=runner,
-                    target_branch=state.integration_branch,  # NEW: Target integration branch
+                    # target_branch=state.integration_branch, # REMOVED
                 )
 
                 pr_url = result.get("pr_url")

@@ -183,6 +183,13 @@ class GitManager:
             raise RuntimeError(f"Failed to checkout PR {pr_url}")
         logger.info(f"Checked out PR {pr_url} successfully.")
 
+    async def checkout_branch(self, branch_name: str) -> None:
+        """
+        Checks out an existing branch.
+        """
+        logger.info(f"Checking out branch: {branch_name}...")
+        await self._run_git(["checkout", branch_name])
+
     async def pull_changes(self) -> None:
         """
         Pulls changes from the remote repository.
