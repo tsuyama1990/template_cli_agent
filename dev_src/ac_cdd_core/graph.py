@@ -174,7 +174,7 @@ class GraphBuilder:
         try:
             # Pass runner for remote execution
             result = await self.jules_client.run_session(
-                session_id="architect-session",
+                session_id=f"{state.session_id}-architect",
                 prompt=instruction,
                 files=files,
                 completion_signal_file=signal_file,
@@ -432,7 +432,7 @@ class GraphBuilder:
             try:
                 # Execute Remote Jules
                 result = await self.jules_client.run_session(
-                    session_id=f"coder-{cycle_id}-iter{iteration_count}",
+                    session_id=f"{state.session_id}-cycle-{cycle_id}",
                     prompt=instruction,
                     files=files,
                     completion_signal_file=signal_file,
