@@ -300,7 +300,6 @@ class JulesClient:
                 "source": f"sources/github/{owner}/{repo_name}",
                 "githubRepoContext": {
                     "startingBranch": branch,
-                    "targetBranch": target_branch,  # NEW: Specify PR target
                 },
             },
             "automationMode": "AUTO_CREATE_PR",
