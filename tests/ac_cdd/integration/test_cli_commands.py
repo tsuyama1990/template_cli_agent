@@ -9,17 +9,21 @@ from typer.testing import CliRunner
 try:
     from unittest.mock import AsyncMock
 except ImportError:
+
     class AsyncMock(MagicMock):
         async def __call__(self, *args, **kwargs):
-            return super(AsyncMock, self).__call__(*args, **kwargs)
+            return super().__call__(*args, **kwargs)
+
 
 @pytest.fixture
 def runner():
     return CliRunner()
 
+
 @pytest.fixture
 def mock_project_manager():
     return MagicMock()
+
 
 @pytest.fixture
 def mock_graph_builder():
@@ -28,13 +32,16 @@ def mock_graph_builder():
     m.cleanup = AsyncMock()
     return m
 
+
 @pytest.fixture
 def mock_session_manager():
     return MagicMock()
 
+
 @pytest.fixture
 def mock_session_validator():
     return MagicMock()
+
 
 @pytest.fixture
 def mock_git_manager():
@@ -46,12 +53,12 @@ def test_init_command_creates_structure(runner):
     with (
         patch("ac_cdd_core.cli.check_environment") as mock_check,
         patch("ac_cdd_core.services.project.ProjectManager.initialize_project") as mock_init,
-        patch("rich.console.Console.print") as mock_print,
+        patch("rich.console.Console.print"),
     ):
         from ac_cdd_core.cli import app
-        
+
         result = runner.invoke(app, ["init"])
-        
+
         assert result.exit_code == 0
         mock_check.assert_called_once()
         mock_init.assert_called_once()
@@ -62,7 +69,7 @@ def test_check_environment_missing_keys():
     # We use a context manager to patch check_api_key to return False (invalid)
     with (
         patch("ac_cdd_core.utils.check_api_key", return_value=False),
-        patch("rich.console.Console.print") as mock_print,
+        patch("rich.console.Console.print"),
     ):
         from ac_cdd_core.cli import check_environment
 
@@ -91,10 +98,13 @@ def test_init_command(runner, mock_project_manager):
     """Test init command execution."""
     with patch("ac_cdd_core.cli.check_environment"):
         from ac_cdd_core.cli import app
+
         # Patch ProjectManager inside cli scope or where it's instantiated
         # The cli.init instantiates ProjectManager().
         # We need to patch the class ProjectManager to return our mock instance
-        with patch("ac_cdd_core.services.project.ProjectManager", return_value=mock_project_manager):
+        with patch(
+            "ac_cdd_core.services.project.ProjectManager", return_value=mock_project_manager
+        ):
             result = runner.invoke(app, ["init"])
 
             assert result.exit_code == 0
@@ -117,16 +127,19 @@ def test_gen_cycles_command(runner, mock_graph_builder, mock_session_manager):
         # Mock ainvoke to return a State object or Dict that matches expectation
         # cli.py expects final_state.session_id.
         # If CycleState is Pydantic, dict access via attribute works if it's an object.
-        # But if ainvoke returns a dict (standard LangGraph), then cli.py line 174 is wrong unless it wraps it.
-        # However, checking `dev_src/ac_cdd_core/cli.py` line 174: `session_id_final = final_state.session_id`.
+        # But if ainvoke returns a dict (standard LangGraph), then cli.py line 174 is wrong unless:
+        # 1. it wraps it, or 2. we mock it correctly.
+        # However, checking `dev_src/ac_cdd_core/cli.py` line 174:
+        # `session_id_final = final_state.session_id`.
         # This implies final_state is an object.
-        # BUT `GraphBuilder.build_architect_graph` returns `CompiledStateGraph`. `ainvoke` returns `dict` usually.
+        # BUT `GraphBuilder.build_architect_graph` returns `CompiledStateGraph`.
+        # `ainvoke` returns `dict` usually.
         # Let's assume cli.py expects an OBJECT.
         # So we mock return_value as a MagicMock which has attributes.
         mock_state = MagicMock()
         mock_state.session_id = "test-session"
         mock_state.integration_branch = "dev/test"
-        mock_state.get.return_value = None # for .get("error")
+        mock_state.get.return_value = None  # for .get("error")
 
         mock_graph.ainvoke = AsyncMock(return_value=mock_state)
         mock_graph_builder.build_architect_graph.return_value = mock_graph
@@ -137,7 +150,9 @@ def test_gen_cycles_command(runner, mock_graph_builder, mock_session_manager):
         assert "Architect Phase: Generating Cycles" in result.stdout
 
 
-def test_run_cycle_command(runner, mock_graph_builder, mock_session_manager, mock_session_validator):
+def test_run_cycle_command(
+    runner, mock_graph_builder, mock_session_manager, mock_session_validator
+):
     """Test run-cycle command."""
     from ac_cdd_core.cli import app
 
@@ -151,7 +166,7 @@ def test_run_cycle_command(runner, mock_graph_builder, mock_session_manager, moc
         # Setup mocks
         mock_session_manager.load_or_reconcile_session.return_value = {
             "session_id": "test",
-            "integration_branch": "dev/test"
+            "integration_branch": "dev/test",
         }
         mock_session_validator.validate = AsyncMock(return_value=(True, ""))
 
@@ -176,7 +191,7 @@ def test_finalize_session_command(runner, mock_session_manager, mock_git_manager
     ):
         mock_session_manager.load_or_reconcile_session.return_value = {
             "session_id": "test",
-            "integration_branch": "dev/test"
+            "integration_branch": "dev/test",
         }
         mock_session_manager.validate_session.return_value = (True, "")
         mock_git_manager.create_final_pr = AsyncMock(return_value="https://pr")

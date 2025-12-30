@@ -101,7 +101,11 @@ class SandboxRunner:
             except Exception as e:
                 # タイムアウトやSandbox消失のエラーか判定
                 err_msg = str(e).lower()
-                is_sandbox_error = "sandbox was not found" in err_msg or "timeout" in err_msg or "sandbox error" in err_msg
+                is_sandbox_error = (
+                    "sandbox was not found" in err_msg
+                    or "timeout" in err_msg
+                    or "sandbox error" in err_msg
+                )
 
                 if is_sandbox_error and attempt < max_retries:
                     logger.warning(

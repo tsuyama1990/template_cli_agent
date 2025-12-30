@@ -58,7 +58,10 @@ def get_model(model_name: str) -> Any:
             # Check if we are in a likely test environment or just missing the key
             # We will warn and return a dummy key to prevent import-time crashes in tests/CI
             # where the key might not be set but we mock the calls anyway.
-            logger.warning("OPENROUTER_API_KEY is not set. Using dummy key 'sk-dummy'. This will fail if real API calls are attempted.")
+            logger.warning(
+                "OPENROUTER_API_KEY is not set. Using dummy key 'sk-dummy'. "
+                "This will fail if real API calls are attempted."
+            )
             api_key = "sk-dummy"
 
         # OpenAIChatModel requires env var for OpenRouter if using provider="openrouter"

@@ -9,9 +9,6 @@ from .config import settings
 from .domain_models import AuditResult
 from .sandbox import SandboxRunner
 from .service_container import ServiceContainer
-from .services.git_ops import GitManager
-from .services.jules_client import JulesClient
-from .services.llm_reviewer import LLMReviewer
 from .state import CycleState
 from .utils import logger
 
@@ -29,9 +26,9 @@ def _to_relative_path(p: Path) -> str:
 class GraphBuilder:
     def __init__(self, services: ServiceContainer):
         self.services = services
-        self.jules_client = JulesClient()
-        self.llm_reviewer = LLMReviewer()
-        self.git = GitManager()
+        self.jules_client = services.jules
+        self.llm_reviewer = services.reviewer
+        self.git = services.git
         # Shared sandbox for the lifecycle of the graph execution (approx. one cycle)
         self.sandbox_runner: SandboxRunner | None = None
 
@@ -78,33 +75,38 @@ class GraphBuilder:
         """Explicitly close the sandbox runner with retry logic."""
         if self.sandbox_runner:
             logger.info("Cleaning up shared sandbox...")
-            
+
             # Retry logic with exponential backoff
             max_retries = 3
             retry_delay = 1  # seconds
-            
+
             for attempt in range(max_retries):
                 try:
                     # Add timeout to prevent hanging
                     import asyncio
+
                     await asyncio.wait_for(
                         self.sandbox_runner.close(),
-                        timeout=30.0  # 30 second timeout
+                        timeout=30.0,  # 30 second timeout
                     )
                     logger.info("Sandbox cleanup successful.")
                     self.sandbox_runner = None
                     return
                 except TimeoutError:
-                    logger.warning(f"Sandbox cleanup timed out (attempt {attempt + 1}/{max_retries})")
+                    logger.warning(
+                        f"Sandbox cleanup timed out (attempt {attempt + 1}/{max_retries})"
+                    )
                     if attempt < max_retries - 1:
                         await asyncio.sleep(retry_delay)
                         retry_delay *= 2  # Exponential backoff
                 except Exception as e:
-                    logger.warning(f"Sandbox cleanup failed (attempt {attempt + 1}/{max_retries}): {e}")
+                    logger.warning(
+                        f"Sandbox cleanup failed (attempt {attempt + 1}/{max_retries}): {e}"
+                    )
                     if attempt < max_retries - 1:
                         await asyncio.sleep(retry_delay)
                         retry_delay *= 2
-            
+
             # If all retries failed, log error but don't crash
             logger.error(
                 "Failed to cleanup sandbox after multiple retries. "
@@ -192,7 +194,8 @@ class GraphBuilder:
                 # --- Auto-Merge Logic to Integration Branch ---
                 try:
                     logger.info(
-                        f"Attempting to auto-merge PR to integration branch: {state.integration_branch}..."
+                        f"Attempting to auto-merge PR to integration branch: "
+                        f"{state.integration_branch}..."
                     )
                     await self.git.merge_to_integration(pr_url, state.integration_branch)
                     logger.info("PR merged to integration branch successfully.")
@@ -209,6 +212,7 @@ class GraphBuilder:
                 except Exception:
                     # CRITICAL: Merge failure should stop the workflow
                     from ac_cdd_core.error_messages import RecoveryMessages
+
                     error_msg = RecoveryMessages.architect_merge_failed(pr_url)
                     logger.error(error_msg)
                     return {"error": error_msg, "current_phase": "architect_merge_failed"}
@@ -249,9 +253,7 @@ class GraphBuilder:
 
         # Ensure we have session context
         if not state.session_id or not state.integration_branch:
-            raise ValueError(
-                "Session not initialized. Run gen-cycles first to create a session."
-            )
+            raise ValueError("Session not initialized. Run gen-cycles first to create a session.")
 
         # Create cycle branch from integration branch
         cycle_branch = await self.git.create_session_branch(
@@ -271,8 +273,8 @@ class GraphBuilder:
 
     async def coder_session_node(self, state: CycleState) -> dict[str, Any]:
         """Coder Session: Implement and Test Creation (Jules or Aider)."""
-        cycle_id = state["cycle_id"]
-        iteration_count = state.get("iteration_count", 0) + 1
+        cycle_id = state.cycle_id
+        iteration_count = state.iteration_count + 1
 
         logger.info(
             f"Phase: Coder Session (Cycle {cycle_id}) - "
@@ -294,9 +296,9 @@ class GraphBuilder:
                 return str(p)
 
         # RESUME BYPASS CHECK
-        if state.get("resume_mode") and state.get("pr_url"):
-            logger.info(f"RESUMING Session: {state.get('jules_session_name')}")
-            pr_url = state["pr_url"]
+        if state.resume_mode and state.pr_url:
+            logger.info(f"RESUMING Session: {state.jules_session_name}")
+            pr_url = state.pr_url
 
             # Ensure Sandbox is ready even if skipping Jules (for Syntax Check later)
             runner = await self._get_shared_sandbox()
@@ -328,11 +330,11 @@ class GraphBuilder:
             }
 
         # Determine if this is Initial Creation (Jules) or Fix Loop (Aider)
-        if iteration_count > 1 and state.get("jules_session_name"):
+        if iteration_count > 1 and state.jules_session_name:
             # --- FIX LOOP (Jules Reuse) ---
             logger.info(
                 f"Mode: Jules Fixer (Refinement/Repair) - "
-                f"Resuming Session {state['jules_session_name']}"
+                f"Resuming Session {state.jules_session_name}"
             )
             audit_feedback = state.audit_feedback
 
@@ -360,7 +362,7 @@ class GraphBuilder:
                     f"{instruction[:200]}..."
                 )
                 result = await self.jules_client.continue_session(
-                    session_name=state["jules_session_name"], prompt=instruction
+                    session_name=state.jules_session_name, prompt=instruction
                 )
 
                 pr_url = result.get("pr_url")
@@ -497,7 +499,7 @@ class GraphBuilder:
             if code_s != 0:
                 logger.error("Syntax Check Failed")
                 return {
-                    "active_branch": state.get("active_branch"),  # Keep context
+                    "active_branch": state.active_branch,  # Keep context
                     "audit_feedback": [f"Syntax Error:\nSTDOUT: {stdout_s}\nSTDERR: {stderr_s}"],
                     "error": "Syntax Check Failed. Please fix syntax errors.",
                 }
@@ -532,12 +534,12 @@ class GraphBuilder:
 
     async def auditor_node(self, state: CycleState) -> dict[str, Any]:
         """Strict Auditor Node (Direct LLM Review)."""
-        
+
         # Get committee state (Pydantic provides defaults)
         auditor_idx = state.current_auditor_index
         review_count = state.current_auditor_review_count
         iteration_count = state.iteration_count
-        
+
         logger.info(
             f"Phase: Auditor #{auditor_idx} - Review {review_count}/{settings.REVIEWS_PER_AUDITOR} "
             f"(Iteration {iteration_count})"
@@ -590,7 +592,7 @@ class GraphBuilder:
         files_to_audit = sorted(list(files_to_audit))
 
         # Add Documentation (Spec, UAT, Arch) to ensure Auditor understands the objective
-        cycle_id = state.get("cycle_id", settings.DUMMY_CYCLE_ID)
+        cycle_id = state.cycle_id
         docs_dir = Path(settings.paths.documents_dir)
         cycle_dir = docs_dir / f"CYCLE{cycle_id}"
 
@@ -713,6 +715,7 @@ class GraphBuilder:
             except Exception:
                 # CRITICAL: Merge failure should stop the workflow
                 from ac_cdd_core.error_messages import RecoveryMessages
+
                 error_msg = RecoveryMessages.cycle_merge_failed(pr_url)
                 logger.error(error_msg)
                 return {"error": error_msg, "current_phase": "merge_failed"}
@@ -733,7 +736,7 @@ class GraphBuilder:
         workflow.add_edge("init_branch", "architect_session")
 
         def check_architect(state: CycleState) -> Literal["commit", "end"]:
-            if state.get("error"):
+            if state.error:
                 return "end"
             return "commit"
 
@@ -756,7 +759,7 @@ class GraphBuilder:
         workflow.add_edge("checkout_branch", "coder_session")
 
         def check_coder(state: CycleState) -> Literal["syntax_check", "end"]:
-            if state.get("error"):
+            if state.error:
                 return "end"
             # Always proceed to syntax check/linting
             return "syntax_check"
@@ -777,8 +780,8 @@ class GraphBuilder:
             if review_count < settings.REVIEWS_PER_AUDITOR:
                 # Same auditor, next review
                 logger.info(
-                    f"Auditor #{auditor_idx}: Review {review_count}/{settings.REVIEWS_PER_AUDITOR} complete. "
-                    f"Proceeding to fix and next review."
+                    f"Auditor #{auditor_idx}: Review {review_count}/{settings.REVIEWS_PER_AUDITOR} "
+                    "complete. Proceeding to fix and next review."
                 )
                 return "coder_session"
 
@@ -793,9 +796,10 @@ class GraphBuilder:
 
             # All auditors finished all reviews
             logger.info(
-                f"All {settings.NUM_AUDITORS} auditors completed {settings.REVIEWS_PER_AUDITOR} reviews each. "
+                f"All {settings.NUM_AUDITORS} auditors completed {settings.REVIEWS_PER_AUDITOR} "
+                "reviews each. "
                 f"Total: {settings.NUM_AUDITORS * settings.REVIEWS_PER_AUDITOR} audit-fix cycles. "
-                f"Proceeding to commit."
+                "Proceeding to commit."
             )
             return "commit"
 

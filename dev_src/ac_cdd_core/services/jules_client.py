@@ -57,10 +57,10 @@ class JulesApiClient:
         if not self.api_key:
             # If still missing, check if we should allow dummy for testing
             if os.environ.get("AC_CDD_AUTO_APPROVE") or "PYTEST_CURRENT_TEST" in os.environ:
-                 logger.warning("Jules API Key missing in Test Environment. Using dummy key.")
-                 self.api_key = "dummy_jules_key"
+                logger.warning("Jules API Key missing in Test Environment. Using dummy key.")
+                self.api_key = "dummy_jules_key"
             else:
-                 raise ValueError("API Key not found for Jules API.")
+                raise ValueError("API Key not found for Jules API.")
 
         self.headers = {"x-goog-api-key": self.api_key, "Content-Type": "application/json"}
 
@@ -176,6 +176,10 @@ class JulesClient:
             api_key=self.credentials.token if self.credentials else settings.JULES_API_KEY
         )
 
+    async def _sleep(self, seconds: float) -> None:
+        """Async sleep wrapper for easier mocking in tests."""
+        await asyncio.sleep(seconds)
+
     def list_activities(self, session_id_path: str) -> list[dict[str, Any]]:
         """Delegates activity listing to the API Client."""
         return self.api_client.list_activities(session_id_path)
@@ -202,7 +206,9 @@ class JulesClient:
         """Check if httpx.AsyncClient.post is mocked."""
         # Use hasattr to avoid import error if unittest.mock not available (though it is in stdlib)
         # Check both class level and instance level if possible, but patching is usually class level
-        is_mock = isinstance(httpx.AsyncClient.post, (unittest.mock.MagicMock, unittest.mock.AsyncMock))
+        is_mock = isinstance(
+            httpx.AsyncClient.post, (unittest.mock.MagicMock, unittest.mock.AsyncMock)
+        )
         if is_mock:
             return True
         # Also check if it's a 'NonCallableMock' or similar which MagicMock inherits from
@@ -232,12 +238,12 @@ class JulesClient:
                 "session_name": f"sessions/dummy-{session_id}",
                 "pr_url": "https://github.com/dummy/repo/pull/1",
                 "status": "success",
-                "cycles": ["01", "02"] # For architect session
+                "cycles": ["01", "02"],  # For architect session
             }
 
         if not settings.JULES_API_KEY and not self.credentials:
             if "PYTEST_CURRENT_TEST" not in os.environ:
-                 raise JulesSessionError("Missing JULES_API_KEY or ADC credentials.")
+                raise JulesSessionError("Missing JULES_API_KEY or ADC credentials.")
             # For tests, allow proceeding if mocked later, or fail later if real call attempted.
 
         # 1. Prepare Source Context
@@ -338,7 +344,7 @@ class JulesClient:
             return {
                 "session_name": session_name,
                 "pr_url": "https://github.com/dummy/repo/pull/2",
-                "status": "success"
+                "status": "success",
             }
 
         logger.info(f"Continuing Session {session_name} with info...")
@@ -488,7 +494,7 @@ class JulesClient:
                                         processed_activity_ids.add(act_id)
 
                                         # Sleep a bit to allow state transition
-                                        await asyncio.sleep(5)
+                                        await self._sleep(5)
                                         continue  # Restart loop to check status change
 
                                     except Exception as e:
@@ -591,7 +597,7 @@ class JulesClient:
                 except Exception as e:
                     logger.warning(f"Polling loop unexpected error: {e}")
 
-                await asyncio.sleep(self.poll_interval)
+                await self._sleep(self.poll_interval)
 
     async def _send_message(self, session_url: str, content: str):
         """

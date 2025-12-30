@@ -30,9 +30,7 @@ class RecoveryMessages:
     @staticmethod
     def architect_merge_failed(pr_url: str) -> str:
         """Error message when architect PR merge fails."""
-        return RecoveryMessages.merge_failed(
-            pr_url, "uv run manage.py run-cycle --id 01"
-        )
+        return RecoveryMessages.merge_failed(pr_url, "uv run manage.py run-cycle --id 01")
 
     @staticmethod
     def cycle_merge_failed(pr_url: str) -> str:

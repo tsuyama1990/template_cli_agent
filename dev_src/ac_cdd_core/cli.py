@@ -79,7 +79,9 @@ def check_environment() -> None:
             console.print("\n[yellow]Please check your .env file.[/yellow]\n")
 
         if not api_key_valid:
-             console.print("[bold red]Missing LLM API Keys (GOOGLE_API_KEY or OPENROUTER_API_KEY)[/bold red]")
+            console.print(
+                "[bold red]Missing LLM API Keys (GOOGLE_API_KEY or OPENROUTER_API_KEY)[/bold red]"
+            )
 
         # We don't exit strict here to allow users to fix while running,
         # but we prompt them heavily.
@@ -89,8 +91,8 @@ def check_environment() -> None:
         # If this is a test case verifying "Success", keys should have been mocked/present.
 
         # If AC_CDD_AUTO_APPROVE is set, we proceed.
-        # If PYTEST_CURRENT_TEST is set, we assume we should FAIL if keys are missing (Strict Test Mode),
-        # unless user explicitly allowed bypass.
+        # If PYTEST_CURRENT_TEST is set, we assume we should FAIL if keys are missing
+        # (Strict Test Mode), unless user explicitly allowed bypass.
         # Why? Because tests like test_check_environment_missing_keys expect failure.
 
         if os.environ.get("AC_CDD_AUTO_APPROVE"):
@@ -151,6 +153,7 @@ def gen_cycles(
 
         # Check API availability first
         from ac_cdd_core.messages import ensure_api_key
+
         ensure_api_key()
 
         services = ServiceContainer.default()
@@ -226,6 +229,7 @@ def run_cycle(
 
         # Check API availability
         from ac_cdd_core.messages import ensure_api_key
+
         ensure_api_key()
 
         services = ServiceContainer.default()
@@ -238,13 +242,15 @@ def run_cycle(
         # Load session using consolidated helper (with optional resume)
         from .session_manager import SessionManager, SessionValidationError
         from .validators import SessionValidator, ValidationError
-        
+
         try:
             # Resume session first if requested (Async)
             resume_info = None
             if resume_session:
                 resume_info = await SessionManager.resume_jules_session(resume_session)
-                console.print(f"[green]✓ Resumed Jules session with PR: {resume_info['pr_url']}[/green]")
+                console.print(
+                    f"[green]✓ Resumed Jules session with PR: {resume_info['pr_url']}[/green]"
+                )
 
             # Load session (Sync)
             session_data = SessionManager.load_or_reconcile_session(
@@ -254,7 +260,7 @@ def run_cycle(
             )
             session_id_to_use = session_data["session_id"]
             integration_branch = session_data["integration_branch"]
-            
+
             if not resume_session and not session_id:
                 if session_data.get("reconciled"):
                     console.print(f"[green]✓ Reconciled session: {session_id_to_use}[/green]")
@@ -307,6 +313,7 @@ def run_cycle(
                     )
                 elif auto:
                     from ac_cdd_core.messages import SuccessMessages
+
                     SuccessMessages.show_panel(SuccessMessages.all_cycles_complete())
                 else:
                     # Calculate next cycle ID
@@ -317,6 +324,7 @@ def run_cycle(
                         next_cycle_id = "XX"
 
                     from ac_cdd_core.messages import SuccessMessages
+
                     SuccessMessages.show_panel(
                         SuccessMessages.cycle_complete(target_cycle, next_cycle_id)
                     )
@@ -337,9 +345,9 @@ def run_cycle(
 
         if cycle_id.lower() == "all":
             from ac_cdd_core.messages import SuccessMessages
+
             SuccessMessages.show_panel(
-                SuccessMessages.all_cycles_complete(),
-                title="All Cycles Completed"
+                SuccessMessages.all_cycles_complete(), title="All Cycles Completed"
             )
 
     asyncio.run(_run_all())
@@ -364,26 +372,26 @@ def finalize_session(
 
     async def _run() -> None:
         from .session_manager import SessionManager, SessionValidationError
-        
+
         # Load session using consolidated helper
         try:
             # Sync call now
             session_data = SessionManager.load_or_reconcile_session(
                 session_id=session_id,
-                auto_reconcile=False  # Don't auto-reconcile for finalize
+                auto_reconcile=False,  # Don't auto-reconcile for finalize
             )
             session_id_to_use = session_data["session_id"]
             integration_branch = session_data["integration_branch"]
         except SessionValidationError as e:
             console.print(f"[red]{e}[/red]")
             sys.exit(1)
-        
+
         # Validate session
         is_valid, error_msg = SessionManager.validate_session(session_id_to_use, integration_branch)
         if not is_valid:
             console.print(f"[red]{error_msg}[/red]")
             sys.exit(1)
-        
+
         # Optional: Validate all cycles are complete
         plan_status_file = Path(settings.paths.documents_dir) / "plan_status.json"
         if plan_status_file.exists():
@@ -397,6 +405,7 @@ def finalize_session(
                 logger.warning(f"Could not read plan status: {e}")
 
         from .services.git_ops import GitManager
+
         git = GitManager()
 
         # Create final PR
@@ -412,15 +421,15 @@ def finalize_session(
 
         try:
             pr_url = await git.create_final_pr(integration_branch, title, body)
-            
+
             # Clear session file after successful PR creation
             SessionManager.clear_session()
             console.print("[dim]Session file cleared. Start a new session with 'gen-cycles'.[/dim]")
 
             from ac_cdd_core.messages import SuccessMessages
+
             SuccessMessages.show_panel(
-                SuccessMessages.session_finalized(pr_url),
-                title="Session Finalized"
+                SuccessMessages.session_finalized(pr_url), title="Session Finalized"
             )
         except Exception as e:
             console.print(f"[red]Error creating final PR:[/red] {e}")

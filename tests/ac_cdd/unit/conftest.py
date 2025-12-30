@@ -27,12 +27,35 @@ def mock_presenter():
 
 
 @pytest.fixture
-def mock_services(mock_file_patcher, mock_contract_manager, mock_artifact_manager, mock_presenter):
+def mock_jules():
+    return MagicMock()
+
+@pytest.fixture
+def mock_reviewer():
+    return MagicMock()
+
+@pytest.fixture
+def mock_git():
+    return MagicMock()
+
+@pytest.fixture
+def mock_services(
+    mock_file_patcher, 
+    mock_contract_manager, 
+    mock_artifact_manager, 
+    mock_presenter,
+    mock_jules,
+    mock_reviewer,
+    mock_git
+):
     return ServiceContainer(
         file_patcher=mock_file_patcher,
         contract_manager=mock_contract_manager,
         artifact_manager=mock_artifact_manager,
         presenter=mock_presenter,
+        jules=mock_jules,
+        reviewer=mock_reviewer,
+        git=mock_git
     )
 
 
