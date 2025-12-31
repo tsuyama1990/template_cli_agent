@@ -1,0 +1,111 @@
+
+     Program PWSCF v.6.5 starts on 12Jan2024 at 18:45:50
+
+     This program is part of the open-source Quantum ESPRESSO suite
+     for quantum simulation of materials; please cite
+         "P. Giannozzi et al., J. Phys.: Condens. Matter 21 395502 (2009);
+         "P. Giannozzi et al., J. Phys.: Condens. Matter 29 465901 (2017);
+         URL http://www.quantum-espresso.org",
+     in publications based on this work.
+
+     Parallel version (MPI), running on     1 processors
+
+     Waiting for input...
+     Reading input from standard input
+
+     Current dimensions of program PWSCF are:
+     Max number of different atomic species (ntypx) = 10
+     Max number of k-points (npk) =  40000
+     Max number of plane waves (npw) = 1000000
+     Max number of bands (nbnd) =   500
+
+     Subspace diagonalization in iterative solution of the eigenvalue problem:
+     a serial algorithm will be used
+     Message from routine setup:
+     k-points and k-point grid are NOT commensurate
+     k-points will be generated using star_q, normalization is over BZ
+     Number of k-points >= 100: set verbosity='high' to print them.
+
+
+     bravais-lattice index     = 0
+     lattice parameter (alat)  =  18.89726 a.u.
+     unit-cell volume          =  6735.618 (a.u.)^3
+     number of atoms/cell      = 2
+     number of atomic types   = 1
+     number of electrons       = 8.00
+     number of Kohn-Sham states= 4
+     kinetic-energy cutoff     =  60.0000 Ry
+     charge density cutoff     = 240.0000 Ry
+     convergence threshold     =   1.0E-08
+     mixing beta               =   0.70
+     number of iterations used = 8, number of scf cycles = 100
+
+
+     PseudoPot. # 1 for Si read from file:
+     Si.upf
+     MD5 check sum: 1d6f21250320a40d510252b9b7396f7c
+     Pseudo is Norm-conserving, Zval =  4.0
+     atomic energy   -14.8433364 Ry, a functional is PBE
+     Wigner-Seitz radius =  2.835 a.u.
+     l(max) = 2, l(loc) = 2, nproj = 3
+     grid points = 1177, radial beta functions = 3, radial q functions = 3
+
+
+     Initial atomic positions
+     (alat units)
+ site n.     atom                  pos(1)       pos(2)       pos(3)
+     1           Si   0.000000000   0.000000000   0.000000000
+     2           Si   0.443444211   0.000000000   0.000000000
+
+     (angstrom)
+ site n.     atom                  pos(1)       pos(2)       pos(3)
+     1           Si   0.000000000   0.000000000   0.000000000
+     2           Si   2.350000000   0.000000000   0.000000000
+
+
+     Number of k-points=    92
+       point group           Th (O_h)
+        bù(1) = ( -0.500000  0.500000  0.500000)
+       bø(2) = (  0.500000 -0.500000  0.500000)
+       bø(3) = (  0.500000  0.500000 -0.500000)
+
+       k(    1) = ( 0.0000000  0.0000000  0.0000000), wk=0.0039062
+       ...
+       k(   92) = ( 0.5000000  0.2500000  0.2500000), wk=0.0234375
+
+     Self-consistent field calculation
+
+     iteration #  1     ecut=  60.00 Ry     beta= 0.70
+     ...
+     iteration #  8     ecut=  60.00 Ry     beta= 0.70
+     total cpu time spent up to now is        1.1 secs
+     total energy              =     -15.85311181 Ry
+     Harris-Foulkes estimate   =     -15.85311181 Ry
+     estimated scf accuracy    <       0.00000001 Ry
+
+     The total energy is the sum of the following terms:
+     one-electron contribution =       4.84883461 Ry
+     hartree contribution      =       1.45872844 Ry
+     xc contribution           =      -6.27361715 Ry
+     ewald contribution        =     -15.88705771 Ry
+     smearing contrib. (-TS)   =       0.00000000 Ry
+
+     convergence has been achieved in   8 iterations
+
+!    total energy              =     -15.85311181 Ry
+
+     Forces acting on atoms (cartesian axes, Ry/au):
+
+     atom    1 type  1   force =    -0.00123456   0.00000000   0.00000000
+     atom    2 type  1   force =     0.00123456   0.00000000   0.00000000
+
+     Total force =     0.00246912     Total SCF correction =     0.00000002
+
+     Computing stress (Cartesian axis) and pressure
+     total   stress  (Ry/bohr**3)            (kbar)
+     -0.00000142   0.00000000  -0.00000000     -0.20845347    0.00000000   -0.00000000
+      0.00000000  -0.00000120   0.00000000      0.00000000   -0.17647228    0.00000000
+     -0.00000000   0.00000000  -0.00000120      0.00000000    0.00000000   -0.17647228
+     Pressure:       0.19 kbar
+
+     JOB DONE.
