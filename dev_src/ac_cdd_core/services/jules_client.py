@@ -333,6 +333,14 @@ class JulesClient:
             except httpx.RequestError as e:
                 raise JulesSessionError(f"Network error creating session: {e}") from e
 
+        # 3. SAVE SESSION ID for RESUME
+        try:
+            from ac_cdd_core.session_manager import SessionManager
+
+            SessionManager.update_session(jules_session_id=session_name)
+        except Exception as e:
+            logger.warning(f"Failed to persist Jules Session ID: {e}")
+
         # 3. Return session name if audit mode, else wait for completion
         if require_plan_approval:
             return {"session_name": session_name, "status": "running"}
