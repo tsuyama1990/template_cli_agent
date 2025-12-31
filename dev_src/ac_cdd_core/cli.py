@@ -229,27 +229,27 @@ def run_cycle(
                 f"[bold green]Running Cycle {target_cycle} (Start Iter: {start_iter})[/bold green]"
             )
 
-        # Check API availability
-        from ac_cdd_core.messages import ensure_api_key
+            # Check API availability
+            from ac_cdd_core.messages import ensure_api_key
 
-        ensure_api_key()
+            ensure_api_key()
 
-        services = ServiceContainer.default()
-        from .graph import GraphBuilder
+            services = ServiceContainer.default()
+            from .graph import GraphBuilder
 
-        # Instantiate builder to manage resources
-        builder = GraphBuilder(services)
-        graph = builder.build_coder_graph()
+            # Instantiate builder to manage resources
+            builder = GraphBuilder(services)
+            graph = builder.build_coder_graph()
 
-        # Load session using consolidated helper (with optional resume)
-        from .session_manager import SessionManager, SessionValidationError
-        from .validators import SessionValidator, ValidationError
+            # Load session using consolidated helper (with optional resume)
+            from .session_manager import SessionManager, SessionValidationError
+            from .validators import SessionValidator, ValidationError
 
-        try:
-            # Resume session first if requested (Async)
-            resume_info = None
-            if resume_session:
-                resume_info = await SessionManager.resume_jules_session(resume_session)
+            try:
+                # Resume session first if requested (Async)
+                resume_info = None
+                if resume_session:
+                    resume_info = await SessionManager.resume_jules_session(resume_session)
                 console.print(
                     f"[green]✓ Resumed Jules session with PR: {resume_info['pr_url']}[/green]"
                 )
