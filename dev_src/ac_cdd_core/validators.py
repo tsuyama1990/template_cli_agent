@@ -34,7 +34,9 @@ class BaseValidator(ABC):
 class SessionValidator(BaseValidator):
     """Validates session state consistency."""
 
-    def __init__(self, session_id: str, integration_branch: str, check_remote: bool = True):
+    def __init__(
+        self, session_id: str, integration_branch: str, check_remote: bool = True
+    ):
         self.session_id = session_id
         self.integration_branch = integration_branch
         self.check_remote = check_remote
@@ -42,7 +44,9 @@ class SessionValidator(BaseValidator):
     async def validate(self) -> tuple[bool, str]:
         """Validate session consistency with Git state."""
         # Local branch check
-        is_valid, error = SessionManager.validate_session(self.session_id, self.integration_branch)
+        is_valid, error = SessionManager.validate_session(
+            self.session_id, self.integration_branch
+        )
         if not is_valid:
             return False, error
 

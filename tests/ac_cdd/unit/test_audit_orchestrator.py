@@ -44,7 +44,9 @@ async def test_run_session_approved_first_try(orchestrator, mock_jules, mock_aud
         status="APPROVED", reason="Good", feedback=""
     )
 
-    result = await orchestrator.run_interactive_session("prompt", "source", {"spec": "data"})
+    result = await orchestrator.run_interactive_session(
+        "prompt", "source", {"spec": "data"}
+    )
 
     assert result["pr_url"] == "http://pr"
     mock_jules.approve_plan.assert_called_with("sess-1", "plan-1")
@@ -52,7 +54,9 @@ async def test_run_session_approved_first_try(orchestrator, mock_jules, mock_aud
 
 
 @pytest.mark.asyncio
-async def test_run_session_rejected_then_approved(orchestrator, mock_jules, mock_auditor):
+async def test_run_session_rejected_then_approved(
+    orchestrator, mock_jules, mock_auditor
+):
     # First plan: Rejected
     # Second plan: Approved
 
@@ -96,7 +100,9 @@ async def test_max_retries_exceeded(orchestrator, mock_jules, mock_auditor):
     mock_jules.wait_for_activity_type.return_value = {
         "planGenerated": {"planId": "plan-1", "steps": []}
     }
-    mock_jules.get_latest_plan.return_value = {"planId": "plan-new"}  # Always find new plan quickly
+    mock_jules.get_latest_plan.return_value = {
+        "planId": "plan-new"
+    }  # Always find new plan quickly
 
     # Always reject
     mock_auditor.audit_plan.return_value = PlanAuditResult(
@@ -104,6 +110,8 @@ async def test_max_retries_exceeded(orchestrator, mock_jules, mock_auditor):
     )
 
     with pytest.raises(RuntimeError, match="Max audit retries exceeded"):
-        await orchestrator.run_interactive_session("prompt", "source", {}, max_retries=1)
+        await orchestrator.run_interactive_session(
+            "prompt", "source", {}, max_retries=1
+        )
 
     assert mock_jules.send_message.call_count == 1

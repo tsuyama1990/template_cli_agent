@@ -1,0 +1,39 @@
+warning: No `requires-python` value found in the workspace. Defaulting to `>=3.12`.
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0
+rootdir: /app
+configfile: pyproject.toml
+plugins: mock-3.15.1, cov-7.0.0
+collected 10 items
+
+tests/unit/data/test_database.py ...                                     [ 30%]
+tests/unit/modules/test_c_labeling_engine.py .                           [ 40%]
+tests/unit/modules/test_d_training_engine.py ..                          [ 60%]
+tests/unit/utils/test_dft_utils.py ...                                   [ 90%]
+tests/e2e/test_cycle01_workflow.py .                                     [100%]
+
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/e3nn/o3/_wigner.py:10
+  /app/.venv/lib/python3.12/site-packages/e3nn/o3/_wigner.py:10: UserWarning: Environment variable TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD detected, since the`weights_only` argument was not explicitly passed to `torch.load`, forcing weights_only=False.
+    _Jd, _W3j_flat, _W3j_indices = torch.load(os.path.join(os.path.dirname(__file__), 'constants.pt'))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.12-final-0 _______________
+
+Name                                              Stmts   Miss  Cover   Missing
+-------------------------------------------------------------------------------
+src/mlip_autopipec/__init__.py                        0      0   100%
+src/mlip_autopipec/cli.py                            24      4    83%   11, 30-31, 41
+src/mlip_autopipec/data/__init__.py                   0      0   100%
+src/mlip_autopipec/data/database.py                  16      0   100%
+src/mlip_autopipec/data/models.py                    32      4    88%   21, 38-40
+src/mlip_autopipec/modules/__init__.py                0      0   100%
+src/mlip_autopipec/modules/c_labeling_engine.py      32      0   100%
+src/mlip_autopipec/modules/d_training_engine.py      36      0   100%
+src/mlip_autopipec/orchestrator.py                   17      0   100%
+src/mlip_autopipec/utils/__init__.py                  0      0   100%
+src/mlip_autopipec/utils/dft_utils.py                40      4    90%   74-81
+-------------------------------------------------------------------------------
+TOTAL                                               197     12    94%
+======================== 10 passed, 1 warning in 13.63s ========================

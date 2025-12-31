@@ -22,12 +22,20 @@ class AuditOrchestrator:
         self.auditor = PlanAuditor()
 
     async def run_interactive_session(
-        self, prompt: str, source_name: str, spec_files: dict[str, str], max_retries: int = 3
+        self,
+        prompt: str,
+        source_name: str,
+        spec_files: dict[str, str],
+        max_retries: int = 3,
     ) -> dict[str, Any]:
         """
         Starts a session with plan approval requirement and manages the audit loop.
         """
-        console.print(Panel("[bold cyan]Starting AI-on-AI Audit Session[/bold cyan]", expand=False))
+        console.print(
+            Panel(
+                "[bold cyan]Starting AI-on-AI Audit Session[/bold cyan]", expand=False
+            )
+        )
 
         # 1. Start Session (requirePlanApproval=True)
         # Note: run_session usually polls for completion, but we modified it to return early
@@ -47,7 +55,9 @@ class AuditOrchestrator:
             session_id=settings.current_session_id,
             prompt=prompt,
             files=file_paths,
-            completion_signal_file=Path("completion_signal"),  # Dummy/Not used in this flow
+            completion_signal_file=Path(
+                "completion_signal"
+            ),  # Dummy/Not used in this flow
             require_plan_approval=True,
         )
 
@@ -58,14 +68,18 @@ class AuditOrchestrator:
         current_plan_id = None  # Track current plan ID to avoid re-auditing
 
         while retry_count <= max_retries:
-            console.print(f"\n[bold yellow]--- Audit Round {retry_count + 1} ---[/bold yellow]")
+            console.print(
+                f"\n[bold yellow]--- Audit Round {retry_count + 1} ---[/bold yellow]"
+            )
 
             # 2. Wait for Plan Generation
             console.print("[dim]Waiting for Jules to generate a plan...[/dim]")
 
             # If we rejected a plan, we need to wait for a NEW one.
             if current_plan_id:
-                activity_details = await self._wait_for_new_plan(session_name, current_plan_id)
+                activity_details = await self._wait_for_new_plan(
+                    session_name, current_plan_id
+                )
                 if not activity_details:
                     # Fallback if _wait_for_new_plan times out or returns empty
                     raise TimeoutError("Timed out waiting for revised plan.")
@@ -120,7 +134,9 @@ class AuditOrchestrator:
                 # REJECTED
                 retry_count += 1
                 if retry_count > max_retries:
-                    console.print("[bold red]Max retries exceeded. Aborting session.[/bold red]")
+                    console.print(
+                        "[bold red]Max retries exceeded. Aborting session.[/bold red]"
+                    )
                     raise RuntimeError("Max audit retries exceeded.")
 
                 feedback = audit_result.feedback or audit_result.reason
@@ -131,10 +147,14 @@ class AuditOrchestrator:
                     f"Please revise the plan accordingly."
                 )
 
-                console.print(f"[magenta]Sending Feedback to Jules:[/magenta] {feedback}")
+                console.print(
+                    f"[magenta]Sending Feedback to Jules:[/magenta] {feedback}"
+                )
                 await self.jules.send_message(session_name, feedback_prompt)
 
-    async def _wait_for_new_plan(self, session_name: str, current_plan_id: str, timeout: int = 300):
+    async def _wait_for_new_plan(
+        self, session_name: str, current_plan_id: str, timeout: int = 300
+    ):
         """Helper to poll until a plan with a different ID appears."""
         console.print("[dim]Waiting for revised plan...[/dim]")
         start_time = asyncio.get_event_loop().time()

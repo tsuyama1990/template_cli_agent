@@ -56,15 +56,25 @@ class JulesApiClient:
 
         if not self.api_key:
             # If still missing, check if we should allow dummy for testing
-            if os.environ.get("AC_CDD_AUTO_APPROVE") or "PYTEST_CURRENT_TEST" in os.environ:
-                logger.warning("Jules API Key missing in Test Environment. Using dummy key.")
+            if (
+                os.environ.get("AC_CDD_AUTO_APPROVE")
+                or "PYTEST_CURRENT_TEST" in os.environ
+            ):
+                logger.warning(
+                    "Jules API Key missing in Test Environment. Using dummy key."
+                )
                 self.api_key = "dummy_jules_key"
             else:
                 raise ValueError("API Key not found for Jules API.")
 
-        self.headers = {"x-goog-api-key": self.api_key, "Content-Type": "application/json"}
+        self.headers = {
+            "x-goog-api-key": self.api_key,
+            "Content-Type": "application/json",
+        }
 
-    def _request(self, method: str, endpoint: str, data: dict | None = None) -> dict[str, Any]:
+    def _request(
+        self, method: str, endpoint: str, data: dict | None = None
+    ) -> dict[str, Any]:
         # DETOUR: Check for dummy key to avoid network calls
         if self.api_key == "dummy_jules_key":
             logger.info(f"Test Mode: Returning dummy response for {method} {endpoint}")
@@ -119,7 +129,10 @@ class JulesApiClient:
     ) -> dict[str, Any]:
         payload = {
             "prompt": prompt,
-            "sourceContext": {"source": source, "githubRepoContext": {"startingBranch": "main"}},
+            "sourceContext": {
+                "source": source,
+                "githubRepoContext": {"startingBranch": "main"},
+            },
             "requirePlanApproval": require_plan_approval,
         }
         return self._request("POST", "sessions", payload)
@@ -175,7 +188,9 @@ class JulesClient:
 
         # Instantiate internal API client for delegation
         self.api_client = JulesApiClient(
-            api_key=self.credentials.token if self.credentials else settings.JULES_API_KEY
+            api_key=self.credentials.token
+            if self.credentials
+            else settings.JULES_API_KEY
         )
 
     async def _sleep(self, seconds: float) -> None:
@@ -280,7 +295,9 @@ class JulesClient:
                 repo_name = "test-repo"
                 branch = "main"
             else:
-                raise JulesSessionError(f"Failed to determine/push git context: {e}") from e
+                raise JulesSessionError(
+                    f"Failed to determine/push git context: {e}"
+                ) from e
 
         # 2. Create Session
         logger.info(f"Creating Jules Session {session_id} on branch {branch}...")
@@ -317,7 +334,9 @@ class JulesClient:
                     error_msg = response.text
                     try:
                         err_json = response.json()
-                        error_msg = err_json.get("error", {}).get("message", response.text)
+                        error_msg = err_json.get("error", {}).get(
+                            "message", response.text
+                        )
                     except Exception:
                         logger.debug("Could not parse JSON error message.")
                     raise JulesSessionError(
@@ -389,7 +408,9 @@ class JulesClient:
         """
         try:
             act_url = f"{session_url}/activities?pageSize=50"
-            act_resp = await client.get(act_url, headers=self._get_headers(), timeout=10.0)
+            act_resp = await client.get(
+                act_url, headers=self._get_headers(), timeout=10.0
+            )
 
             if act_resp.status_code == 200:
                 activities = act_resp.json().get("activities", [])
@@ -400,18 +421,20 @@ class JulesClient:
                     # 1. Standard "agentMessaged"
                     if "agentMessaged" in act:
                         msg = act["agentMessaged"].get("agentMessage")
-                    
+
                     # 2. "userActionRequired" (Check for key, not "type" field)
                     elif "userActionRequired" in act:
                         # Sometimes content is in detailed description or reason
                         # Check the nested dict
                         details = act["userActionRequired"]
-                        msg = details.get("reason", "User action required (check console).")
+                        msg = details.get(
+                            "reason", "User action required (check console)."
+                        )
 
                     # 3. Fallback for flat/test structure
                     if not msg:
                         msg = act.get("message")
-                        
+
                     # 4. Filter out generic status messages
                     if msg and "Jules is working" in msg:
                         continue
@@ -473,7 +496,9 @@ class JulesClient:
                     else:
                         session_url = f"{self.base_url}/sessions/{session_name}"
 
-                    resp = await client.get(session_url, headers=self._get_headers(), timeout=10.0)
+                    resp = await client.get(
+                        session_url, headers=self._get_headers(), timeout=10.0
+                    )
 
                     if resp.status_code != 200:
                         logger.warning(f"Polling error: {resp.status_code}")
@@ -485,8 +510,16 @@ class JulesClient:
                         # --- 1. INTERACTIVE HANDLING CHECK ---
                         # Check for inquiries first. Even if state is COMPLETED/SUCCEEDED,
                         # the agent might have sent a message requiring response.
-                        if state in ["AWAITING_USER_FEEDBACK", "COMPLETED", "SUCCEEDED", "NEEDS_MORE_INFORMATION", "RUNNING"]:
-                            inquiry_result = await self._check_for_inquiry(client, session_url)
+                        if state in [
+                            "AWAITING_USER_FEEDBACK",
+                            "COMPLETED",
+                            "SUCCEEDED",
+                            "NEEDS_MORE_INFORMATION",
+                            "RUNNING",
+                        ]:
+                            inquiry_result = await self._check_for_inquiry(
+                                client, session_url
+                            )
 
                             if inquiry_result:
                                 question, act_id = inquiry_result
@@ -497,10 +530,14 @@ class JulesClient:
                                         "\n[bold magenta]Jules Question Detected:[/bold magenta] "
                                         f"{question}"
                                     )
-                                    self.console.print("[dim]Consulting Manager Agent...[/dim]")
+                                    self.console.print(
+                                        "[dim]Consulting Manager Agent...[/dim]"
+                                    )
 
                                     try:
-                                        mgr_response = await self.manager_agent.run(question)
+                                        mgr_response = await self.manager_agent.run(
+                                            question
+                                        )
                                         reply_text = mgr_response.output
 
                                         # FORCE PR CREATION INSTRUCTION
@@ -517,7 +554,9 @@ class JulesClient:
                                         )
 
                                         # Send Reply
-                                        await self._send_message(session_url, reply_text)
+                                        await self._send_message(
+                                            session_url, reply_text
+                                        )
 
                                         # Mark as processed
                                         processed_activity_ids.add(act_id)
@@ -580,23 +619,33 @@ class JulesClient:
                             logger.error(
                                 f"Full Session Data on Failure: {json.dumps(data, indent=2)}"
                             )
-                            error_msg = data.get("error", {}).get("message", "Unknown error")
+                            error_msg = data.get("error", {}).get(
+                                "message", "Unknown error"
+                            )
                             logger.error(f"Jules Session Failed: {error_msg}")
-                            raise JulesSessionError(f"Jules Session Failed: {error_msg}")
+                            raise JulesSessionError(
+                                f"Jules Session Failed: {error_msg}"
+                            )
 
                     # --- 2. Check Activities (Logging only) ---
                     # (Logic handled above)
                     act_url = f"{session_url}/activities"
-                    act_resp = await client.get(act_url, headers=self._get_headers(), timeout=10.0)
+                    act_resp = await client.get(
+                        act_url, headers=self._get_headers(), timeout=10.0
+                    )
 
                     if act_resp.status_code == 200:
                         act_data = act_resp.json()
                         activities = act_data.get("activities", [])
 
                         if len(activities) > last_activity_count:
-                            self.console.print(f"[dim]Activity Count: {len(activities)}[/dim]")
+                            self.console.print(
+                                f"[dim]Activity Count: {len(activities)}[/dim]"
+                            )
                             last_activity_count = len(activities)
-                            logger.info(f"DEBUG: New Activities Detected: {len(activities)}")
+                            logger.info(
+                                f"DEBUG: New Activities Detected: {len(activities)}"
+                            )
 
                     # --- 3. Non-blocking User Input Check (Linux/Mac) ---
                     # This allows the user to type concurrently with polling loop
@@ -611,11 +660,15 @@ class JulesClient:
                             if line:
                                 user_msg = line.strip()
                                 if user_msg:
-                                    self.console.print(f"[dim]Sending: {user_msg}[/dim]")
+                                    self.console.print(
+                                        f"[dim]Sending: {user_msg}[/dim]"
+                                    )
                                     await self._send_message(session_url, user_msg)
                     except Exception:
                         # Ignore if select not supported or fails
-                        logger.debug("Non-blocking input check failed (platform specific).")
+                        logger.debug(
+                            "Non-blocking input check failed (platform specific)."
+                        )
 
                 except httpx.RequestError as e:
                     logger.warning(f"Polling loop network error (transient): {e}")

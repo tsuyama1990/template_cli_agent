@@ -7,7 +7,9 @@ class FileArtifact(BaseModel):
     """生成・修正されたファイル単体"""
 
     model_config = ConfigDict(extra="forbid")
-    path: str = Field(..., description="ファイルパス (例: dev_documents/CYCLE01/SPEC.md)")
+    path: str = Field(
+        ..., description="ファイルパス (例: dev_documents/CYCLE01/SPEC.md)"
+    )
     content: str = Field(..., description="ファイルの内容")
     language: str = Field("markdown", description="言語 (python, markdown, etc.)")
 
@@ -92,7 +94,9 @@ class StructuredSpec(BaseModel):
     architecture_overview: str = Field(..., description="High-level system design")
     features: list[Feature] = Field(..., description="Initial backlog of features")
     constraints: list[TechnicalConstraint] = Field(default_factory=list)
-    terminology: dict[str, str] = Field(default_factory=dict, description="Domain glossary")
+    terminology: dict[str, str] = Field(
+        default_factory=dict, description="Domain glossary"
+    )
 
 
 # --- System Architecture Models ---
@@ -112,12 +116,19 @@ class SystemArchitecture(BaseModel):
         ..., description="Core design philosophy (e.g., minimalist, robust, rapid)"
     )
     user_stories: list[str] = Field(..., description="High-level user stories")
-    system_design: str = Field(..., description="Overall system design and architecture pattern")
-    module_structure: str = Field(
-        ..., description="Breakdown of key modules and responsibilities (hierarchical or list)"
+    system_design: str = Field(
+        ..., description="Overall system design and architecture pattern"
     )
-    tech_stack: list[str] = Field(..., description="List of technologies and libraries to be used")
-    implementation_roadmap: list[str] = Field(..., description="Step-by-step implementation phases")
+    module_structure: str = Field(
+        ...,
+        description="Breakdown of key modules and responsibilities (hierarchical or list)",
+    )
+    tech_stack: list[str] = Field(
+        ..., description="List of technologies and libraries to be used"
+    )
+    implementation_roadmap: list[str] = Field(
+        ..., description="Step-by-step implementation phases"
+    )
 
 
 class PlanAuditResult(BaseModel):

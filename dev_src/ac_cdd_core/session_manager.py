@@ -81,7 +81,9 @@ class SessionManager:
             logger.info("Session file cleared")
 
     @classmethod
-    def validate_session(cls, session_id: str, integration_branch: str) -> tuple[bool, str | None]:
+    def validate_session(
+        cls, session_id: str, integration_branch: str
+    ) -> tuple[bool, str | None]:
         """
         Validate that session state is consistent with Git state.
 
@@ -141,7 +143,9 @@ class SessionManager:
             logger.warning("Failed to list Git branches for reconciliation")
             return None
 
-        branches = [b.strip().lstrip("* ") for b in result.stdout.splitlines() if b.strip()]
+        branches = [
+            b.strip().lstrip("* ") for b in result.stdout.splitlines() if b.strip()
+        ]
 
         if not branches:
             logger.info("No session branches found for reconciliation")
@@ -198,10 +202,16 @@ class SessionManager:
                 session_name = session_data.get("jules_session_id")
 
         if not session_name:
-            raise SessionValidationError("Cannot resume: No Jules Session ID provided or found in file.")
+            raise SessionValidationError(
+                "Cannot resume: No Jules Session ID provided or found in file."
+            )
 
         # Normalize session name
-        name = session_name if session_name.startswith("sessions/") else f"sessions/{session_name}"
+        name = (
+            session_name
+            if session_name.startswith("sessions/")
+            else f"sessions/{session_name}"
+        )
 
         logger.info(f"Resuming Jules session: {name}")
 
@@ -212,13 +222,19 @@ class SessionManager:
             # We accept success OR just completion if we simply want to resume control context
             if result.get("status") == "success":
                 resume_info = {
-                    "pr_url": result.get("pr_url"),  # Might be None if manually completed without PR
+                    "pr_url": result.get(
+                        "pr_url"
+                    ),  # Might be None if manually completed without PR
                     "jules_session_name": name,
                 }
                 if result.get("pr_url"):
-                    logger.info(f"Successfully resumed Jules session with PR: {result['pr_url']}")
+                    logger.info(
+                        f"Successfully resumed Jules session with PR: {result['pr_url']}"
+                    )
                 else:
-                    logger.info("Resumed Jules session completed successfully (No PR URL potentially).")
+                    logger.info(
+                        "Resumed Jules session completed successfully (No PR URL potentially)."
+                    )
                 return resume_info
             else:
                 raise SessionValidationError(

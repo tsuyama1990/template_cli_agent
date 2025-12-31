@@ -145,10 +145,10 @@ class ReviewerConfig(BaseSettings):
         default_factory=lambda: _read_prompt("auditor.md", "DEFAULT_AUDITOR_PROMPT")
     )
     qa_analyst: str = Field(
-        default_factory=lambda: _read_prompt("UAT_DESIGN.md", "DEFAULT_QA_ANALYST_PROMPT")
+        default_factory=lambda: _read_prompt(
+            "UAT_DESIGN.md", "DEFAULT_QA_ANALYST_PROMPT"
+        )
     )
-
-
 
 
 class Settings(BaseSettings):
@@ -209,7 +209,9 @@ class Settings(BaseSettings):
         return f"{self.session.integration_branch_prefix}/{self.current_session_id}/integration"
 
     # Model Config
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="allow")
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="allow"
+    )
 
 
 config = Settings()

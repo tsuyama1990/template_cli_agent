@@ -52,7 +52,9 @@ class GraphBuilder:
         await self.sandbox_runner.run_command(["echo", "Sandbox Ready"], check=False)
 
         # Check if dependencies (ruff) are installed
-        _, _, ruff_code = await self.sandbox_runner.run_command(["ruff", "--version"], check=False)
+        _, _, ruff_code = await self.sandbox_runner.run_command(
+            ["ruff", "--version"], check=False
+        )
 
         if ruff_code != 0:
             logger.info("Installing dependencies (ruff)...")
@@ -67,7 +69,9 @@ class GraphBuilder:
             ["git", "config", "user.name", "AC-CDD Bot"], check=False
         )
         await self.sandbox_runner.run_command(["git", "add", "."], check=False)
-        await self.sandbox_runner.run_command(["git", "commit", "-m", "init"], check=False)
+        await self.sandbox_runner.run_command(
+            ["git", "commit", "-m", "init"], check=False
+        )
 
         return self.sandbox_runner
 
@@ -154,7 +158,10 @@ class GraphBuilder:
         signal_file = Path(settings.paths.documents_dir) / "plan_status.json"
 
         if not spec_path.exists():
-            return {"error": "ALL_SPEC.md not found.", "current_phase": "architect_failed"}
+            return {
+                "error": "ALL_SPEC.md not found.",
+                "current_phase": "architect_failed",
+            }
 
         # Input: user requirements (ALL_SPEC.md)
         cwd = Path.cwd()
@@ -196,17 +203,23 @@ class GraphBuilder:
                         f"Attempting to auto-merge PR to integration branch: "
                         f"{state.integration_branch}..."
                     )
-                    await self.git.merge_to_integration(pr_url, state.integration_branch)
+                    await self.git.merge_to_integration(
+                        pr_url, state.integration_branch
+                    )
                     logger.info("PR merged to integration branch successfully.")
 
                     # Reload plan status from the now-synced local file
                     if signal_file.exists():
                         try:
-                            plan_data = json.loads(signal_file.read_text(encoding="utf-8"))
+                            plan_data = json.loads(
+                                signal_file.read_text(encoding="utf-8")
+                            )
                             # Update result to include the planned cycles
                             result["cycles"] = plan_data.get("cycles", [])
                         except Exception as e:
-                            logger.warning(f"Failed to parse plan_status.json after merge: {e}")
+                            logger.warning(
+                                f"Failed to parse plan_status.json after merge: {e}"
+                            )
 
                 except Exception:
                     # CRITICAL: Merge failure should stop the workflow
@@ -214,7 +227,10 @@ class GraphBuilder:
 
                     error_msg = RecoveryMessages.architect_merge_failed(pr_url)
                     logger.error(error_msg)
-                    return {"error": error_msg, "current_phase": "architect_merge_failed"}
+                    return {
+                        "error": error_msg,
+                        "current_phase": "architect_merge_failed",
+                    }
                 # ------------------------
 
             else:
@@ -226,7 +242,10 @@ class GraphBuilder:
                     "Check the GCP Console for the session logs."
                 )
                 logger.error(msg)
-                return {"error": "No PR created by Jules", "current_phase": "architect_failed"}
+                return {
+                    "error": "No PR created by Jules",
+                    "current_phase": "architect_failed",
+                }
 
         except Exception as e:
             logger.error(f"Architect session failed: {e}")
@@ -252,7 +271,9 @@ class GraphBuilder:
 
         # Ensure we have session context
         if not state.session_id or not state.integration_branch:
-            raise ValueError("Session not initialized. Run gen-cycles first to create a session.")
+            raise ValueError(
+                "Session not initialized. Run gen-cycles first to create a session."
+            )
 
         # Simplified: We use the integration branch directly.
         # We ensure we are on it.
@@ -490,13 +511,17 @@ class GraphBuilder:
 
             # Step 1: Syntax Check (compileall)
             cmd_syntax = ["python3", "-m", "compileall", "-q", "."]
-            stdout_s, stderr_s, code_s = await runner.run_command(cmd_syntax, check=False)
+            stdout_s, stderr_s, code_s = await runner.run_command(
+                cmd_syntax, check=False
+            )
 
             if code_s != 0:
                 logger.error("Syntax Check Failed")
                 return {
                     "active_branch": state.active_branch,  # Keep context
-                    "audit_feedback": [f"Syntax Error:\nSTDOUT: {stdout_s}\nSTDERR: {stderr_s}"],
+                    "audit_feedback": [
+                        f"Syntax Error:\nSTDOUT: {stdout_s}\nSTDERR: {stderr_s}"
+                    ],
                     "error": "Syntax Check Failed. Please fix syntax errors.",
                 }
 
@@ -518,7 +543,11 @@ class GraphBuilder:
                 }
 
             logs = "Syntax Check: PASS\nLinting: PASS"
-            return {"test_logs": logs, "test_exit_code": 0, "current_phase": "syntax_check_passed"}
+            return {
+                "test_logs": logs,
+                "test_exit_code": 0,
+                "current_phase": "syntax_check_passed",
+            }
 
         except Exception as e:
             logger.error(f"Sandbox execution failed: {e}")
@@ -550,7 +579,9 @@ class GraphBuilder:
             changed_files = await self.git.get_changed_files()
             logger.info(f"Smart Audit: Detected {len(changed_files)} changed files.")
         except Exception as e:
-            logger.warning(f"Failed to detect changed files: {e}. Falling back to full scan.")
+            logger.warning(
+                f"Failed to detect changed files: {e}. Falling back to full scan."
+            )
             changed_files = []
 
         # Helper to check extension
@@ -592,7 +623,11 @@ class GraphBuilder:
         docs_dir = Path(settings.paths.documents_dir)
         cycle_dir = Path(settings.paths.templates) / f"CYCLE{cycle_id}"
         docs_dir = Path(settings.paths.templates)
-        docs = [docs_dir / "SYSTEM_ARCHITECTURE.md", cycle_dir / "SPEC.md", cycle_dir / "UAT.md"]
+        docs = [
+            docs_dir / "SYSTEM_ARCHITECTURE.md",
+            cycle_dir / "SPEC.md",
+            cycle_dir / "UAT.md",
+        ]
 
         for d in docs:
             if d.exists():
@@ -617,14 +652,18 @@ class GraphBuilder:
         for f_path in files_to_audit:
             try:
                 # Try reading from local first
-                base_cwd = settings.paths.cwd if hasattr(settings.paths, "cwd") else Path.cwd()
+                base_cwd = (
+                    settings.paths.cwd if hasattr(settings.paths, "cwd") else Path.cwd()
+                )
                 p = Path(base_cwd) / f_path
                 # Fallback to simple Path(f_path) if relative to cwd
                 if not p.exists():
                     p = Path(f_path)
 
                 if p.exists():
-                    files_content[f_path] = p.read_text(encoding="utf-8", errors="replace")
+                    files_content[f_path] = p.read_text(
+                        encoding="utf-8", errors="replace"
+                    )
                 else:
                     logger.warning(f"File {f_path} not found locally for audit.")
             except Exception as e:
@@ -672,7 +711,9 @@ class GraphBuilder:
                     is_approved=False, critical_issues=["System Error"], suggestions=[]
                 ),
                 "current_phase": "audit_system_error",
-                "audit_feedback": ["Internal System Error during Audit. Please check logs."],
+                "audit_feedback": [
+                    "Internal System Error during Audit. Please check logs."
+                ],
                 "error": "Audit System Error",
             }
 
@@ -697,7 +738,9 @@ class GraphBuilder:
         report_body = report_body.strip()
 
         # Simple line splitting for "issues" list context
-        feedback_lines = [line.strip() for line in report_body.split("\n") if line.strip()]
+        feedback_lines = [
+            line.strip() for line in report_body.split("\n") if line.strip()
+        ]
 
         dummy_result = AuditResult(
             is_approved=False,
@@ -725,7 +768,9 @@ class GraphBuilder:
             )
             try:
                 await self.git.merge_to_integration(pr_url, state.integration_branch)
-                logger.info(f"Successfully merged cycle {cycle_id} to integration branch.")
+                logger.info(
+                    f"Successfully merged cycle {cycle_id} to integration branch."
+                )
             except Exception:
                 # CRITICAL: Merge failure should stop the workflow
                 from ac_cdd_core.error_messages import RecoveryMessages

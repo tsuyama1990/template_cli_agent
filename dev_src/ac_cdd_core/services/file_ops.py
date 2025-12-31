@@ -39,7 +39,9 @@ class FilePatcher:
 
             if isinstance(op, FileCreate):
                 if p.exists():
-                    old_content_lines = p.read_text(encoding="utf-8").splitlines(keepends=True)
+                    old_content_lines = p.read_text(encoding="utf-8").splitlines(
+                        keepends=True
+                    )
                 else:
                     old_content_lines = []
 
@@ -92,7 +94,9 @@ class FilePatcher:
                     continue
 
                 new_content = (
-                    original_content[:start_idx] + op.replace_block + original_content[end_idx:]
+                    original_content[:start_idx]
+                    + op.replace_block
+                    + original_content[end_idx:]
                 )
 
                 old_content_lines = original_content.splitlines(keepends=True)
@@ -156,7 +160,9 @@ class FilePatcher:
             if p.is_file():
                 is_ignored = False
                 for pattern in ignored_patterns:
-                    if fnmatch.fnmatch(p.name, pattern) or fnmatch.fnmatch(str(p), pattern):
+                    if fnmatch.fnmatch(p.name, pattern) or fnmatch.fnmatch(
+                        str(p), pattern
+                    ):
                         is_ignored = True
                         break
                     if pattern in str(p):

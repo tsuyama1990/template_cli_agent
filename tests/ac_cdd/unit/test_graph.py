@@ -50,7 +50,9 @@ async def test_architect_graph_execution(mock_services):
     builder.git.merge_to_integration = AsyncMock()
     builder.git.commit_changes = AsyncMock()
 
-    with patch.object(builder, "_get_shared_sandbox", new_callable=AsyncMock) as mock_get:
+    with patch.object(
+        builder, "_get_shared_sandbox", new_callable=AsyncMock
+    ) as mock_get:
         mock_get.return_value = mock_runner
 
         # Execute graph
@@ -108,7 +110,9 @@ async def test_syntax_check_node_success(mock_services):
         ("", "", 0),  # ruff success
     ]
 
-    with patch.object(builder, "_get_shared_sandbox", new_callable=AsyncMock) as mock_get:
+    with patch.object(
+        builder, "_get_shared_sandbox", new_callable=AsyncMock
+    ) as mock_get:
         mock_get.return_value = mock_runner
 
         state = CycleState(cycle_id="01", active_branch="feat/cycle01")
@@ -129,7 +133,9 @@ async def test_syntax_check_node_failure(mock_services):
         ("", "E501 line too long", 1),  # ruff failure
     ]
 
-    with patch.object(builder, "_get_shared_sandbox", new_callable=AsyncMock) as mock_get:
+    with patch.object(
+        builder, "_get_shared_sandbox", new_callable=AsyncMock
+    ) as mock_get:
         mock_get.return_value = mock_runner
         state = CycleState(cycle_id="01", active_branch="feat/cycle01")
         result = await builder.syntax_check_node(state)

@@ -20,7 +20,9 @@ def plan_auditor(mock_agent):
 @pytest.mark.asyncio
 async def test_audit_plan_approved(plan_auditor, mock_agent):
     # Setup mock response
-    expected_result = PlanAuditResult(status="APPROVED", reason="Plan looks good", feedback="")
+    expected_result = PlanAuditResult(
+        status="APPROVED", reason="Plan looks good", feedback=""
+    )
     # The run method returns a RunResult which has a .data attribute
     mock_run_result = MagicMock()
     mock_run_result.data = expected_result
@@ -38,7 +40,9 @@ async def test_audit_plan_approved(plan_auditor, mock_agent):
 
 @pytest.mark.asyncio
 async def test_audit_plan_rejected(plan_auditor, mock_agent):
-    expected_result = PlanAuditResult(status="REJECTED", reason="Bad plan", feedback="Fix it")
+    expected_result = PlanAuditResult(
+        status="REJECTED", reason="Bad plan", feedback="Fix it"
+    )
     mock_run_result = MagicMock()
     mock_run_result.data = expected_result
     mock_agent.run = AsyncMock(return_value=mock_run_result)

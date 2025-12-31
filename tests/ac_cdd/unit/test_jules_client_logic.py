@@ -7,7 +7,9 @@ from ac_cdd_core.services.jules_client import JulesClient
 class TestJulesClientLogic(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         # Patch dependencies to avoid real API calls or Auth
-        self.auth_patcher = patch("google.auth.default", return_value=(MagicMock(), "test-project"))
+        self.auth_patcher = patch(
+            "google.auth.default", return_value=(MagicMock(), "test-project")
+        )
         self.auth_patcher.start()
 
         # Initialize client
@@ -18,11 +20,13 @@ class TestJulesClientLogic(unittest.IsolatedAsyncioTestCase):
             self.client.poll_interval = 0.1
             self.client.console = MagicMock()
             self.client.manager_agent = AsyncMock()
-            self.client.manager_agent.run.return_value = MagicMock(output="Manager Reply")
+            self.client.manager_agent.run.return_value = MagicMock(
+                output="Manager Reply"
+            )
             self.client.credentials = MagicMock()
             self.client._get_headers = MagicMock(return_value={})
             self.client.credentials.token = "mock_token"  # noqa: S105
-            
+
             # FIX: Add api_client mock which is now used by wait_for_completion
             self.client.api_client = MagicMock()
             self.client.api_client.api_key = "mock_key"
@@ -32,7 +36,9 @@ class TestJulesClientLogic(unittest.IsolatedAsyncioTestCase):
 
     @patch("asyncio.sleep", return_value=None)
     @patch("httpx.AsyncClient")
-    async def test_prioritize_inquiry_over_completed_state(self, mock_httpx_cls, mock_sleep):
+    async def test_prioritize_inquiry_over_completed_state(
+        self, mock_httpx_cls, mock_sleep
+    ):
         """
         Verify that if state is COMPLETED but there is a NEW inquiry,
         we prioritize answering the inquiry over returning "Success/No PR".
@@ -55,7 +61,9 @@ class TestJulesClientLogic(unittest.IsolatedAsyncioTestCase):
         r_acts_question = MagicMock()
         r_acts_question.status_code = 200
         r_acts_question.json.return_value = {
-            "activities": [{"name": activity_id, "agentMessaged": {"agentMessage": "Question?"}}]
+            "activities": [
+                {"name": activity_id, "agentMessaged": {"agentMessage": "Question?"}}
+            ]
         }
 
         r_session_success = MagicMock()
@@ -90,11 +98,15 @@ class TestJulesClientLogic(unittest.IsolatedAsyncioTestCase):
 
         self.client._send_message.assert_called_once()
         self.assertEqual(result["pr_url"], "http://github.com/pr/1")
-        print("\\n[TEST PASS] Successfully caught inquiry in COMPLETED state and replied.")
+        print(
+            "\\n[TEST PASS] Successfully caught inquiry in COMPLETED state and replied."
+        )
 
     @patch("asyncio.sleep", return_value=None)
     @patch("httpx.AsyncClient")
-    async def test_deduplication_of_existing_activities(self, mock_httpx_cls, mock_sleep):
+    async def test_deduplication_of_existing_activities(
+        self, mock_httpx_cls, mock_sleep
+    ):
         """
         Verify that existing activities are IGNORED and do not trigger a reply.
         """
@@ -106,7 +118,10 @@ class TestJulesClientLogic(unittest.IsolatedAsyncioTestCase):
 
         self.client.list_activities = MagicMock(
             return_value=[
-                {"name": old_activity_id, "agentMessaged": {"agentMessage": "Old Question"}}
+                {
+                    "name": old_activity_id,
+                    "agentMessaged": {"agentMessage": "Old Question"},
+                }
             ]
         )
 
@@ -121,7 +136,10 @@ class TestJulesClientLogic(unittest.IsolatedAsyncioTestCase):
         r_acts_old.status_code = 200
         r_acts_old.json.return_value = {
             "activities": [
-                {"name": old_activity_id, "agentMessaged": {"agentMessage": "Old Question"}}
+                {
+                    "name": old_activity_id,
+                    "agentMessaged": {"agentMessage": "Old Question"},
+                }
             ]
         }
 

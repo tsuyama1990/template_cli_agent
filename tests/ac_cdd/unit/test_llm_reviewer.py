@@ -19,7 +19,11 @@ async def test_review_code_success(reviewer):
     # Mock litellm.acompletion
     mock_response = AsyncMock()
     mock_response.choices = [
-        type("obj", (object,), {"message": type("obj", (object,), {"content": "Refactored code"})})
+        type(
+            "obj",
+            (object,),
+            {"message": type("obj", (object,), {"content": "Refactored code"})},
+        )
     ]
 
     with patch("litellm.acompletion", return_value=mock_response) as mock_completion:
