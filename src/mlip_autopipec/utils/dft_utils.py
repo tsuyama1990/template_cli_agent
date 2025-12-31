@@ -8,6 +8,11 @@ from ase.io import write
 
 from mlip_autopipec.data.models import DFTCompute
 
+# Conversion factors
+RY_TO_EV = 13.605693122994
+RY_AU_TO_EV_A = RY_TO_EV / 0.529177210903
+KBAR_TO_EV_A3 = 1 / 160.21766208
+
 
 def create_qe_input_from_atoms(
     atoms: Atoms, config: DFTCompute, pseudopotentials: dict[str, str]
@@ -74,12 +79,14 @@ def parse_qe_output(output_content: str) -> dict[str, Any] | None:
     except (ValueError, IndexError):
         return None
 
+
 def _parse_total_energy(content: str) -> float | None:
     """Parses the final total energy."""
     match = re.search(r'!\s+total energy\s+=\s+(-?[\d\.]+)\s+Ry', content)
     if match:
-        return float(match.group(1)) * 13.605693122994
+        return float(match.group(1)) * RY_TO_EV
     return None
+
 
 def _parse_forces(content: str) -> np.ndarray | None:
     """Parses the forces on each atom."""
@@ -104,7 +111,8 @@ def _parse_forces(content: str) -> np.ndarray | None:
     if not forces:
         return None
 
-    return np.array(forces) * (13.605693122994 / 0.529177210903)
+    return np.array(forces) * RY_AU_TO_EV_A
+
 
 def _parse_stress(content: str) -> np.ndarray | None:
     """Parses the total stress tensor and returns it in Voigt form."""
@@ -131,4 +139,4 @@ def _parse_stress(content: str) -> np.ndarray | None:
         stress_matrix[0, 1]
     ])
 
-    return voigt_stress * (1 / 160.21766208)
+    return voigt_stress * KBAR_TO_EV_A3

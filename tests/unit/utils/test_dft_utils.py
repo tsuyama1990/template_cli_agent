@@ -5,7 +5,13 @@ import pytest
 from ase import Atoms
 
 from mlip_autopipec.data.models import DFTCompute
-from mlip_autopipec.utils.dft_utils import create_qe_input_from_atoms, parse_qe_output
+from mlip_autopipec.utils.dft_utils import (
+    KBAR_TO_EV_A3,
+    RY_AU_TO_EV_A,
+    RY_TO_EV,
+    create_qe_input_from_atoms,
+    parse_qe_output,
+)
 
 
 @pytest.fixture
@@ -31,7 +37,9 @@ def sample_atoms():
 SAMPLE_QE_OUTPUT = """
 !    total energy              =      -7.88151989 Ry
 Forces acting on atoms (cartesian axes, Ry/au):
- atom    1 type  1   force =    -0.00000011    -0.00000011     0.00000022
+
+     atom    1 type  1   force =    -0.00000011    -0.00000011     0.00000022
+
 total stress  (Ry/bohr**3)                (kbar)     P=      -1.12
   0.00007050   -0.00000000   -0.00000000
  -0.00000000    0.00007050   -0.00000000
@@ -89,14 +97,14 @@ def test_parse_qe_output_success():
     results = parse_qe_output(SAMPLE_QE_OUTPUT)
 
     assert results is not None
-    assert results['energy'] == pytest.approx(-7.88151989 * 13.605693122994)
+    assert results['energy'] == pytest.approx(-7.88151989 * RY_TO_EV)
     expected_forces = np.array(
         [[-0.00000011, -0.00000011, 0.00000022]]
-    ) * (13.605693122994 / 0.529177210903)
+    ) * RY_AU_TO_EV_A
     assert np.allclose(results['forces'], expected_forces)
     expected_stress = np.array(
-        [0.00007050, 0.00007050, 0.00007050, -0.0, -0.0, -0.0]
-    ) * (1 / 160.21766208)
+        [0.00007050, 0.00007050, 0.00007050, 0.0, 0.0, 0.0]
+    ) * KBAR_TO_EV_A3
     assert np.allclose(results['stress'], expected_stress)
 
 def test_parse_qe_output_failure():

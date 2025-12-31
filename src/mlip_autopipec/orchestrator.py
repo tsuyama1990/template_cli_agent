@@ -1,7 +1,12 @@
+import logging
+
 from mlip_autopipec.data.database import AseDBWrapper
 from mlip_autopipec.data.models import Cycle01Config
 from mlip_autopipec.modules.c_labeling_engine import LabelingEngine
 from mlip_autopipec.modules.d_training_engine import TrainingEngine
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 class Orchestrator:
@@ -23,7 +28,7 @@ class Orchestrator:
         """
         Executes the full Label -> Train workflow.
         """
-        print("--- Starting Cycle 01 Workflow: Label and Train ---")
+        logger.info("--- Starting Cycle 01 Workflow: Label and Train ---")
 
         # 1. Initialize and run the Labeling Engine
         labeling_engine = LabelingEngine(self.config.dft_compute, self.db_wrapper)
@@ -33,4 +38,4 @@ class Orchestrator:
         training_engine = TrainingEngine(self.config.mlip_training, self.db_wrapper)
         training_engine.execute()
 
-        print("--- Cycle 01 Workflow Finished ---")
+        logger.info("--- Cycle 01 Workflow Finished ---")

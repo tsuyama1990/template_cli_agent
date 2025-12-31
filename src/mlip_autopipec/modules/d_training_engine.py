@@ -1,3 +1,4 @@
+import logging
 
 import numpy as np
 import torch
@@ -13,11 +14,14 @@ from mlip_autopipec.data.database import AseDBWrapper
 from mlip_autopipec.data.models import MLIPTraining
 
 Z_TABLE = AtomicNumberTable([1, 6, 8, 14])
+logger = logging.getLogger(__name__)
+
 
 class TrainingEngine:
     """
     Manages the process of training an MLIP model on labeled data.
     """
+
     def __init__(self, config: MLIPTraining, db_wrapper: AseDBWrapper):
         """
         Initializes the TrainingEngine.
@@ -33,13 +37,13 @@ class TrainingEngine:
         """
         Executes the training workflow.
         """
-        print("Starting Training Engine...")
+        logger.info("Starting Training Engine...")
         labeled_rows = self.db_wrapper.get_all_labeled_rows()
         if not labeled_rows:
-            print("No labeled structures found to train on.")
+            logger.info("No labeled structures found to train on.")
             return
 
-        print(f"Found {len(labeled_rows)} labeled structures for training.")
+        logger.info(f"Found {len(labeled_rows)} labeled structures for training.")
         atoms_list = [row.toatoms() for row in labeled_rows]
         training_data = self._prepare_training_data(atoms_list)
 
@@ -58,7 +62,7 @@ class TrainingEngine:
             gate=torch.nn.functional.silu,
         )
 
-        print("Starting simplified training loop...")
+        logger.info("Starting simplified training loop...")
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
         loss_fn = torch.nn.MSELoss()
 
@@ -76,11 +80,11 @@ class TrainingEngine:
                 loss = loss_fn(output['energy'], target_energy)
                 loss.backward()
                 optimizer.step()
-            print(f"  Epoch {epoch+1}/5, Loss: {loss.item():.6f}")
+            logger.info(f"  Epoch {epoch+1}/5, Loss: {loss.item():.6f}")
 
         model_path = "trained_model.pt"
         torch.save(model.state_dict(), model_path)
-        print(f"Training finished. Model saved to '{model_path}'.")
+        logger.info(f"Training finished. Model saved to '{model_path}'.")
 
     def _prepare_training_data(self, atoms_list: list[Atoms]) -> list[Atoms]:
         """
@@ -89,7 +93,9 @@ class TrainingEngine:
         if not self.config.delta_learning:
             return atoms_list
 
-        print(f"Applying delta learning with base potential: {self.config.base_potential}")
+        logger.info(
+            f"Applying delta learning with base potential: {self.config.base_potential}"
+        )
         if self.config.base_potential != 'lj_auto':
             raise NotImplementedError(
                 "Only 'lj_auto' is supported for base_potential in Cycle 1."
