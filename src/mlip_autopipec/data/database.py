@@ -1,7 +1,9 @@
+from typing import Any
+
 import ase.db
 from ase import Atoms
 from ase.calculators.singlepoint import SinglePointCalculator
-from typing import List, Dict, Any, Optional
+
 
 class AseDBWrapper:
     """A wrapper class for the ASE database to handle data persistence."""
@@ -20,7 +22,7 @@ class AseDBWrapper:
         """Returns a connection to the database."""
         return ase.db.connect(self.db_path)
 
-    def add_atoms(self, atoms_list: List[Atoms], **kwargs):
+    def add_atoms(self, atoms_list: list[Atoms], **kwargs):
         """
         Adds a list of Atoms objects to the database.
         Args:
@@ -34,7 +36,7 @@ class AseDBWrapper:
             for atoms in atoms_list:
                 db.write(atoms, key_value_pairs=kvp)
 
-    def get_row(self, row_id: int) -> Optional[ase.db.row.AtomsRow]:
+    def get_row(self, row_id: int) -> ase.db.row.AtomsRow | None:
         """
         Retrieves a single AtomsRow object by its ID.
         Args:
@@ -48,7 +50,7 @@ class AseDBWrapper:
             except KeyError:
                 return None
 
-    def get_rows_to_label(self) -> List[ase.db.row.AtomsRow]:
+    def get_rows_to_label(self) -> list[ase.db.row.AtomsRow]:
         """
         Retrieves rows from the database that have not been labeled yet.
         Returns:
@@ -57,7 +59,7 @@ class AseDBWrapper:
         with self._connect() as db:
             return list(db.select('labelled=False'))
 
-    def update_row_with_dft_results(self, row_id: int, dft_results: Dict[str, Any]):
+    def update_row_with_dft_results(self, row_id: int, dft_results: dict[str, Any]):
         """
         Updates a row with DFT results and marks it as labeled.
         Args:
@@ -83,7 +85,7 @@ class AseDBWrapper:
             db.update(row_id, atoms=atoms, **new_kvp)
 
 
-    def get_all_labeled_rows(self) -> List[ase.db.row.AtomsRow]:
+    def get_all_labeled_rows(self) -> list[ase.db.row.AtomsRow]:
         """
         Retrieves all rows that have been successfully labeled.
         Returns:

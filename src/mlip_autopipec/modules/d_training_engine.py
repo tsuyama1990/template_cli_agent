@@ -1,14 +1,13 @@
-from typing import List
-import torch
+
 import numpy as np
+import torch
 from ase import Atoms
 from ase.calculators.lj import LennardJones
 from ase.calculators.singlepoint import SinglePointCalculator
-
-from mace.data.atomic_data import AtomicData, Configuration
+from mace.data.atomic_data import AtomicData
 from mace.data.utils import config_from_atoms
-from mace.tools import AtomicNumberTable
 from mace.modules.models import MACE
+from mace.tools import AtomicNumberTable
 
 from mlip_autopipec.data.database import AseDBWrapper
 from mlip_autopipec.data.models import MLIPTraining
@@ -16,11 +15,24 @@ from mlip_autopipec.data.models import MLIPTraining
 Z_TABLE = AtomicNumberTable([1, 6, 8, 14])
 
 class TrainingEngine:
+    """
+    Manages the process of training an MLIP model on labeled data.
+    """
     def __init__(self, config: MLIPTraining, db_wrapper: AseDBWrapper):
+        """
+        Initializes the TrainingEngine.
+
+        Args:
+            config: The MLIPTraining configuration object.
+            db_wrapper: An instance of the AseDBWrapper.
+        """
         self.config = config
         self.db_wrapper = db_wrapper
 
     def execute(self):
+        """
+        Executes the training workflow.
+        """
         print("Starting Training Engine...")
         labeled_rows = self.db_wrapper.get_all_labeled_rows()
         if not labeled_rows:
@@ -54,9 +66,13 @@ class TrainingEngine:
             for data in training_data:
                 optimizer.zero_grad()
                 config = config_from_atoms(data)
-                atomic_data = AtomicData.from_config(config, z_table=Z_TABLE, cutoff=self.config.r_cut)
+                atomic_data = AtomicData.from_config(
+                    config, z_table=Z_TABLE, cutoff=self.config.r_cut
+                )
                 output = model(atomic_data.to_dict())
-                target_energy = torch.tensor([data.get_potential_energy()], dtype=torch.float32)
+                target_energy = torch.tensor(
+                    [data.get_potential_energy()], dtype=torch.float32
+                )
                 loss = loss_fn(output['energy'], target_energy)
                 loss.backward()
                 optimizer.step()
@@ -66,13 +82,18 @@ class TrainingEngine:
         torch.save(model.state_dict(), model_path)
         print(f"Training finished. Model saved to '{model_path}'.")
 
-    def _prepare_training_data(self, atoms_list: List[Atoms]) -> List[Atoms]:
+    def _prepare_training_data(self, atoms_list: list[Atoms]) -> list[Atoms]:
+        """
+        Prepares the training data, applying delta learning if enabled.
+        """
         if not self.config.delta_learning:
             return atoms_list
 
         print(f"Applying delta learning with base potential: {self.config.base_potential}")
         if self.config.base_potential != 'lj_auto':
-            raise NotImplementedError("Only 'lj_auto' is supported for base_potential in Cycle 1.")
+            raise NotImplementedError(
+                "Only 'lj_auto' is supported for base_potential in Cycle 1."
+            )
 
         base_calc = LennardJones()
         processed_atoms_list = []
@@ -90,7 +111,9 @@ class TrainingEngine:
             delta_forces = dft_forces - base_forces
 
             delta_atoms = atoms.copy()
-            delta_atoms.calc = SinglePointCalculator(delta_atoms, energy=delta_energy, forces=delta_forces)
+            delta_atoms.calc = SinglePointCalculator(
+                delta_atoms, energy=delta_energy, forces=delta_forces
+            )
 
             processed_atoms_list.append(delta_atoms)
 

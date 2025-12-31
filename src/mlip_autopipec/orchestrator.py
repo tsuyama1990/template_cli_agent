@@ -1,7 +1,8 @@
-from mlip_autopipec.data.models import Cycle01Config
 from mlip_autopipec.data.database import AseDBWrapper
+from mlip_autopipec.data.models import Cycle01Config
 from mlip_autopipec.modules.c_labeling_engine import LabelingEngine
 from mlip_autopipec.modules.d_training_engine import TrainingEngine
+
 
 class Orchestrator:
     """

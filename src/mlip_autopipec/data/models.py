@@ -1,5 +1,7 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, FilePath, field_validator
-from typing import Optional, Literal
+
 
 class DFTCompute(BaseModel):
     """Configuration for the DFT compute engine."""
@@ -7,7 +9,7 @@ class DFTCompute(BaseModel):
 
     code: Literal["quantum_espresso"]
     command: str
-    pseudopotentials: str
+    pseudopotentials: dict[str, str]
     ecutwfc: float
     ecutrho: float
     kpoints_density: float
@@ -25,7 +27,7 @@ class MLIPTraining(BaseModel):
     model_type: Literal["ace"]
     r_cut: float
     delta_learning: bool
-    base_potential: Optional[str] = None
+    base_potential: str | None = None
     loss_weights: dict[str, float]
 
     @field_validator('base_potential')

@@ -1,10 +1,11 @@
+
+import numpy as np
 import pytest
-import os
 from ase import Atoms
 from ase.db import connect
-import numpy as np
 
 from mlip_autopipec.data.database import AseDBWrapper
+
 
 @pytest.fixture
 def temp_db_path(tmp_path):

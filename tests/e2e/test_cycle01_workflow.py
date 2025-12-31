@@ -1,10 +1,12 @@
+from unittest.mock import patch
+
 import pytest
-from click.testing import CliRunner
-from unittest.mock import patch, Mock
 import yaml
+from click.testing import CliRunner
 
 from mlip_autopipec.cli import cli
 from mlip_autopipec.data.models import Cycle01Config
+
 
 @pytest.fixture
 def runner():
@@ -18,7 +20,9 @@ def sample_config_file(tmp_path):
         'dft_compute': {
             'code': 'quantum_espresso',
             'command': 'pw.x',
-            'pseudopotentials': 'SSSP',
+            'pseudopotentials': {
+                'Si': 'Si.pbe-n-rrkjus_psl.1.0.0.UPF',
+            },
             'ecutwfc': 60,
             'ecutrho': 240,
             'kpoints_density': 3,
