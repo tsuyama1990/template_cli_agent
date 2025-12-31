@@ -149,7 +149,8 @@ def gen_cycles(
     import asyncio
 
     async def _run() -> None:
-        console.rule("[bold blue]Architect Phase: Generating Cycles[/bold blue]")
+        with KeepAwake(reason="Generating Architecture and Cycles"):
+            console.rule("[bold blue]Architect Phase: Generating Cycles[/bold blue]")
 
         # Check API availability first
         from ac_cdd_core.messages import ensure_api_key
