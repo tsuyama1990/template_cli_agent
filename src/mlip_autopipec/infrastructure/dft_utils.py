@@ -1,15 +1,12 @@
 """Utility functions for DFT calculations, particularly for Quantum Espresso."""
 
 import re
-
 import numpy as np
-
-from mlip_autopipec.data.models import DFTResult
+from mlip_autopipec.domain.models import DFTResult
 
 
 class QEOutputError(Exception):
     """Custom exception for errors during QE output parsing."""
-
     pass
 
 
@@ -42,7 +39,7 @@ def parse_qe_output(output_str: str) -> DFTResult:
     if not forces_match:
         raise QEOutputError("Could not find forces in QE output.")
 
-    forces_lines = forces_match.group(1).strip().split("\n")
+    forces_lines = forces_match.group(1).strip().split('\n')
     forces = []
     for line in forces_lines:
         parts = line.split()
@@ -56,9 +53,13 @@ def parse_qe_output(output_str: str) -> DFTResult:
     if not stress_match:
         raise QEOutputError("Could not find stress tensor in QE output.")
 
-    stress_lines = stress_match.group(1).strip().split("\n")
+    stress_lines = stress_match.group(1).strip().split('\n')
     stress = []
     for line in stress_lines:
         stress.append([float(x) for x in line.split()[:3]])
 
-    return DFTResult(energy=energy, forces=np.array(forces), stress=np.array(stress))
+    return DFTResult(
+        energy=energy,
+        forces=np.array(forces),
+        stress=np.array(stress)
+    )
