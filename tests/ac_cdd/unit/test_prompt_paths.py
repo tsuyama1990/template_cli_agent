@@ -1,6 +1,7 @@
-import pytest
 from pathlib import Path
+
 from ac_cdd_core.config import settings
+
 
 def test_system_prompt_structure():
     """Verify that system prompts are reachable via the new structure."""
@@ -27,7 +28,6 @@ def test_system_prompt_structure():
     assert "UAT Design & Analysis Agent" in qa_prompt, "Failed to load UAT_DESIGN.md content through settings"
     
     # 4. Verify Architect Prompt Loading
-    from ac_cdd_core.graph import GraphBuilder
     # We can't easily unit test the graph method without mocking, but we can verify file path construction logic
     # which we already did in step 2.
     
