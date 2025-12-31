@@ -12,7 +12,9 @@ def test_shlex_quoting():
 
     # Verify it looks like: aider --message 'Line 1\nLine 2 (paren)'
     assert "aider" in safe_str
-    assert "'Line 1\nLine 2 (paren)'" in safe_str or '"Line 1\nLine 2 (paren)"' in safe_str
+    assert (
+        "'Line 1\nLine 2 (paren)'" in safe_str or '"Line 1\nLine 2 (paren)"' in safe_str
+    )
 
 
 @pytest.mark.asyncio
@@ -57,7 +59,9 @@ async def test_get_sandbox_creates_new():
     """Test that _get_sandbox creates new sandbox when none exists."""
     runner = SandboxRunner()
 
-    with patch("ac_cdd_core.sandbox.Sandbox.create", return_value=MagicMock()) as mock_create:
+    with patch(
+        "ac_cdd_core.sandbox.Sandbox.create", return_value=MagicMock()
+    ) as mock_create:
         sandbox = await runner._get_sandbox()
 
         assert sandbox is not None
@@ -115,7 +119,9 @@ async def test_run_command_success():
     runner = SandboxRunner()
     runner.sandbox = MagicMock()
     # commands.run is synchronous in e2b
-    runner.sandbox.commands.run.return_value = MagicMock(stdout="output", stderr="", exit_code=0)
+    runner.sandbox.commands.run.return_value = MagicMock(
+        stdout="output", stderr="", exit_code=0
+    )
 
     with (
         patch.object(runner, "_get_sandbox", new_callable=AsyncMock) as mock_get,
@@ -140,10 +146,14 @@ async def test_run_command_retry_on_failure():
     # Second call (retry) will be on a NEW sandbox created via Sandbox.create
     # So we must configure that new mock to succeed
     new_sandbox_mock = MagicMock()
-    new_sandbox_mock.commands.run.return_value = MagicMock(stdout="ok", stderr="", exit_code=0)
+    new_sandbox_mock.commands.run.return_value = MagicMock(
+        stdout="ok", stderr="", exit_code=0
+    )
 
     with (
-        patch("ac_cdd_core.sandbox.Sandbox.create", return_value=new_sandbox_mock) as mock_create,
+        patch(
+            "ac_cdd_core.sandbox.Sandbox.create", return_value=new_sandbox_mock
+        ) as mock_create,
         patch.object(runner, "_sync_to_sandbox", new_callable=AsyncMock),
     ):
         stdout, stderr, code = await runner.run_command(["test"])

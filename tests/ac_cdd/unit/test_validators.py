@@ -15,7 +15,9 @@ async def test_session_validator_valid():
     """Test SessionValidator with valid session state."""
     validator = SessionValidator("session-test", "dev/session-test")
 
-    with patch("ac_cdd_core.session_manager.SessionManager.validate_session") as mock_validate:
+    with patch(
+        "ac_cdd_core.session_manager.SessionManager.validate_session"
+    ) as mock_validate:
         mock_validate.return_value = (True, None)
 
         is_valid, error = await validator.validate()
@@ -29,7 +31,9 @@ async def test_session_validator_invalid():
     """Test SessionValidator with invalid session state."""
     validator = SessionValidator("session-test", "dev/session-test")
 
-    with patch("ac_cdd_core.session_manager.SessionManager.validate_session") as mock_validate:
+    with patch(
+        "ac_cdd_core.session_manager.SessionManager.validate_session"
+    ) as mock_validate:
         mock_validate.return_value = (False, "Branch does not exist")
 
         is_valid, error = await validator.validate()
@@ -43,7 +47,9 @@ async def test_session_validator_raise_if_invalid():
     """Test SessionValidator raises ValidationError when invalid."""
     validator = SessionValidator("session-test", "dev/session-test")
 
-    with patch("ac_cdd_core.session_manager.SessionManager.validate_session") as mock_validate:
+    with patch(
+        "ac_cdd_core.session_manager.SessionManager.validate_session"
+    ) as mock_validate:
         mock_validate.return_value = (False, "Invalid state")
 
         with pytest.raises(ValidationError):
@@ -56,7 +62,9 @@ async def test_session_validator_with_remote_check():
     validator = SessionValidator("session-test", "dev/session-test", check_remote=True)
 
     with (
-        patch("ac_cdd_core.session_manager.SessionManager.validate_session") as mock_local,
+        patch(
+            "ac_cdd_core.session_manager.SessionManager.validate_session"
+        ) as mock_local,
         patch("ac_cdd_core.services.git_ops.GitManager") as mock_git,
     ):
         mock_local.return_value = (True, None)

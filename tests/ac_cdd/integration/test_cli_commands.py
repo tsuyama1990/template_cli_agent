@@ -52,7 +52,9 @@ def test_init_command_creates_structure(runner):
     """Test init command creates project structure."""
     with (
         patch("ac_cdd_core.cli.check_environment") as mock_check,
-        patch("ac_cdd_core.services.project.ProjectManager.initialize_project") as mock_init,
+        patch(
+            "ac_cdd_core.services.project.ProjectManager.initialize_project"
+        ) as mock_init,
         patch("rich.console.Console.print"),
     ):
         from ac_cdd_core.cli import app
@@ -103,7 +105,8 @@ def test_init_command(runner, mock_project_manager):
         # The cli.init instantiates ProjectManager().
         # We need to patch the class ProjectManager to return our mock instance
         with patch(
-            "ac_cdd_core.services.project.ProjectManager", return_value=mock_project_manager
+            "ac_cdd_core.services.project.ProjectManager",
+            return_value=mock_project_manager,
         ):
             result = runner.invoke(app, ["init"])
 
@@ -161,7 +164,10 @@ def test_run_cycle_command(
         patch("ac_cdd_core.cli.ServiceContainer"),
         patch("ac_cdd_core.graph.GraphBuilder", return_value=mock_graph_builder),
         patch("ac_cdd_core.session_manager.SessionManager", mock_session_manager),
-        patch("ac_cdd_core.validators.SessionValidator", return_value=mock_session_validator),
+        patch(
+            "ac_cdd_core.validators.SessionValidator",
+            return_value=mock_session_validator,
+        ),
     ):
         # Setup mocks
         mock_session_manager.load_or_reconcile_session.return_value = {

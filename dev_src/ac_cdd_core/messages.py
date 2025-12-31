@@ -30,7 +30,9 @@ class RecoveryMessages:
     @staticmethod
     def architect_merge_failed(pr_url: str) -> str:
         """Error message when architect PR merge fails."""
-        return RecoveryMessages.merge_failed(pr_url, "uv run manage.py run-cycle --id 01")
+        return RecoveryMessages.merge_failed(
+            pr_url, "uv run manage.py run-cycle --id 01"
+        )
 
     @staticmethod
     def cycle_merge_failed(pr_url: str) -> str:
@@ -38,7 +40,9 @@ class RecoveryMessages:
         return RecoveryMessages.merge_failed(pr_url, "the next cycle")
 
     @staticmethod
-    def branch_not_found(branch: str, session_file: str = ".ac_cdd_session.json") -> str:
+    def branch_not_found(
+        branch: str, session_file: str = ".ac_cdd_session.json"
+    ) -> str:
         """Error message when integration branch doesn't exist."""
         return (
             f"Integration branch '{branch}' does not exist.\n\n"

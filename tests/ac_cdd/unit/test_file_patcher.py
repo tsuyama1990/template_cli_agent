@@ -25,7 +25,9 @@ def test_apply_changes_create(patcher):
 
 def test_apply_changes_patch_success(patcher):
     """Test patching an existing file."""
-    ops = [FilePatch(path="existing.py", search_block="old_code", replace_block="new_code")]
+    ops = [
+        FilePatch(path="existing.py", search_block="old_code", replace_block="new_code")
+    ]
 
     with (
         patch("pathlib.Path.read_text", return_value="start\nold_code\nend"),

@@ -39,7 +39,9 @@ class GitManager:
                 # In future, could add interactive prompt here
 
             logger.info("Stashing uncommitted changes...")
-            await self._run_git(["stash", "push", "-u", "-m", "Auto-stash before workflow run"])
+            await self._run_git(
+                ["stash", "push", "-u", "-m", "Auto-stash before workflow run"]
+            )
             logger.info("Changes stashed. Use 'git stash pop' to recover them.")
 
     async def create_working_branch(self, prefix: str, id: str) -> str:
@@ -132,7 +134,9 @@ class GitManager:
 
         # 1. Diff against base branch (Committed vs Base)
         try:
-            out = await self._run_git(["diff", "--name-only", f"{base_branch}...HEAD"], check=False)
+            out = await self._run_git(
+                ["diff", "--name-only", f"{base_branch}...HEAD"], check=False
+            )
             if out:
                 files.update(out.splitlines())
         except Exception:
@@ -150,7 +154,9 @@ class GitManager:
             files.update(out.splitlines())
 
         # 4. Untracked
-        out = await self._run_git(["ls-files", "--others", "--exclude-standard"], check=False)
+        out = await self._run_git(
+            ["ls-files", "--others", "--exclude-standard"], check=False
+        )
         if out:
             files.update(out.splitlines())
 
@@ -168,7 +174,9 @@ class GitManager:
             )
             logger.info("PR merged successfully.")
         except Exception as e:
-            logger.warning(f"Failed to auto-merge PR. Please merge manually. Error: {e}")
+            logger.warning(
+                f"Failed to auto-merge PR. Please merge manually. Error: {e}"
+            )
 
     async def checkout_pr(self, pr_url: str) -> None:
         """
@@ -228,7 +236,9 @@ class GitManager:
 
             if local_hash != remote_hash:
                 # Check if local is behind
-                merge_base = await self._run_git(["merge-base", branch, f"origin/{branch}"])
+                merge_base = await self._run_git(
+                    ["merge-base", branch, f"origin/{branch}"]
+                )
 
                 if merge_base == local_hash:
                     return False, (
@@ -236,7 +246,9 @@ class GitManager:
                         f"Pull latest changes: git pull origin {branch}"
                     )
                 elif merge_base == remote_hash:
-                    logger.warning(f"Branch '{branch}' is ahead of remote (unpushed commits)")
+                    logger.warning(
+                        f"Branch '{branch}' is ahead of remote (unpushed commits)"
+                    )
                 else:
                     return False, (
                         f"Branch '{branch}' has diverged from remote.\n"
@@ -249,7 +261,9 @@ class GitManager:
 
     # Session-Based Branch Operations
 
-    async def create_integration_branch(self, session_id: str, prefix: str = "dev") -> str:
+    async def create_integration_branch(
+        self, session_id: str, prefix: str = "dev"
+    ) -> str:
         """
         Creates integration branch from main for the session.
         Returns: integration branch name
@@ -267,7 +281,9 @@ class GitManager:
         )
 
         if code == 0:
-            logger.info(f"Integration branch {integration_branch} exists. Checking out...")
+            logger.info(
+                f"Integration branch {integration_branch} exists. Checking out..."
+            )
             await self._run_git(["checkout", integration_branch])
             await self._run_git(["pull"])
         else:
@@ -319,13 +335,12 @@ class GitManager:
         logger.info(f"Merging PR to integration branch: {integration_branch}")
 
         # Try to mark as ready just in case it's a draft
-        await self.runner.run_command(
-            [self.gh_cmd, "pr", "ready", pr_url], check=False
-        )
+        await self.runner.run_command([self.gh_cmd, "pr", "ready", pr_url], check=False)
 
         # Merge PR (this merges to the PR's target branch, which should be integration)
         _, stderr, code = await self.runner.run_command(
-            [self.gh_cmd, "pr", "merge", pr_url, "--merge", "--delete-branch"], check=True
+            [self.gh_cmd, "pr", "merge", pr_url, "--merge", "--delete-branch"],
+            check=True,
         )
 
         if code != 0:
@@ -337,7 +352,9 @@ class GitManager:
 
         logger.info(f"Merged to {integration_branch} successfully.")
 
-    async def create_final_pr(self, integration_branch: str, title: str, body: str) -> str:
+    async def create_final_pr(
+        self, integration_branch: str, title: str, body: str
+    ) -> str:
         """
         Creates final PR from integration branch to main.
         Returns: PR URL (existing or newly created)
@@ -391,8 +408,10 @@ class GitManager:
         )
 
         if code != 0:
-             # Try to get error message from stdout or infer
-             raise RuntimeError(f"Failed to create PR: {stdout if stdout else 'Unknown error'}")
+            # Try to get error message from stdout or infer
+            raise RuntimeError(
+                f"Failed to create PR: {stdout if stdout else 'Unknown error'}"
+            )
 
         pr_url = stdout.strip()
         logger.info(f"Final PR created: {pr_url}")

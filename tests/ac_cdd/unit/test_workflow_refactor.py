@@ -23,7 +23,11 @@ async def test_syntax_check_node(mock_services):
     mock_runner = AsyncMock()
     # Mock successful returns for compileall (code 0) and ruff (code 0)
     mock_runner.run_command.side_effect = [
-        ("echo ok", "", 0),  # dependencies check in _get_shared_sandbox (ruff --version)
+        (
+            "echo ok",
+            "",
+            0,
+        ),  # dependencies check in _get_shared_sandbox (ruff --version)
         ("", "", 0),  # compileall
         ("ok", "", 0),  # ruff
     ]

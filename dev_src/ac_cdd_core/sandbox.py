@@ -89,7 +89,10 @@ class SandboxRunner:
                 logger.info(f"[Sandbox] Running (Attempt {attempt + 1}): {command_str}")
 
                 exec_result = sandbox.commands.run(
-                    command_str, cwd=self.cwd, envs=env or {}, timeout=settings.sandbox.timeout
+                    command_str,
+                    cwd=self.cwd,
+                    envs=env or {},
+                    timeout=settings.sandbox.timeout,
                 )
                 stdout = exec_result.stdout
                 stderr = exec_result.stderr
@@ -119,14 +122,20 @@ class SandboxRunner:
                         except Exception as e:
                             logger.debug(f"Failed to kill sandbox: {e}")
                         self.sandbox = None
-                        self._last_sync_hash = None  # Force re-sync on new sandbox definition
+                        self._last_sync_hash = (
+                            None  # Force re-sync on new sandbox definition
+                        )
 
                     # 次のループで _get_sandbox() が呼ばれ、新規作成＆install_cmdが実行される
                     continue
                 else:
                     # コマンド自体の失敗(exit_code)は例外にならない場合もあるが、
                     # e2bのエラーオブジェクトの場合は中身を取り出してbreak
-                    if hasattr(e, "exit_code") and hasattr(e, "stdout") and hasattr(e, "stderr"):
+                    if (
+                        hasattr(e, "exit_code")
+                        and hasattr(e, "stdout")
+                        and hasattr(e, "stderr")
+                    ):
                         stdout = e.stdout
                         stderr = e.stderr
                         exit_code = e.exit_code
@@ -210,7 +219,8 @@ class SandboxRunner:
 
         # Extract
         sandbox.commands.run(
-            f"tar -xzf {remote_tar_path} -C {self.cwd}", timeout=settings.sandbox.timeout
+            f"tar -xzf {remote_tar_path} -C {self.cwd}",
+            timeout=settings.sandbox.timeout,
         )
         logger.info("Synced files to sandbox via tarball.")
         self._last_sync_hash = current_hash

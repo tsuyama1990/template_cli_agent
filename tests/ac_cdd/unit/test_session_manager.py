@@ -61,7 +61,9 @@ def test_validate_session_success():
         # Mock git branch --list to return the integration branch
         mock_run.return_value = MagicMock(stdout=integration_branch, returncode=0)
 
-        is_valid, error = SessionManager.validate_session(session_id, integration_branch)
+        is_valid, error = SessionManager.validate_session(
+            session_id, integration_branch
+        )
         assert is_valid
         assert error is None
 
@@ -75,7 +77,9 @@ def test_validate_session_branch_mismatch():
         # Mock git branch --list to return empty (branch doesn't exist)
         mock_run.return_value = MagicMock(stdout="", returncode=1)
 
-        is_valid, error = SessionManager.validate_session(session_id, integration_branch)
+        is_valid, error = SessionManager.validate_session(
+            session_id, integration_branch
+        )
         assert not is_valid
         assert "not found locally" in error
 

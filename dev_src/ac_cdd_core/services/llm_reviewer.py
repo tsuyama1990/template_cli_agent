@@ -13,7 +13,9 @@ class LLMReviewer:
         # Ensure litellm is verbose enough for debugging if needed, but keep logs clean by default.
         litellm.suppress_instrumentation = True
 
-    async def review_code(self, files: dict[str, str], instruction: str, model: str) -> str:
+    async def review_code(
+        self, files: dict[str, str], instruction: str, model: str
+    ) -> str:
         """
         Sends file contents and instructions to the LLM for review.
 
@@ -25,7 +27,9 @@ class LLMReviewer:
         Returns:
             The raw text response from the LLM.
         """
-        logger.info(f"LLMReviewer: preparing review for {len(files)} files using model {model}")
+        logger.info(
+            f"LLMReviewer: preparing review for {len(files)} files using model {model}"
+        )
 
         # specific prompt construction
         prompt = self._construct_prompt(files, instruction)
@@ -35,7 +39,10 @@ class LLMReviewer:
             response = await litellm.acompletion(
                 model=model,
                 messages=[
-                    {"role": "system", "content": "You are an automated code reviewer."},
+                    {
+                        "role": "system",
+                        "content": "You are an automated code reviewer.",
+                    },
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.0,  # Deterministic output for reviews

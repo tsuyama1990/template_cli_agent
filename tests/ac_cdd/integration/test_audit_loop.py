@@ -20,13 +20,17 @@ async def test_audit_rejection_loop():
 
     # Mock Jules run session
     mock_services.jules.run_session = AsyncMock(return_value={"pr_url": "http://pr"})
-    mock_services.jules.continue_session = AsyncMock(return_value={"pr_url": "http://pr"})
+    mock_services.jules.continue_session = AsyncMock(
+        return_value={"pr_url": "http://pr"}
+    )
 
     # Mock Sandbox
     mock_services.sandbox.run_lint_check = AsyncMock(return_value=(True, "OK"))
 
     # Mock Reviewer
-    mock_services.reviewer.review_code = AsyncMock(return_value="CHANGES_REQUESTED: Please fix X.")
+    mock_services.reviewer.review_code = AsyncMock(
+        return_value="CHANGES_REQUESTED: Please fix X."
+    )
 
     # Build Graph
     builder = GraphBuilder(mock_services)
@@ -106,7 +110,9 @@ async def test_audit_rejection_loop():
         updated_rev = current_rev
         updated_aud = current_aud
 
-        if state.iteration_count > 0:  # graph increments iteration count in coder node too
+        if (
+            state.iteration_count > 0
+        ):  # graph increments iteration count in coder node too
             # It's a fix or next cycle
             updated_rev += 1
             if updated_rev > REVIEWS_PER_AUDITOR:

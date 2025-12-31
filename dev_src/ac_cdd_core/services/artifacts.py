@@ -25,4 +25,6 @@ class ArtifactManager:
             logger.info(f"Saved {target_path}")
 
         # Save thought process
-        (cycle_dir / "PLAN_THOUGHTS.md").write_text(plan.thought_process, encoding="utf-8")
+        (cycle_dir / "PLAN_THOUGHTS.md").write_text(
+            plan.thought_process, encoding="utf-8"
+        )

@@ -50,7 +50,9 @@ async def test_full_gen_cycles_workflow():
 async def test_full_run_cycle_workflow():
     """Test complete run-cycle workflow."""
     with (
-        patch("ac_cdd_core.session_manager.SessionManager.load_or_reconcile_session") as mock_load,
+        patch(
+            "ac_cdd_core.session_manager.SessionManager.load_or_reconcile_session"
+        ) as mock_load,
         patch("ac_cdd_core.services.git_ops.GitManager") as mock_git,
         patch("ac_cdd_core.services.jules_client.JulesClient") as mock_jules,
         patch("ac_cdd_core.sandbox.SandboxRunner") as mock_sandbox,
@@ -65,7 +67,9 @@ async def test_full_run_cycle_workflow():
         # Setup git
         mock_git_instance = MagicMock()
         mock_git.return_value = mock_git_instance
-        mock_git_instance.create_session_branch.return_value = "dev/session-test/cycle01"
+        mock_git_instance.create_session_branch.return_value = (
+            "dev/session-test/cycle01"
+        )
 
         # Setup Jules
         mock_jules_instance = MagicMock()
@@ -152,14 +156,18 @@ async def test_error_recovery_workflow():
         # Setup sandbox to fail first, then succeed
         mock_sandbox_instance = MagicMock()
         mock_sandbox.return_value = mock_sandbox_instance
-        mock_sandbox_instance.run_command = AsyncMock(side_effect=[("", "Error", 1), ("", "", 0)])
+        mock_sandbox_instance.run_command = AsyncMock(
+            side_effect=[("", "Error", 1), ("", "", 0)]
+        )
 
         # First attempt fails
         with pytest.raises(Exception, match=".*"):  # noqa: B017
             await mock_jules_instance.run_session("session", "prompt", [], MagicMock())
 
         # Retry succeeds
-        pr_url = await mock_jules_instance.run_session("session", "prompt", [], MagicMock())
+        pr_url = await mock_jules_instance.run_session(
+            "session", "prompt", [], MagicMock()
+        )
         assert pr_url is not None
 
         # Sandbox first attempt fails

@@ -13,7 +13,9 @@ from .service_container import ServiceContainer
 from .state import CycleState
 from .utils import KeepAwake, logger
 
-app = typer.Typer(help="AC-CDD: AI-Native Cycle-Based Contract-Driven Development Environment")
+app = typer.Typer(
+    help="AC-CDD: AI-Native Cycle-Based Contract-Driven Development Environment"
+)
 console = Console()
 
 
@@ -96,12 +98,16 @@ def check_environment() -> None:
         # Why? Because tests like test_check_environment_missing_keys expect failure.
 
         if os.environ.get("AC_CDD_AUTO_APPROVE"):
-            console.print("[yellow]Auto-approving despite missing environment variables.[/yellow]")
+            console.print(
+                "[yellow]Auto-approving despite missing environment variables.[/yellow]"
+            )
         elif "PYTEST_CURRENT_TEST" in os.environ:
             # If in test mode and we found missing vars, we must EXIT to satisfy negative tests.
             # Positive tests won't reach here (missing_vars empty).
             raise typer.Exit(code=1)
-        elif not typer.confirm("Do you want to proceed anyway? (May cause runtime errors)"):
+        elif not typer.confirm(
+            "Do you want to proceed anyway? (May cause runtime errors)"
+        ):
             raise typer.Exit(code=1)
     else:
         console.print("[bold green]✓ Environment Check Passed[/bold green]")
@@ -129,7 +135,9 @@ def init() -> None:
             "2. Generate architecture and cycle plans:\n"
             "   uv run manage.py gen-cycles"
         )
-        console.print(Panel(msg, title="Next Action Guide", style="bold green", expand=False))
+        console.print(
+            Panel(msg, title="Next Action Guide", style="bold green", expand=False)
+        )
     except Exception as e:
         console.print(f"[red]Initialization failed:[/red] {e}")
         raise typer.Exit(code=1) from e
@@ -165,7 +173,9 @@ def gen_cycles(
         graph = builder.build_architect_graph()
 
         # Initialize state with session
-        initial_state = CycleState(cycle_id=settings.DUMMY_CYCLE_ID, session_id=session_id)
+        initial_state = CycleState(
+            cycle_id=settings.DUMMY_CYCLE_ID, session_id=session_id
+        )
 
         # Run the graph
         try:
@@ -173,7 +183,9 @@ def gen_cycles(
             final_state = await graph.ainvoke(initial_state)
 
             if final_state.get("error"):
-                console.print(f"[red]Architect Phase Failed:[/red] {final_state['error']}")
+                console.print(
+                    f"[red]Architect Phase Failed:[/red] {final_state['error']}"
+                )
                 sys.exit(1)
             else:
                 session_id_final = final_state["session_id"]
@@ -188,7 +200,9 @@ def gen_cycles(
 
                 # Show success message
                 SuccessMessages.show_panel(
-                    SuccessMessages.architect_complete(session_id_final, integration_branch)
+                    SuccessMessages.architect_complete(
+                        session_id_final, integration_branch
+                    )
                 )
 
         except Exception as e:
@@ -205,13 +219,16 @@ def gen_cycles(
 @app.command(name="run-cycle")
 @app.command(name="run-cycle")
 def run_cycle(
-    cycle_id: Annotated[str, typer.Option("--id", help="Cycle ID (e.g., '01') or 'all'")] = "01",
+    cycle_id: Annotated[
+        str, typer.Option("--id", help="Cycle ID (e.g., '01') or 'all'")
+    ] = "01",
     session_id: Annotated[str, typer.Option("--session", help="Session ID")] = None,
     auto: Annotated[bool, typer.Option(help="Run without manual confirmation")] = False,
     start_iter: Annotated[
         int,
         typer.Option(
-            "--start-iter", help="Force start at specific iteration (0=Creator, 1=Refiner)"
+            "--start-iter",
+            help="Force start at specific iteration (0=Creator, 1=Refiner)",
         ),
     ] = 0,
     resume: Annotated[
@@ -261,7 +278,9 @@ def run_cycle(
                 if should_resume or resume_id:
                     # Priority to explicit ID if provided, else None (auto-load)
                     target_resume_id = resume_id if resume_id else None
-                    resume_info = await SessionManager.resume_jules_session(target_resume_id)
+                    resume_info = await SessionManager.resume_jules_session(
+                        target_resume_id
+                    )
                     console.print(
                         f"[green]✓ Resumed Jules session with PR: {resume_info.get('pr_url', 'None')}[/green]"
                     )
@@ -278,7 +297,7 @@ def run_cycle(
 
                 # AUTO-DETECT CYCLE ID if Resuming and using default "01" (Single Cycle Mode)
                 # Only apply switching if NOT triggered by _run_all iteration (cycle_id != 'all')
-                
+
                 # actually execute_single_cycle arg matches.
                 # If we are in 'all' mode, we handled switch in _run_all.
                 if (
@@ -298,9 +317,13 @@ def run_cycle(
 
                 if not should_resume and not resume_id and not session_id:
                     if session_data.get("reconciled"):
-                        console.print(f"[green]✓ Reconciled session: {session_id_to_use}[/green]")
+                        console.print(
+                            f"[green]✓ Reconciled session: {session_id_to_use}[/green]"
+                        )
                     else:
-                        console.print(f"[dim]Using saved session: {session_id_to_use}[/dim]")
+                        console.print(
+                            f"[dim]Using saved session: {session_id_to_use}[/dim]"
+                        )
             except SessionValidationError as e:
                 console.print(f"[red]{e}[/red]")
                 sys.exit(1)
@@ -335,10 +358,14 @@ def run_cycle(
             try:
                 # We iterate through events to show progress if needed, or just invoke
                 # invoke returns the final state
-                final_state = await graph.ainvoke(initial_state, {"recursion_limit": 50})
+                final_state = await graph.ainvoke(
+                    initial_state, {"recursion_limit": 50}
+                )
 
                 if final_state.get("error"):
-                    console.print(f"[red]Cycle {target_cycle} Failed:[/red] {final_state['error']}")
+                    console.print(
+                        f"[red]Cycle {target_cycle} Failed:[/red] {final_state['error']}"
+                    )
                     # Check specific phase failures
                     phase = final_state.get("current_phase")
                     console.print(f"Failed at phase: [bold]{phase}[/bold]")
@@ -351,7 +378,9 @@ def run_cycle(
                     elif auto:
                         from ac_cdd_core.messages import SuccessMessages
 
-                        SuccessMessages.show_panel(SuccessMessages.all_cycles_complete())
+                        SuccessMessages.show_panel(
+                            SuccessMessages.all_cycles_complete()
+                        )
                     else:
                         # Calculate next cycle ID
                         try:
@@ -445,7 +474,9 @@ def finalize_session(
             sys.exit(1)
 
         # Validate session
-        is_valid, error_msg = SessionManager.validate_session(session_id_to_use, integration_branch)
+        is_valid, error_msg = SessionManager.validate_session(
+            session_id_to_use, integration_branch
+        )
         if not is_valid:
             console.print(f"[red]{error_msg}[/red]")
             sys.exit(1)
@@ -457,7 +488,9 @@ def finalize_session(
                 plan_data = json.loads(plan_status_file.read_text())
                 planned_cycles = plan_data.get("cycles", [])
                 if planned_cycles:
-                    console.print(f"[dim]Planned cycles: {', '.join(planned_cycles)}[/dim]")
+                    console.print(
+                        f"[dim]Planned cycles: {', '.join(planned_cycles)}[/dim]"
+                    )
                     # Note: We don't enforce completion check yet, just inform
             except Exception as e:
                 logger.warning(f"Could not read plan status: {e}")
@@ -482,7 +515,9 @@ def finalize_session(
 
             # Clear session file after successful PR creation
             SessionManager.clear_session()
-            console.print("[dim]Session file cleared. Start a new session with 'gen-cycles'.[/dim]")
+            console.print(
+                "[dim]Session file cleared. Start a new session with 'gen-cycles'.[/dim]"
+            )
 
             from ac_cdd_core.messages import SuccessMessages
 
@@ -505,7 +540,9 @@ def start_session(
     audit_mode: Annotated[
         bool, typer.Option("--audit-mode", help="Enable AI-on-AI Plan Audit")
     ] = False,
-    max_retries: Annotated[int, typer.Option("--retries", help="Max audit retries")] = 3,
+    max_retries: Annotated[
+        int, typer.Option("--retries", help="Max audit retries")
+    ] = 3,
 ) -> None:
     """
     Start a generic Jules session. Use --audit-mode to enable interactive plan auditing.
@@ -520,7 +557,12 @@ def start_session(
         docs_dir = Path(settings.paths.documents_dir)
         # Using full paths as keys to ensure JulesClient can locate them for upload
         spec_files = {}
-        for filename in ["ALL_SPEC.md", "SPEC.md", "UAT.md", "ARCHITECT_INSTRUCTION.md"]:
+        for filename in [
+            "ALL_SPEC.md",
+            "SPEC.md",
+            "UAT.md",
+            "ARCHITECT_INSTRUCTION.md",
+        ]:
             p = docs_dir / filename
             if p.exists():
                 # Store full path string as key, content as value

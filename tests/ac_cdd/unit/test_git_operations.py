@@ -14,7 +14,9 @@ def git_manager():
 
 def test_ensure_clean_state_clean(git_manager):
     """Test ensure_clean_state when working directory is clean."""
-    with patch.object(git_manager.runner, "run_command", new_callable=AsyncMock) as mock_run:
+    with patch.object(
+        git_manager.runner, "run_command", new_callable=AsyncMock
+    ) as mock_run:
         # Mock git status to return empty (clean state)
         # Returns tuple: (stdout, stderr, code)
         mock_run.return_value = ("", "", 0)
@@ -30,7 +32,9 @@ def test_ensure_clean_state_clean(git_manager):
 @pytest.mark.asyncio
 async def test_ensure_clean_state_dirty_auto_stash(git_manager):
     """Test ensure_clean_state with dirty state and auto-stash."""
-    with patch.object(git_manager.runner, "run_command", new_callable=AsyncMock) as mock_run:
+    with patch.object(
+        git_manager.runner, "run_command", new_callable=AsyncMock
+    ) as mock_run:
         # First call: git status returns changes
         # Second call: git stash
         mock_run.side_effect = [("M file.py", "", 0), ("", "", 0)]
@@ -46,7 +50,9 @@ async def test_create_integration_branch(git_manager):
     """Test creating integration branch."""
     session_id = "session-20251230-120000"
 
-    with patch.object(git_manager.runner, "run_command", new_callable=AsyncMock) as mock_run:
+    with patch.object(
+        git_manager.runner, "run_command", new_callable=AsyncMock
+    ) as mock_run:
         mock_run.return_value = ("", "", 0)
 
         branch = await git_manager.create_integration_branch(session_id)
@@ -61,10 +67,14 @@ async def test_create_session_branch_arch(git_manager):
     session_id = "session-20251230-120000"
     integration_branch = "dev/session-20251230-120000/integration"
 
-    with patch.object(git_manager.runner, "run_command", new_callable=AsyncMock) as mock_run:
+    with patch.object(
+        git_manager.runner, "run_command", new_callable=AsyncMock
+    ) as mock_run:
         mock_run.return_value = ("", "", 0)
 
-        branch = await git_manager.create_session_branch(session_id, "arch", "", integration_branch)
+        branch = await git_manager.create_session_branch(
+            session_id, "arch", "", integration_branch
+        )
 
         assert branch == "dev/session-20251230-120000/arch"
         assert mock_run.called
@@ -76,7 +86,9 @@ async def test_create_session_branch_cycle(git_manager):
     session_id = "session-20251230-120000"
     integration_branch = "dev/session-20251230-120000/integration"
 
-    with patch.object(git_manager.runner, "run_command", new_callable=AsyncMock) as mock_run:
+    with patch.object(
+        git_manager.runner, "run_command", new_callable=AsyncMock
+    ) as mock_run:
         mock_run.return_value = ("", "", 0)
 
         branch = await git_manager.create_session_branch(
@@ -92,7 +104,9 @@ async def test_merge_to_integration(git_manager):
     pr_url = "https://github.com/user/repo/pull/123"
     integration_branch = "dev/session-20251230-120000/integration"
 
-    with patch.object(git_manager.runner, "run_command", new_callable=AsyncMock) as mock_run:
+    with patch.object(
+        git_manager.runner, "run_command", new_callable=AsyncMock
+    ) as mock_run:
         # Mock gh pr view to return source branch
         # Mock gh pr merge
         mock_run.side_effect = [
@@ -129,7 +143,9 @@ async def test_create_final_pr_new(git_manager):
     title = "Session: Complete Implementation"
     body = "Final PR for session"
 
-    with patch.object(git_manager.runner, "run_command", new_callable=AsyncMock) as mock_run:
+    with patch.object(
+        git_manager.runner, "run_command", new_callable=AsyncMock
+    ) as mock_run:
         # Mock gh pr list to return empty (no existing PR) -> check=False
         # Mock push (checkout, push) -> check=True
         # Mock gh pr create to return new PR URL -> check=True
@@ -152,7 +168,9 @@ async def test_create_final_pr_existing(git_manager):
     """Test returning existing final PR."""
     integration_branch = "dev/session-20251230-120000/integration"
 
-    with patch.object(git_manager.runner, "run_command", new_callable=AsyncMock) as mock_run:
+    with patch.object(
+        git_manager.runner, "run_command", new_callable=AsyncMock
+    ) as mock_run:
         # Mock gh pr list to return existing PR
         existing_pr = "https://github.com/user/repo/pull/789"
         mock_run.return_value = (existing_pr, "", 0)
@@ -169,7 +187,9 @@ async def test_validate_remote_branch_success(git_manager):
     """Test validating branch that exists on remote."""
     branch = "dev/session-20251230-120000"
 
-    with patch.object(git_manager.runner, "run_command", new_callable=AsyncMock) as mock_run:
+    with patch.object(
+        git_manager.runner, "run_command", new_callable=AsyncMock
+    ) as mock_run:
         # Mock git ls-remote to return the branch
         # Then fetch, rev-parse local, rev-parse remote, merge-base
 
@@ -192,7 +212,9 @@ async def test_validate_remote_branch_not_found(git_manager):
     """Test validating branch that doesn't exist on remote."""
     branch = "nonexistent-branch"
 
-    with patch.object(git_manager.runner, "run_command", new_callable=AsyncMock) as mock_run:
+    with patch.object(
+        git_manager.runner, "run_command", new_callable=AsyncMock
+    ) as mock_run:
         # Mock git ls-remote to return empty
         mock_run.return_value = ("", "", 0)
 
@@ -205,7 +227,9 @@ async def test_validate_remote_branch_not_found(git_manager):
 @pytest.mark.asyncio
 async def test_get_changed_files(git_manager):
     """Test getting list of changed files."""
-    with patch.object(git_manager.runner, "run_command", new_callable=AsyncMock) as mock_run:
+    with patch.object(
+        git_manager.runner, "run_command", new_callable=AsyncMock
+    ) as mock_run:
         # Mock git diff to return file list
         mock_run.side_effect = [
             ("file1.py\nfile2.py", "", 0),  # committed changes

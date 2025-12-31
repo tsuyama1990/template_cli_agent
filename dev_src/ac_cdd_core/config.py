@@ -33,7 +33,9 @@ def load_user_config():
         spec.loader.exec_module(module)
         return module.config
     except Exception as e:
-        raise ImportError(f"Failed to load configuration from {config_path}: {e}") from e
+        raise ImportError(
+            f"Failed to load configuration from {config_path}: {e}"
+        ) from e
 
 
 settings = load_user_config()
