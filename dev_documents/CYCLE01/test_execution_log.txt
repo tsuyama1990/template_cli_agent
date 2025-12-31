@@ -1,0 +1,23 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0
+rootdir: /app
+configfile: pyproject.toml
+collected 12 items
+
+tests/unit/test_database.py .....                                        [ 41%]
+tests/unit/test_labelling_engine.py ...                                  [ 66%]
+tests/unit/test_training_engine.py ...                                   [ 91%]
+tests/e2e/test_cycle01_workflow.py .                                     [100%]
+
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:298
+.venv/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:298
+  /app/.venv/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:298: PydanticDeprecatedSince20: `json_encoders` is deprecated. See https://docs.pydantic.dev/2.11/concepts/serialization/#custom-serializers for alternatives. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    warnings.warn(
+
+.venv/lib/python3.12/site-packages/e3nn/o3/_wigner.py:10
+  /app/.venv/lib/python3.12/site-packages/e3nn/o3/_wigner.py:10: UserWarning: Environment variable TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD detected, since the`weights_only` argument was not explicitly passed to `torch.load`, forcing weights_only=False.
+    _Jd, _W3j_flat, _W3j_indices = torch.load(os.path.join(os.path.dirname(__file__), 'constants.pt'))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 12 passed, 3 warnings in 13.29s ========================
