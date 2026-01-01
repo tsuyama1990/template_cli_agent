@@ -33,6 +33,7 @@ dependencies = [
     "mace-torch",
     "click",
     "litellm>=1.80.11",
+    "numpy",
 ]
 
 [tool.uv]
