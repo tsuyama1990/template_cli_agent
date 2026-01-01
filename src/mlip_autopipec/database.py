@@ -95,5 +95,9 @@ class AseDBWrapper:
                     dft_result = DFTResult.model_validate_json(dft_result_json)
                     results.append((atoms, dft_result))
                 except Exception as e:
-                    print(f"Skipping corrupted data in database (ID: {row.id}): {e}")
+                    import logging
+
+                    logging.warning(
+                        f"Skipping corrupted data in database (ID: {row.id}): {e}"
+                    )
         return results

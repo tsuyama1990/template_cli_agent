@@ -1,4 +1,3 @@
-import subprocess
 import tempfile
 from pathlib import Path
 
@@ -82,8 +81,13 @@ class LabelingEngine(ILabelingEngine):
                 )
                 self.db_wrapper.update_labels(structure_id, dft_result)
 
-            except subprocess.CalledProcessError as e:
-                print(f"Quantum Espresso execution failed: {e}")
-                self.db_wrapper.update_state(
-                    structure_id, "labeling_failed"
-                )
+            except Exception as e:
+                import subprocess
+
+                if isinstance(e, subprocess.CalledProcessError):
+                    print(f"Quantum Espresso execution failed: {e}")
+                    self.db_wrapper.update_state(
+                        structure_id, "labeling_failed"
+                    )
+                else:
+                    raise e

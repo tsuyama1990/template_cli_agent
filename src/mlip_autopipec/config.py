@@ -24,7 +24,7 @@ class DFTInputConfig(BaseModel):
         ..., description="Mapping of element to pseudopotential filename."
     )
     kpoints: tuple[int, int, int] = Field(..., description="K-points grid.")
-    ecutwfc: int = Field(..., description="Wavefunction cutoff energy.")
+    ecutwfc: int = Field(..., gt=0, description="Wavefunction cutoff energy.")
     control: dict[str, Any] = Field(
         ..., description="Control parameters for the DFT calculation."
     )
@@ -61,7 +61,7 @@ class MLIPTrainingConfig(BaseModel):
     model_type: ModelType = Field(
         ..., description="Type of the MLIP model to be trained."
     )
-    r_cut: float = Field(..., description="Cutoff radius for the potential.")
+    r_cut: float = Field(..., gt=0, description="Cutoff radius for the potential.")
     loss_weights: dict[str, float] = Field(
         ..., description="Weights for the loss function components."
     )

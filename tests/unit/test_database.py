@@ -88,7 +88,9 @@ def test_get_all_labeled_atoms_corrupted_data(temp_db):
 
 def test_database_connection_error(tmp_path):
     """Tests that a connection error is handled gracefully."""
+    from sqlite3 import OperationalError
+
     db_path = tmp_path / "non_existent_dir" / "test.db"
     db_wrapper = AseDBWrapper(db_path=str(db_path))
-    with pytest.raises(OSError):
+    with pytest.raises(OperationalError):
         db_wrapper.add_atoms(Atoms("H"))
