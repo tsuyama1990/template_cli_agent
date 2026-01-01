@@ -92,3 +92,45 @@ def test_database_connection_error(tmp_path):
     db_wrapper = AseDBWrapper(db_path=str(db_path))
     with pytest.raises(OperationalError):
         db_wrapper.add_atoms(Atoms("H"))
+
+
+def test_get_unlabeled_ids(temp_db):
+    """Tests retrieving the IDs of all unlabeled atoms."""
+    db_wrapper = AseDBWrapper(db_path=temp_db)
+    id1 = db_wrapper.add_atoms(Atoms("H"), state="unlabeled")
+    id2 = db_wrapper.add_atoms(Atoms("He"), state="unlabeled")
+    db_wrapper.add_atoms(Atoms("Li"), state="labeled")
+
+    unlabeled_ids = db_wrapper.get_unlabeled_ids()
+    assert set(unlabeled_ids) == {id1, id2}
+
+
+def test_is_empty(temp_db):
+    """Tests the is_empty method."""
+    db_wrapper = AseDBWrapper(db_path=temp_db)
+    assert db_wrapper.is_empty()
+
+    db_wrapper.add_atoms(Atoms("H"))
+    assert not db_wrapper.is_empty()
+
+
+def test_update_labels_sets_state_correctly(temp_db):
+    """Tests that update_labels correctly sets the state and DFT result."""
+    db_wrapper = AseDBWrapper(db_path=temp_db)
+    atoms = Atoms("Si", positions=[[0, 0, 0]])
+    id = db_wrapper.add_atoms(atoms, state="unlabeled")
+
+    dft_result = DFTResult(
+        energy=-100.0,
+        forces=np.ones((1, 3)),
+        stress=np.eye(3) * 2,
+    )
+
+    db_wrapper.update_labels(id, dft_result)
+
+    # Directly query the database to verify the state and data
+    with db_wrapper._connect() as db:
+        row = db.get(id=id)
+        assert row.key_value_pairs["state"] == "labeled"
+        retrieved_result = DFTResult.model_validate_json(row.key_value_pairs["dft_result"])
+        assert retrieved_result.energy == dft_result.energy

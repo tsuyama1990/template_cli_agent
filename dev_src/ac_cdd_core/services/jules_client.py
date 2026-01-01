@@ -88,20 +88,29 @@ class JulesApiClient:
         )
 
         try:
-            with urllib.request.urlopen(req) as response:  # noqa: S310
+            with urllib.request.urlopen(req) as response:
                 resp_body = response.read().decode("utf-8")
                 if not resp_body:
                     return {}
                 return json.loads(resp_body)
         except urllib.error.HTTPError as e:
-            if e.code == 404:
-                raise JulesApiError(f"404 Not Found: {url}") from e
             err_msg = e.read().decode("utf-8")
-            logger.error(f"Jules API Error {e.code}: {err_msg}")
-            raise JulesApiError(f"API request failed: {e.code} {err_msg}") from e
-        except Exception as e:
-            logger.error(f"Network Error: {e}")
-            raise JulesApiError(f"Network request failed: {e}") from e
+            logger.error(f"Jules API Error {e.code}: {err_msg}", extra={"error_details": err_msg})
+            if e.code == 400:
+                raise JulesApiError(f"Bad Request: {err_msg}") from e
+            if e.code == 401 or e.code == 403:
+                raise JulesApiError(f"Authentication Error: {err_msg}") from e
+            if e.code == 404:
+                raise JulesApiError(f"Not Found: {url}") from e
+            if e.code >= 500:
+                raise JulesApiError(f"Server Error: {err_msg}") from e
+            raise JulesApiError(f"API request failed with status {e.code}: {err_msg}") from e
+        except urllib.error.URLError as e:
+            logger.error(f"Network Error: {e.reason}")
+            raise JulesApiError(f"Network request failed: {e.reason}") from e
+        except json.JSONDecodeError as e:
+            logger.error("Failed to decode JSON response from Jules API.")
+            raise JulesApiError("Invalid JSON response from API.") from e
 
     def list_sources(self) -> list[dict[str, Any]]:
         data = self._request("GET", "sources")
@@ -312,26 +321,32 @@ class JulesClient:
                 response = await client.post(
                     url, json=payload, headers=self._get_headers(), timeout=30.0
                 )
-                if response.status_code != 200:
-                    # Try to parse error
-                    error_msg = response.text
-                    try:
-                        err_json = response.json()
-                        error_msg = err_json.get("error", {}).get("message", response.text)
-                    except Exception:
-                        logger.debug("Could not parse JSON error message.")
-                    raise JulesSessionError(
-                        f"Failed to create session: {response.status_code} - {error_msg}"
-                    )
-
+                response.raise_for_status()  # Raise an exception for bad status codes
                 resp_data = response.json()
-                # Quickstart Response: { "name": "sessions/..." }
                 session_name = resp_data.get("name")
                 if not session_name:
-                    raise JulesSessionError("API did not return a session name.")
+                    raise JulesSessionError("API did not return a session name in the response.")
 
+            except httpx.HTTPStatusError as e:
+                error_msg = e.response.text
+                try:
+                    err_json = e.response.json()
+                    error_msg = err_json.get("error", {}).get("message", e.response.text)
+                except json.JSONDecodeError:
+                    pass  # Keep the raw text if it's not JSON
+                logger.error(
+                    f"Failed to create Jules session: {e.response.status_code} - {error_msg}",
+                    extra={"status_code": e.response.status_code, "response": error_msg},
+                )
+                raise JulesSessionError(
+                    f"Failed to create session: {e.response.status_code} - {error_msg}"
+                ) from e
             except httpx.RequestError as e:
+                logger.error(f"Network error while creating Jules session: {e}")
                 raise JulesSessionError(f"Network error creating session: {e}") from e
+            except json.JSONDecodeError as e:
+                logger.error("Failed to decode JSON response when creating session.")
+                raise JulesSessionError("Invalid JSON response from API during session creation.") from e
 
         # 3. SAVE SESSION ID for RESUME
         try:
