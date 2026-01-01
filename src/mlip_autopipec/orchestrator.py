@@ -31,11 +31,17 @@ class Orchestrator:
         logger.info("--- Starting Cycle 01 Workflow: Label and Train ---")
 
         # 1. Initialize and run the Labeling Engine
-        labeling_engine = LabelingEngine(self.config.dft_compute, self.db_wrapper)
-        labeling_engine.execute()
+        labeling_engine = LabelingEngine(self.config.dft_compute)
+        rows_to_label = self.db_wrapper.get_rows_to_label()
+        structures_to_label = [(row.id, row.toatoms()) for row in rows_to_label]
+        dft_results = labeling_engine.execute(structures_to_label)
+        for row_id, results in dft_results:
+            self.db_wrapper.update_row_with_dft_results(row_id, results)
 
         # 2. Initialize and run the Training Engine
-        training_engine = TrainingEngine(self.config.mlip_training, self.db_wrapper)
-        training_engine.execute()
+        training_engine = TrainingEngine(self.config.mlip_training)
+        labeled_rows = self.db_wrapper.get_all_labeled_rows()
+        atoms_to_train = [row.toatoms() for row in labeled_rows]
+        training_engine.execute(atoms_to_train)
 
         logger.info("--- Cycle 01 Workflow Finished ---")

@@ -10,7 +10,6 @@ from mace.data.utils import config_from_atoms
 from mace.modules.models import MACE
 from mace.tools import AtomicNumberTable
 
-from mlip_autopipec.data.database import AseDBWrapper
 from mlip_autopipec.data.models import MLIPTraining
 
 Z_TABLE = AtomicNumberTable([1, 6, 8, 14])
@@ -22,29 +21,28 @@ class TrainingEngine:
     Manages the process of training an MLIP model on labeled data.
     """
 
-    def __init__(self, config: MLIPTraining, db_wrapper: AseDBWrapper):
+    def __init__(self, config: MLIPTraining):
         """
         Initializes the TrainingEngine.
 
         Args:
             config: The MLIPTraining configuration object.
-            db_wrapper: An instance of the AseDBWrapper.
         """
         self.config = config
-        self.db_wrapper = db_wrapper
 
-    def execute(self):
+    def execute(self, atoms_list: list[Atoms]):
         """
         Executes the training workflow.
+
+        Args:
+            atoms_list: A list of ASE Atoms objects with DFT results.
         """
         logger.info("Starting Training Engine...")
-        labeled_rows = self.db_wrapper.get_all_labeled_rows()
-        if not labeled_rows:
+        if not atoms_list:
             logger.info("No labeled structures found to train on.")
             return
 
-        logger.info(f"Found {len(labeled_rows)} labeled structures for training.")
-        atoms_list = [row.toatoms() for row in labeled_rows]
+        logger.info(f"Received {len(atoms_list)} labeled structures for training.")
         training_data = self._prepare_training_data(atoms_list)
 
         model = MACE(

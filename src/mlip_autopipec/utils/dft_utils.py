@@ -1,12 +1,11 @@
 import re
 from io import StringIO
-from typing import Any
 
 import numpy as np
 from ase import Atoms
 from ase.io import write
 
-from mlip_autopipec.data.models import DFTCompute
+from mlip_autopipec.data.models import DFTCompute, DFTResults
 
 # Conversion factors
 RY_TO_EV = 13.605693122994
@@ -55,7 +54,7 @@ def create_qe_input_from_atoms(
     return string_io.getvalue()
 
 
-def parse_qe_output(output_content: str) -> dict[str, Any] | None:
+def parse_qe_output(output_content: str) -> DFTResults | None:
     """
     Parses the output of a Quantum Espresso (pw.x) calculation to extract
     energy, forces, and stress.
@@ -64,8 +63,8 @@ def parse_qe_output(output_content: str) -> dict[str, Any] | None:
         output_content: The full string content of the QE output file.
 
     Returns:
-        A dictionary containing 'energy', 'forces', and 'stress' if successful,
-        otherwise None.
+        A DFTResults object containing 'energy', 'forces', and 'stress'
+        if successful, otherwise None.
     """
     try:
         energy = _parse_total_energy(output_content)
@@ -75,7 +74,7 @@ def parse_qe_output(output_content: str) -> dict[str, Any] | None:
         if energy is None or forces is None or stress is None:
             return None
 
-        return {'energy': energy, 'forces': forces, 'stress': stress}
+        return DFTResults(energy=energy, forces=forces, stress=stress)
     except (ValueError, IndexError):
         return None
 

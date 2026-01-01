@@ -2,8 +2,9 @@ import logging
 import os
 import subprocess
 
-from mlip_autopipec.data.database import AseDBWrapper
-from mlip_autopipec.data.models import DFTCompute
+from ase import Atoms
+
+from mlip_autopipec.data.models import DFTCompute, DFTResults
 from mlip_autopipec.utils.dft_utils import create_qe_input_from_atoms, parse_qe_output
 
 QE_INPUT_FILENAME = "qe.in"
@@ -17,36 +18,40 @@ class LabelingEngine:
     Manages the process of labeling atomic structures with DFT calculations.
     """
 
-    def __init__(self, config: DFTCompute, db_wrapper: AseDBWrapper):
+    def __init__(self, config: DFTCompute):
         """
         Initializes the LabelingEngine.
 
         Args:
             config: The DFTCompute configuration object.
-            db_wrapper: An instance of the AseDBWrapper.
         """
         self.config = config
-        self.db_wrapper = db_wrapper
 
-    def execute(self):
+    def execute(
+        self, structures: list[tuple[int, Atoms]]
+    ) -> list[tuple[int, DFTResults]]:
         """
-        Executes the labeling workflow for all unlabeled structures in the database.
+        Executes the labeling workflow for the given structures.
+
+        Args:
+            structures: A list of tuples, each containing a row ID and an ASE Atoms object.
+
+        Returns:
+            A list of tuples, each containing a row ID and a DFTResults object.
         """
         logger.info("Starting Labeling Engine...")
-        rows_to_label = self.db_wrapper.get_rows_to_label()
-        if not rows_to_label:
+        if not structures:
             logger.info("No structures to label.")
-            return
+            return []
 
-        logger.info(f"Found {len(rows_to_label)} structures to label.")
-
-        for i, row in enumerate(rows_to_label):
-            atoms = row.toatoms()
+        logger.info(f"Received {len(structures)} structures to label.")
+        results = []
+        for i, (row_id, atoms) in enumerate(structures):
             logger.info(
-                f"  Processing structure {i+1}/{len(rows_to_label)} (ID: {row.id})..."
+                f"  Processing structure {i+1}/{len(structures)} (ID: {row_id})..."
             )
 
-            calc_dir = f"calc_{row.id}"
+            calc_dir = f"calc_{row_id}"
             os.makedirs(calc_dir, exist_ok=True)
 
             input_content = create_qe_input_from_atoms(
@@ -67,7 +72,7 @@ class LabelingEngine:
                         stdout=out_f,
                         stderr=subprocess.PIPE,
                         check=True,
-                        shell=False
+                        shell=False,
                     )
 
                 with open(output_file_path) as f:
@@ -78,27 +83,29 @@ class LabelingEngine:
                 if dft_results:
                     logger.info(
                         f"    ...DFT calculation successful. "
-                        f"Energy: {dft_results['energy']:.4f} eV"
+                        f"Energy: {dft_results.energy:.4f} eV"
                     )
-                    self.db_wrapper.update_row_with_dft_results(row.id, dft_results)
+                    results.append((row_id, dft_results))
                 else:
                     logger.warning(
-                        "    ...DFT calculation failed: Could not parse output."
+                        f"    ...DFT calculation for ID {row_id} failed: "
+                        "Could not parse output."
                     )
 
             except FileNotFoundError:
                 logger.error(
                     f"    ...Error: Command '{self.config.command}' not found. "
-                    f"Ensure Quantum Espresso is in your PATH."
+                    "Ensure Quantum Espresso is in your PATH."
                 )
-                break
+                raise
             except subprocess.CalledProcessError as e:
                 logger.error(
-                    f"    ...DFT calculation failed with exit code {e.returncode}."
+                    f"    ...DFT calculation for ID {row_id} failed with exit code "
+                    f"{e.returncode}."
                 )
                 if e.stderr:
                     logger.error(f"    ...Error output:\n{e.stderr.decode()}")
-            finally:
-                pass
+                raise
 
         logger.info("Labeling Engine finished.")
+        return results

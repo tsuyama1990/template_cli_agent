@@ -1,8 +1,9 @@
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+from ase import Atoms
 
-from mlip_autopipec.data.models import Cycle01Config
+from mlip_autopipec.data.models import Cycle01Config, DFTResults
 from mlip_autopipec.orchestrator import Orchestrator
 
 
@@ -34,30 +35,40 @@ def mock_cycle01_config(tmp_path):
 
 @patch('mlip_autopipec.orchestrator.TrainingEngine')
 @patch('mlip_autopipec.orchestrator.LabelingEngine')
-def test_orchestrator_workflow_sequence(
-    mock_labeling_engine, mock_training_engine, mock_cycle01_config
+@patch('mlip_autopipec.orchestrator.AseDBWrapper')
+def test_orchestrator_data_flow(
+    mock_db_wrapper_cls, mock_labeling_engine_cls, mock_training_engine_cls,
+    mock_cycle01_config
 ):
     """
-    Tests that the Orchestrator initializes and runs the engines in the correct
-    Label -> Train sequence.
+    Tests that the Orchestrator correctly manages the data flow between the
+    database and the engines.
     """
-    mock_labeler_instance = MagicMock()
-    mock_trainer_instance = MagicMock()
-    mock_labeling_engine.return_value = mock_labeler_instance
-    mock_training_engine.return_value = mock_trainer_instance
+    # Arrange
+    mock_db = MagicMock()
+    mock_db_wrapper_cls.return_value = mock_db
 
-    manager = MagicMock()
-    manager.attach_mock(mock_labeler_instance.execute, 'labeler_execute')
-    manager.attach_mock(mock_trainer_instance.execute, 'trainer_execute')
+    mock_row = MagicMock()
+    mock_row.id = 1
+    mock_row.toatoms.return_value = Atoms('Si')
+    mock_db.get_rows_to_label.return_value = [mock_row]
+    mock_db.get_all_labeled_rows.return_value = [mock_row]
 
+    mock_labeler = MagicMock()
+    mock_labeling_engine_cls.return_value = mock_labeler
+    dft_results = DFTResults(energy=-1, forces=[[0,0,0]], stress=[0,0,0,0,0,0])
+    mock_labeler.execute.return_value = [(1, dft_results)]
+
+    mock_trainer = MagicMock()
+    mock_training_engine_cls.return_value = mock_trainer
+
+    # Act
     orchestrator = Orchestrator(mock_cycle01_config)
     orchestrator.run_label_and_train_workflow()
 
-    mock_labeling_engine.assert_called_once()
-    mock_training_engine.assert_called_once()
-
-    expected_call_order = [
-        call.labeler_execute(),
-        call.trainer_execute()
-    ]
-    assert manager.mock_calls == expected_call_order
+    # Assert
+    mock_db.get_rows_to_label.assert_called_once()
+    mock_labeler.execute.assert_called_once_with([(1, mock_row.toatoms())])
+    mock_db.update_row_with_dft_results.assert_called_once_with(1, dft_results)
+    mock_db.get_all_labeled_rows.assert_called_once()
+    mock_trainer.execute.assert_called_once_with([mock_row.toatoms()])

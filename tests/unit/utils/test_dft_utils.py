@@ -97,15 +97,15 @@ def test_parse_qe_output_success():
     results = parse_qe_output(SAMPLE_QE_OUTPUT)
 
     assert results is not None
-    assert results['energy'] == pytest.approx(-7.88151989 * RY_TO_EV)
+    assert results.energy == pytest.approx(-7.88151989 * RY_TO_EV)
     expected_forces = np.array(
         [[-0.00000011, -0.00000011, 0.00000022]]
     ) * RY_AU_TO_EV_A
-    assert np.allclose(results['forces'], expected_forces)
+    assert np.allclose(results.forces, expected_forces)
     expected_stress = np.array(
         [0.00007050, 0.00007050, 0.00007050, 0.0, 0.0, 0.0]
     ) * KBAR_TO_EV_A3
-    assert np.allclose(results['stress'], expected_stress)
+    assert np.allclose(results.stress, expected_stress)
 
 def test_parse_qe_output_failure():
     results = parse_qe_output("This is not a valid QE output.")

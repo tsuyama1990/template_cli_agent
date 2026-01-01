@@ -1,6 +1,12 @@
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, FilePath, field_validator
+import numpy as np
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    FilePath,
+    field_validator,
+)
 
 
 class DFTCompute(BaseModel):
@@ -20,6 +26,7 @@ class DFTCompute(BaseModel):
             raise ValueError('ecutrho must be greater than or equal to ecutwfc')
         return v
 
+
 class MLIPTraining(BaseModel):
     """Configuration for the MLIP training engine."""
     model_config = ConfigDict(extra="forbid")
@@ -36,6 +43,7 @@ class MLIPTraining(BaseModel):
             raise ValueError('base_potential must be specified for delta_learning')
         return v
 
+
 class Cycle01Config(BaseModel):
     """Top-level configuration for Cycle 01."""
     model_config = ConfigDict(extra="forbid")
@@ -43,3 +51,18 @@ class Cycle01Config(BaseModel):
     dft_compute: DFTCompute
     mlip_training: MLIPTraining
     database_path: FilePath
+
+
+class DFTResults(BaseModel):
+    """Data model for storing results from a DFT calculation."""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    energy: float
+    forces: np.ndarray
+    stress: np.ndarray
+
+    @field_validator('forces', 'stress', mode='before')
+    def convert_list_to_numpy_array(cls, v: Any) -> np.ndarray:
+        if isinstance(v, list):
+            return np.array(v)
+        return v

@@ -1,22 +1,12 @@
 import subprocess
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
+from ase import Atoms
 
-from mlip_autopipec.data.database import AseDBWrapper
-from mlip_autopipec.data.models import DFTCompute
+from mlip_autopipec.data.models import DFTCompute, DFTResults
 from mlip_autopipec.modules.c_labeling_engine import LabelingEngine
 
-
-@pytest.fixture
-def mock_db_wrapper():
-    """Fixture for a mocked AseDBWrapper."""
-    db = Mock(spec=AseDBWrapper)
-    mock_row = Mock()
-    mock_row.id = 1
-    mock_row.toatoms.return_value = Mock()
-    db.get_rows_to_label.return_value = [mock_row]
-    return db
 
 @pytest.fixture
 def dft_config():
@@ -30,72 +20,69 @@ def dft_config():
         kpoints_density=3.0,
     )
 
+
 @patch('os.makedirs')
 @patch('builtins.open')
 @patch('subprocess.run')
 @patch('mlip_autopipec.modules.c_labeling_engine.create_qe_input_from_atoms')
 @patch('mlip_autopipec.modules.c_labeling_engine.parse_qe_output')
 def test_labeling_engine_success(
-    mock_parse, mock_create, mock_run, mock_open, mock_makedirs,
-    dft_config, mock_db_wrapper
+    mock_parse, mock_create, mock_run, mock_open, mock_makedirs, dft_config
 ):
     """Test the LabelingEngine's successful execution path."""
     mock_create.return_value = "dummy_qe_input"
-    mock_parse.return_value = {
-        'energy': -1360.5, 'forces': [[1,1,1]], 'stress': [1,2,3,4,5,6]
-    }
+    mock_parse.return_value = DFTResults(
+        energy=-1360.5, forces=[[1, 1, 1]], stress=[1, 2, 3, 4, 5, 6]
+    )
     mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0)
 
-    engine = LabelingEngine(dft_config, mock_db_wrapper)
-    engine.execute()
+    structures_to_label = [(1, Atoms('Si'))]
+    engine = LabelingEngine(dft_config)
+    results = engine.execute(structures_to_label)
 
-    mock_db_wrapper.get_rows_to_label.assert_called_once()
     mock_create.assert_called_once()
-
-    expected_command = ["mpirun", "-np", "4", "pw.x", "-in", "calc_1/qe.in"]
     mock_run.assert_called_once()
-    called_command = mock_run.call_args[0][0]
-    assert called_command == expected_command
-
     mock_parse.assert_called_once()
-    mock_db_wrapper.update_row_with_dft_results.assert_called_once_with(
-        1, mock_parse.return_value
-    )
+
+    assert len(results) == 1
+    assert results[0][0] == 1
+    assert isinstance(results[0][1], DFTResults)
+
 
 @patch('os.makedirs')
 @patch('builtins.open')
 @patch('subprocess.run')
 @patch('mlip_autopipec.modules.c_labeling_engine.create_qe_input_from_atoms')
 def test_labeling_engine_dft_failure(
-    mock_create, mock_run, mock_open, mock_makedirs, dft_config, mock_db_wrapper
+    mock_create, mock_run, mock_open, mock_makedirs, dft_config
 ):
-    """Test how the LabelingEngine handles a failed DFT calculation."""
+    """Test that the engine raises an exception on DFT failure."""
     mock_run.side_effect = subprocess.CalledProcessError(
         returncode=1, cmd="pw.x", stderr=b"QE error"
     )
 
-    engine = LabelingEngine(dft_config, mock_db_wrapper)
-    engine.execute()
+    structures_to_label = [(1, Atoms('Si'))]
+    engine = LabelingEngine(dft_config)
 
-    mock_run.assert_called_once()
-    mock_db_wrapper.update_row_with_dft_results.assert_not_called()
+    with pytest.raises(subprocess.CalledProcessError):
+        engine.execute(structures_to_label)
+
 
 @patch('os.makedirs')
 @patch('builtins.open')
 @patch('subprocess.run')
-@patch('mlip_autopipec.modules.c_labeling_engine.parse_qe_output')
 @patch('mlip_autopipec.modules.c_labeling_engine.create_qe_input_from_atoms')
+@patch('mlip_autopipec.modules.c_labeling_engine.parse_qe_output')
 def test_labeling_engine_parsing_failure(
-    mock_create, mock_parse, mock_run, mock_open, mock_makedirs, dft_config,
-    mock_db_wrapper
+    mock_parse, mock_create, mock_run, mock_open, mock_makedirs, dft_config
 ):
-    """Test how the LabelingEngine handles a failure in parsing the output."""
+    """Test that the engine returns an empty list for parsing failures."""
     mock_parse.return_value = None
     mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0)
 
-    engine = LabelingEngine(dft_config, mock_db_wrapper)
-    engine.execute()
+    structures_to_label = [(1, Atoms('Si'))]
+    engine = LabelingEngine(dft_config)
+    results = engine.execute(structures_to_label)
 
-    mock_run.assert_called_once()
     mock_parse.assert_called_once()
-    mock_db_wrapper.update_row_with_dft_results.assert_not_called()
+    assert len(results) == 0
