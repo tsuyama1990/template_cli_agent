@@ -33,7 +33,13 @@ def app() -> None:
     default=None,
     help="Override the path to the ASE database file specified in the config.",
 )
-def run(config_path: str, db_path: str | None) -> None:
+@click.option(
+    "--run-exploration/--no-run-exploration",
+    is_flag=True,
+    default=True,
+    help="Enable or disable the surrogate-based exploration phase.",
+)
+def run(config_path: str, db_path: str | None, run_exploration: bool) -> None:
     """Runs the full MLIP generation workflow."""
     user_input = UserInputConfig.from_yaml(config_path)
     expander = ConfigExpander()
@@ -45,7 +51,7 @@ def run(config_path: str, db_path: str | None) -> None:
     full_config.to_yaml("exec_config_dump.yaml")
 
     application = Application(full_config)
-    application.run()
+    application.run(run_exploration=run_exploration)
 
 
 @app.command()

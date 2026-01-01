@@ -23,6 +23,7 @@ def alloy_config() -> FullConfig:
             "temperature_steps": [300, 600, 900],
             "initial_structures_to_generate": 5,
         },
+        "explorer": {"surrogate_model": "mace_mp"},
         "dft_compute": {
             "ecutwfc": 60.0,
             "ecutrho": 240.0,

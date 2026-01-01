@@ -31,19 +31,37 @@ class AseDBWrapper:
         """Connects to the ASE database."""
         return connect(self.db_path)
 
-    def add_atoms(self, atoms: Atoms, state: str = "unlabeled") -> int:
+    def add_atoms(
+        self, atoms: Atoms, state: str = "unlabeled", is_initial: bool = False
+    ) -> int:
         """Adds an Atoms object to the database.
 
         Args:
             atoms: The ASE Atoms object to add.
             state: The initial state of the atoms object.
+            is_initial: Flag to mark if this is an initial structure.
 
         Returns:
             The ID of the newly inserted row.
         """
         with self._connect() as db:
-            id = db.write(atoms, key_value_pairs={"state": state})
+            kvp = {"state": state, "is_initial": is_initial}
+            id = db.write(atoms, key_value_pairs=kvp)
         return id
+
+    def get_all_initial_structures(self) -> list[Atoms]:
+        """Retrieves all structures marked as 'initial'.
+
+        Returns:
+            A list of Atoms objects.
+        """
+        initial_structures = []
+        with self._connect() as db:
+            # The select method in ASE db treats boolean False as not present
+            # so we select for `is_initial=True`
+            for row in db.select(is_initial=True):
+                initial_structures.append(row.toatoms())
+        return initial_structures
 
     def get_atoms_by_id(self, id: int) -> Atoms:
         """Retrieves an Atoms object by its ID.

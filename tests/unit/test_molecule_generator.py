@@ -23,6 +23,7 @@ def molecule_config() -> FullConfig:
             "temperature_steps": [300],
             "initial_structures_to_generate": 8,
         },
+        "explorer": {"surrogate_model": "mace_mp"},
         "dft_compute": {
             "ecutwfc": 80.0,
             "ecutrho": 320.0,

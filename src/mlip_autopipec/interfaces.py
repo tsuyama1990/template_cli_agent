@@ -5,6 +5,18 @@ from ase import Atoms
 from mlip_autopipec.config import DFTResult
 
 
+class IExplorer(ABC):
+    """Interface for surrogate-based exploration components."""
+
+    @abstractmethod
+    def explore(self) -> list[Atoms]:
+        """
+        Runs high-speed surrogate-based simulations to explore the potential
+        energy surface, returning a list of sampled atomic structures.
+        """
+        ...
+
+
 class ILabelingEngine(ABC):
     """Interface for a labeling engine that processes atomic structures."""
 

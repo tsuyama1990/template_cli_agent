@@ -61,9 +61,9 @@ class Application:
         orchestrator = self._get_orchestrator()
         orchestrator.run_training()
 
-    def run(self) -> None:
+    def run(self, run_exploration: bool = True) -> None:
         """
         Runs the full MLIP generation workflow.
         """
         orchestrator = self._get_orchestrator()
-        orchestrator.run()
+        orchestrator.run(run_exploration=run_exploration)
