@@ -118,10 +118,12 @@ class SimulationConfig(BaseModel):
 
     Attributes:
         temperature_steps: A list of temperatures (in Kelvin) for simulations.
+        initial_structures_to_generate: The number of structures to generate.
     """
 
     model_config = ConfigDict(extra="forbid")
     temperature_steps: list[int]
+    initial_structures_to_generate: int = 10
 
 
 class DFTComputeConfig(BaseModel):

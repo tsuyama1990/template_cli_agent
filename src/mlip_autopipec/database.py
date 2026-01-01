@@ -102,3 +102,24 @@ class AseDBWrapper:
 
                     logging.warning(f"Skipping corrupted data in database (ID: {row.id}): {e}")
         return results
+
+    def get_unlabeled_ids(self) -> list[int]:
+        """Retrieves the IDs of all unlabeled atoms.
+
+        Returns:
+            A list of integer IDs.
+        """
+        ids = []
+        with self._connect() as db:
+            for row in db.select(state="unlabeled"):
+                ids.append(row.id)
+        return ids
+
+    def is_empty(self) -> bool:
+        """Checks if the database is empty.
+
+        Returns:
+            True if the database has no entries, False otherwise.
+        """
+        with self._connect() as db:
+            return db.count() == 0

@@ -37,8 +37,22 @@ class ITrainingEngine(ABC):
         pass
 
 
+class IStructureGenerator(ABC):
+    """Interface for a structure generator."""
+
+    @abstractmethod
+    def generate(self) -> None:
+        """Generates initial structures if the database is empty."""
+        pass
+
+
 class IWorkflowOrchestrator(ABC):
     """Interface for the main workflow orchestrator."""
+
+    @abstractmethod
+    def run(self) -> None:
+        """Runs the main workflow."""
+        pass
 
     @abstractmethod
     def label_structure_by_id(self, structure_id: int) -> None:

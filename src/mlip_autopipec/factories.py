@@ -12,6 +12,7 @@ from mlip_autopipec.config import FullConfig
 from mlip_autopipec.database import AseDBWrapper
 from mlip_autopipec.interfaces import IWorkflowOrchestrator
 from mlip_autopipec.modules.labeling_engine import LabelingEngine
+from mlip_autopipec.modules.structure_generator import StructureGenerator
 from mlip_autopipec.modules.training_engine import TrainingEngine
 from mlip_autopipec.runners import SubprocessRunner
 from mlip_autopipec.workflow import WorkflowOrchestrator
@@ -43,5 +44,8 @@ def create_workflow_orchestrator(config: FullConfig) -> IWorkflowOrchestrator:
     training_engine = TrainingEngine(
         config.mlip_training  # Pass the MLIPTrainingConfig sub-model
     )
+    structure_generator = StructureGenerator(config, db_wrapper)
 
-    return WorkflowOrchestrator(labeling_engine, training_engine, db_wrapper)
+    return WorkflowOrchestrator(
+        structure_generator, labeling_engine, training_engine, db_wrapper
+    )

@@ -3,8 +3,14 @@ from unittest.mock import MagicMock
 import pytest
 
 from mlip_autopipec.database import AseDBWrapper
-from mlip_autopipec.interfaces import ILabelingEngine, ITrainingEngine
+from mlip_autopipec.interfaces import ILabelingEngine, IStructureGenerator, ITrainingEngine
 from mlip_autopipec.workflow import WorkflowOrchestrator
+
+
+@pytest.fixture
+def mock_structure_generator():
+    """Fixture for a mocked IStructureGenerator."""
+    return MagicMock(spec=IStructureGenerator)
 
 
 @pytest.fixture
@@ -25,10 +31,13 @@ def mock_db_wrapper():
     return MagicMock(spec=AseDBWrapper)
 
 
-def test_label_structure_by_id(mock_labeling_engine, mock_training_engine, mock_db_wrapper):
+def test_label_structure_by_id(
+    mock_structure_generator, mock_labeling_engine, mock_training_engine, mock_db_wrapper
+):
     """Tests that label_structure_by_id correctly calls the labeling engine."""
     # Arrange
     orchestrator = WorkflowOrchestrator(
+        structure_generator=mock_structure_generator,
         labeling_engine=mock_labeling_engine,
         training_engine=mock_training_engine,
         db_wrapper=mock_db_wrapper,
@@ -44,11 +53,14 @@ def test_label_structure_by_id(mock_labeling_engine, mock_training_engine, mock_
     mock_db_wrapper.update_labels.assert_called_once()
 
 
-def test_label_structure_by_id_failure(mock_labeling_engine, mock_training_engine, mock_db_wrapper):
+def test_label_structure_by_id_failure(
+    mock_structure_generator, mock_labeling_engine, mock_training_engine, mock_db_wrapper
+):
     """Tests that label_structure_by_id correctly handles a labeling failure."""
     # Arrange
     mock_labeling_engine.label_structure.side_effect = Exception("Labeling failed")
     orchestrator = WorkflowOrchestrator(
+        structure_generator=mock_structure_generator,
         labeling_engine=mock_labeling_engine,
         training_engine=mock_training_engine,
         db_wrapper=mock_db_wrapper,
@@ -64,10 +76,13 @@ def test_label_structure_by_id_failure(mock_labeling_engine, mock_training_engin
     mock_db_wrapper.update_state.assert_called_once_with(structure_id, "labeling_failed")
 
 
-def test_run_training(mock_labeling_engine, mock_training_engine, mock_db_wrapper):
+def test_run_training(
+    mock_structure_generator, mock_labeling_engine, mock_training_engine, mock_db_wrapper
+):
     """Tests that run_training correctly calls the training engine."""
     # Arrange
     orchestrator = WorkflowOrchestrator(
+        structure_generator=mock_structure_generator,
         labeling_engine=mock_labeling_engine,
         training_engine=mock_training_engine,
         db_wrapper=mock_db_wrapper,
@@ -81,11 +96,14 @@ def test_run_training(mock_labeling_engine, mock_training_engine, mock_db_wrappe
     mock_training_engine.train.assert_called_once()
 
 
-def test_run_training_failure(mock_labeling_engine, mock_training_engine, mock_db_wrapper):
+def test_run_training_failure(
+    mock_structure_generator, mock_labeling_engine, mock_training_engine, mock_db_wrapper
+):
     """Tests that run_training correctly handles a training failure."""
     # Arrange
     mock_training_engine.train.side_effect = Exception("Training failed")
     orchestrator = WorkflowOrchestrator(
+        structure_generator=mock_structure_generator,
         labeling_engine=mock_labeling_engine,
         training_engine=mock_training_engine,
         db_wrapper=mock_db_wrapper,
