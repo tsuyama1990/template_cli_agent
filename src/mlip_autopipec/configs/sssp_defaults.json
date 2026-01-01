@@ -1,0 +1,27 @@
+{
+  "Ar": {
+    "filename": "Ar.upf",
+    "ecutwfc": 50.0,
+    "ecutrho": 200.0
+  },
+  "Cu": {
+    "filename": "Cu.upf",
+    "ecutwfc": 60.0,
+    "ecutrho": 400.0
+  },
+  "Au": {
+    "filename": "Au.upf",
+    "ecutwfc": 70.0,
+    "ecutrho": 500.0
+  },
+  "Fe": {
+    "filename": "Fe.upf",
+    "ecutwfc": 80.0,
+    "ecutrho": 640.0
+  },
+  "Pt": {
+    "filename": "Pt.upf",
+    "ecutwfc": 90.0,
+    "ecutrho": 720.0
+  }
+}

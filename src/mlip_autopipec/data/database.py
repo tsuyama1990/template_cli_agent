@@ -29,9 +29,9 @@ class AseDBWrapper:
         """Returns a new connection to the database."""
         return ase.db.connect(self.db_path)
 
-    def add_atoms(self, atoms_list: list[Atoms], **kwargs):
+    def add_structures(self, atoms_list: list[Atoms], **kwargs):
         """
-        Adds a list of Atoms objects to the database.
+        Adds a list of Atoms objects (structures) to the database.
 
         Args:
             atoms_list: A list of ASE Atoms objects.

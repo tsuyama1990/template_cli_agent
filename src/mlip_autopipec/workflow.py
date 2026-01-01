@@ -1,44 +1,40 @@
-import logging
-
 from mlip_autopipec.data.database import AseDBWrapper
-from mlip_autopipec.data.models import Cycle01Config
+from mlip_autopipec.data.models import FullConfig
+from mlip_autopipec.modules.a_structure_generator import StructureGenerator
 from mlip_autopipec.modules.c_labeling_engine import LabelingEngine
 from mlip_autopipec.modules.d_training_engine import TrainingEngine
 from mlip_autopipec.orchestrator import Orchestrator
 
-logger = logging.getLogger(__name__)
 
-
-def run_cycle01_workflow(config: Cycle01Config):
+def initialize_and_run_workflow(config: FullConfig):
     """
-    Initializes dependencies and runs the full Cycle 01 workflow.
+    Initializes all components and runs the full MLIP-AutoPipe workflow.
 
-    This function sets up the necessary components (database wrapper, engines)
-    and injects them into the Orchestrator, which then manages the execution
-    of the labeling and training process.
+    This function acts as the "composition root" of the application, wiring
+    together all the necessary objects based on the provided configuration.
 
     Args:
-        config: The Cycle01Config object containing all settings.
+        config: A fully validated FullConfig object.
     """
-    try:
-        # --- Dependency Injection Setup ---
-        db_wrapper = AseDBWrapper(str(config.database_path))
-        labeling_engine = LabelingEngine(config.dft_compute)
-        training_engine = TrainingEngine(config.mlip_training)
+    # 1. Initialize the Database Wrapper
+    # For now, we'll hardcode the database name. In a future cycle, this
+    # could come from the config.
+    db_wrapper = AseDBWrapper(db_path="mlip_autopipec.db")
 
-        orchestrator = Orchestrator(
-            db_wrapper=db_wrapper,
-            labeling_engine=labeling_engine,
-            training_engine=training_engine,
-        )
-        # --- End of Setup ---
+    # 2. Initialize all the Engine Modules
+    structure_generator = StructureGenerator(
+        config=config.generation, db_wrapper=db_wrapper
+    )
+    labeling_engine = LabelingEngine(config=config.dft_compute)
+    training_engine = TrainingEngine(config=config.mlip_training)
 
-        orchestrator.run_label_and_train_workflow()
+    # 3. Initialize the Orchestrator with all the engines
+    orchestrator = Orchestrator(
+        db_wrapper=db_wrapper,
+        structure_generator=structure_generator,
+        labeling_engine=labeling_engine,
+        training_engine=training_engine,
+    )
 
-    except Exception as e:
-        logger.error(
-            f"An unexpected error occurred during the workflow setup or execution: {e}",
-            exc_info=True,
-        )
-        # Re-raise to allow the CLI to handle the exit
-        raise
+    # 4. Run the main workflow
+    orchestrator.run_full_pipeline()
