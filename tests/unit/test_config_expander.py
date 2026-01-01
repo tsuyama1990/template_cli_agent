@@ -108,3 +108,21 @@ def test_missing_pseudopotential_raises_error(fept_input: UserInputConfig):
         full_config.model_validate(full_config.model_dump())
 
     assert "Missing pseudopotentials for elements: ['Pt']" in str(excinfo.value)
+
+
+def test_unknown_element_raises_error():
+    """
+    Tests that a ValueError is raised if the user provides an element
+    unknown to the SSSP cutoff table.
+    """
+    user_input = UserInputConfig.model_validate(
+        {
+            "system": {"elements": ["Fe", "Xy"], "composition": "FeXy"},
+        }
+    )
+    expander = ConfigExpander()
+
+    with pytest.raises(ValueError) as excinfo:
+        expander.expand(user_input)
+
+    assert "Unknown element 'Xy'" in str(excinfo.value)

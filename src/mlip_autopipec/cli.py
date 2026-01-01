@@ -1,3 +1,12 @@
+"""
+This module defines the command-line interface (CLI) for the application.
+
+It uses the `click` library to create a user-friendly interface for executing
+the main workflows, such as labeling structures and training models. The CLI
+is responsible for parsing user input, orchestrating the configuration
+expansion, and invoking the core application logic.
+"""
+
 import click
 
 from mlip_autopipec.app import Application
@@ -5,7 +14,7 @@ from mlip_autopipec.config import ConfigExpander, UserInputConfig
 
 
 @click.group()
-def app():
+def app() -> None:
     """MLIP-AutoPipe: Automated MLIP Generation."""
     pass
 
@@ -28,9 +37,9 @@ def app():
     "--db-path",
     type=str,
     default=None,
-    help="Override the path to the ASE database file.",
+    help="Override the path to the ASE database file specified in the config.",
 )
-def label(config_path: str, id: int, db_path: str | None):
+def label(config_path: str, id: int, db_path: str | None) -> None:
     """Runs the DFT labeling for a single structure."""
     user_input = UserInputConfig.from_yaml(config_path)
     expander = ConfigExpander()
@@ -57,9 +66,9 @@ def label(config_path: str, id: int, db_path: str | None):
     "--db-path",
     type=str,
     default=None,
-    help="Override the path to the ASE database file.",
+    help="Override the path to the ASE database file specified in the config.",
 )
-def train(config_path: str, db_path: str | None):
+def train(config_path: str, db_path: str | None) -> None:
     """Trains the MLIP model on the existing labeled data."""
     user_input = UserInputConfig.from_yaml(config_path)
     expander = ConfigExpander()

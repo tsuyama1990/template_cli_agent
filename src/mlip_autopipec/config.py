@@ -1,3 +1,18 @@
+"""
+This module defines the Pydantic-based configuration system for the application.
+
+It implements a two-tier configuration strategy:
+1.  **UserInputConfig**: A minimal set of parameters provided by the user in a
+    simple `input.yaml` file. This is designed to be easy for non-experts.
+2.  **FullConfig**: A comprehensive, fully-populated configuration object that
+    contains every parameter needed for the entire workflow to run.
+
+The `ConfigExpander` class acts as a heuristic engine to transform the
+`UserInputConfig` into the `FullConfig`, applying physics-based heuristics
+and sensible defaults. This module is central to the project's goal of
+"removing the human expert from the loop."
+"""
+
 from enum import Enum
 from typing import Any
 
@@ -16,7 +31,13 @@ from pydantic import (
 
 
 class UserInputSystem(BaseModel):
-    """User-provided system information."""
+    """
+    Defines the chemical system as provided by the user.
+
+    Attributes:
+        elements: A list of chemical symbols (e.g., ['Fe', 'Pt']).
+        composition: A string representing the stoichiometry (e.g., 'FePt').
+    """
 
     model_config = ConfigDict(extra="forbid")
     elements: list[str] = Field(..., min_length=1)
@@ -24,14 +45,25 @@ class UserInputSystem(BaseModel):
 
 
 class UserInputSimulation(BaseModel):
-    """User-provided simulation parameters (optional)."""
+    """
+    Optional simulation parameters provided by the user.
+
+    Attributes:
+        temperature: An optional list of two integers defining a temperature range.
+    """
 
     model_config = ConfigDict(extra="forbid")
     temperature: list[int] | None = None
 
 
 class UserInputConfig(BaseModel):
-    """Top-level schema for the user's input.yaml."""
+    """
+    Top-level schema for parsing the user's `input.yaml` file.
+
+    Attributes:
+        system: The chemical system definition.
+        simulation: Optional simulation parameters.
+    """
 
     model_config = ConfigDict(extra="forbid")
     system: UserInputSystem
@@ -39,7 +71,15 @@ class UserInputConfig(BaseModel):
 
     @classmethod
     def from_yaml(cls, path: str) -> "UserInputConfig":
-        """Loads the configuration from a YAML file."""
+        """
+        Loads and validates the user configuration from a YAML file.
+
+        Args:
+            path: The path to the `input.yaml` file.
+
+        Returns:
+            A validated UserInputConfig instance.
+        """
         with open(path) as f:
             data = yaml.safe_load(f)
         return cls(**data)
@@ -49,7 +89,15 @@ class UserInputConfig(BaseModel):
 
 
 class SystemConfig(BaseModel):
-    """Expanded system configuration."""
+    """
+    Expanded and detailed configuration for the chemical system.
+
+    Attributes:
+        elements: A list of chemical symbols.
+        composition: The stoichiometry string.
+        structure_type: The type of material (e.g., 'alloy', 'covalent').
+        melting_point_guess: A heuristic-based guess for the melting point in Kelvin.
+    """
 
     model_config = ConfigDict(extra="forbid")
     elements: list[str]
@@ -59,14 +107,29 @@ class SystemConfig(BaseModel):
 
 
 class SimulationConfig(BaseModel):
-    """Expanded simulation configuration."""
+    """
+    Expanded configuration for simulation parameters.
+
+    Attributes:
+        temperature_steps: A list of temperatures (in Kelvin) for simulations.
+    """
 
     model_config = ConfigDict(extra="forbid")
     temperature_steps: list[int]
 
 
 class DFTComputeConfig(BaseModel):
-    """Expanded DFT compute configuration."""
+    """
+    Detailed configuration for the DFT (Quantum Espresso) calculations.
+
+    Attributes:
+        ecutwfc: Plane-wave cutoff energy for wavefunctions (in Ry).
+        ecutrho: Plane-wave cutoff energy for charge density (in Ry).
+        kpoints_density: Density of k-points for Brillouin zone sampling.
+        magnetism: Type of magnetism to simulate (e.g., 'ferromagnetic').
+        control: A dictionary of Quantum Espresso control parameters.
+        pseudopotentials: A mapping of element symbols to pseudopotential filenames.
+    """
 
     model_config = ConfigDict(extra="forbid")
     ecutwfc: float
@@ -78,11 +141,20 @@ class DFTComputeConfig(BaseModel):
 
 
 class ModelType(str, Enum):
+    """Enumeration for the type of Machine Learned Interatomic Potential."""
+
     ACE = "ACE"
 
 
 class MLIPTrainingConfig(BaseModel):
-    """Pydantic model for MLIP training configuration."""
+    """
+    Configuration for training the MLIP model.
+
+    Attributes:
+        model_type: The type of MLIP model to train.
+        r_cut: The cutoff radius for the potential.
+        loss_weights: Weights for the energy and forces components of the loss function.
+    """
 
     model_config = ConfigDict(extra="forbid")
     model_type: ModelType
@@ -91,7 +163,20 @@ class MLIPTrainingConfig(BaseModel):
 
 
 class FullConfig(BaseModel):
-    """Top-level schema for the fully expanded execution configuration."""
+    """
+    Top-level schema for the fully expanded and validated execution configuration.
+
+    This object contains all parameters necessary to run the entire workflow and
+    serves as the single source of truth for all components.
+
+    Attributes:
+        system: Detailed system configuration.
+        simulation: Detailed simulation configuration.
+        dft_compute: Detailed DFT calculation configuration.
+        mlip_training: Detailed MLIP training configuration.
+        qe_command: The command to execute Quantum Espresso.
+        db_path: The path to the ASE database file.
+    """
 
     model_config = ConfigDict(extra="forbid")
     system: SystemConfig
@@ -105,6 +190,7 @@ class FullConfig(BaseModel):
     def validate_pseudos_exist_for_all_elements(self) -> "FullConfig":
         """
         Ensures that a pseudopotential is defined for every element in the system.
+        This acts as a cross-field validation check for configuration integrity.
         """
         elements = set(self.system.elements)
         pseudo_elements = set(self.dft_compute.pseudopotentials.keys())
@@ -114,7 +200,12 @@ class FullConfig(BaseModel):
         return self
 
     def to_yaml(self, path: str) -> None:
-        """Saves the configuration to a YAML file."""
+        """
+        Saves the configuration to a YAML file for inspection and reproducibility.
+
+        Args:
+            path: The path to save the YAML file to.
+        """
         with open(path, "w") as f:
             # Use mode='json' to ensure enums are serialized as strings
             yaml.dump(self.model_dump(mode="json"), f, sort_keys=False)
@@ -222,10 +313,24 @@ ELEMENT_MELTING_POINTS = {
 
 
 class ConfigExpander:
-    """Expands a minimal UserInputConfig into a comprehensive FullConfig."""
+    """
+    Expands a minimal UserInputConfig into a comprehensive FullConfig.
+
+    This class contains the core heuristic logic of the application. It takes
+    the user's simple input and applies a series of rules and defaults to
+    generate a complete configuration suitable for execution.
+    """
 
     def expand(self, user_input: UserInputConfig) -> FullConfig:
-        """Applies heuristics to expand the user configuration."""
+        """
+        Applies heuristics to expand the user configuration.
+
+        Args:
+            user_input: The validated user input configuration.
+
+        Returns:
+            A fully expanded and validated configuration object.
+        """
 
         system = self._expand_system_config(user_input.system)
         simulation = self._expand_simulation_config(
@@ -242,6 +347,7 @@ class ConfigExpander:
         )
 
     def _expand_system_config(self, system_input: UserInputSystem) -> SystemConfig:
+        """Generates a detailed system configuration from user input."""
         structure_type = "covalent" if len(system_input.elements) == 1 else "alloy"
 
         melting_point = np.mean(
@@ -258,6 +364,7 @@ class ConfigExpander:
     def _expand_simulation_config(
         self, sim_input: UserInputSimulation, melting_point: float
     ) -> SimulationConfig:
+        """Generates a detailed simulation configuration from user input."""
         if sim_input.temperature:
             steps = np.linspace(
                 sim_input.temperature[0], sim_input.temperature[1], 3, dtype=int
@@ -269,8 +376,14 @@ class ConfigExpander:
         return SimulationConfig(temperature_steps=steps)
 
     def _expand_dft_config(self, system_input: UserInputSystem) -> DFTComputeConfig:
-        max_ecutwfc = max(SSSP_PRECISION_CUTOFFS.get(el, (0, 0))[0] for el in system_input.elements)
-        max_ecutrho = max(SSSP_PRECISION_CUTOFFS.get(el, (0, 0))[1] for el in system_input.elements)
+        """Generates a detailed DFT configuration using heuristics."""
+        try:
+            max_ecutwfc = max(SSSP_PRECISION_CUTOFFS[el][0] for el in system_input.elements)
+            max_ecutrho = max(SSSP_PRECISION_CUTOFFS[el][1] for el in system_input.elements)
+        except KeyError as e:
+            raise ValueError(
+                f"Unknown element '{e.args[0]}' provided. Cannot determine SSSP cutoff."
+            ) from e
 
         magnetism = (
             "ferromagnetic"
@@ -290,6 +403,7 @@ class ConfigExpander:
         )
 
     def _default_mlip_config(self) -> MLIPTrainingConfig:
+        """Returns a default MLIP training configuration."""
         return MLIPTrainingConfig(
             model_type=ModelType.ACE,
             r_cut=5.0,
@@ -318,5 +432,5 @@ class DFTResult(BaseModel):
         return v
 
     @field_serializer("forces", "stress")
-    def serialize_numpy_array(self, v: np.ndarray) -> list:
+    def serialize_numpy_array(self, v: np.ndarray) -> list[Any]:
         return v.tolist()

@@ -1,3 +1,13 @@
+"""
+This module contains factory functions for creating instances of the application's
+core components.
+
+Using factories helps to decouple the application's construction from its
+business logic, adhering to the principles of Dependency Injection and
+Inversion of Control. This makes the application more modular, easier to test,
+and simpler to reconfigure.
+"""
+
 from mlip_autopipec.config import FullConfig
 from mlip_autopipec.database import AseDBWrapper
 from mlip_autopipec.interfaces import IWorkflowOrchestrator
@@ -9,16 +19,19 @@ from mlip_autopipec.workflow import WorkflowOrchestrator
 
 def create_workflow_orchestrator(config: FullConfig) -> IWorkflowOrchestrator:
     """
-    Factory function to create a configured instance of the WorkflowOrchestrator.
+    Factory function to create a fully configured `WorkflowOrchestrator`.
 
-    This function centralizes the creation of all dependencies, making the
-    CLI and other entry points cleaner and more decoupled.
+    This function is the central point for assembling the various components
+    (like the database, labeling engine, and training engine) into a cohesive
+    workflow orchestrator. It ensures that all dependencies are created and
+    injected correctly based on the provided configuration.
 
     Args:
-        config: The fully expanded application configuration.
+        config: The fully expanded and validated application configuration.
 
     Returns:
-        A fully configured object that implements the IWorkflowOrchestrator interface.
+        A fully configured object that implements the `IWorkflowOrchestrator`
+        interface.
     """
     db_wrapper = AseDBWrapper(config.db_path)
     process_runner = SubprocessRunner()
