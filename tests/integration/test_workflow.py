@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 from mlip_autopipec.cli import main as cli_main
 from mlip_autopipec.database import AseDBWrapper
 from mlip_autopipec.config import DFTResult
+import logging
 
 # A sample QE output file content
 SAMPLE_QE_OUTPUT = """
@@ -71,11 +72,15 @@ def test_end_to_end_workflow(mock_espresso_cls, mock_config_file, tmp_path):
     mock_calc_instance.get_stress.return_value = np.eye(3) * 0.1
 
     # 2. Run the labeling command
-    result_label = runner.invoke(
-        cli_main, ["label", "--id", "1", "--config", str(mock_config_file)]
-    )
-    assert result_label.exit_code == 0, result_label.output
-    assert "Successfully labeled structure ID: 1" in result_label.output
+    with patch('mlip_autopipec.modules.labeling_engine.logger') as mock_logger:
+        result_label = runner.invoke(
+            cli_main, ["label", "--id", "1", "--config", str(mock_config_file)],
+            catch_exceptions=False # Show full traceback on error
+        )
+        assert result_label.exit_code == 0, result_label.output
+
+        # Check that the logger was called with the success message
+        mock_logger.info.assert_any_call("Successfully labeled structure ID: 1 with Energy: -450.0000 eV")
 
     # Verify that the database was updated correctly
     db_wrapper = AseDBWrapper(str(db_path))

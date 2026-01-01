@@ -4,10 +4,11 @@ rootdir: /app
 configfile: pyproject.toml
 plugins: devtools-0.12.2, langsmith-0.5.2, mock-3.15.1, anyio-4.12.0, cov-7.0.0, logfire-4.16.0, asyncio-1.3.0, hypothesis-6.148.9
 asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
-collected 11 items
+collected 16 items
 
-tests/unit/test_config.py .....                                          [ 45%]
-tests/unit/test_database.py .....                                        [ 90%]
+tests/unit/test_config.py ........                                       [ 50%]
+tests/unit/test_database.py .....                                        [ 81%]
+tests/unit/test_training_engine.py ..                                    [ 93%]
 tests/integration/test_workflow.py .                                     [100%]
 
 =============================== warnings summary ===============================
@@ -15,9 +16,19 @@ tests/unit/test_config.py::test_dft_result_valid
   /app/.venv/lib/python3.12/site-packages/pydantic/main.py:519: UserWarning: Pydantic serializer warnings:
     PydanticSerializationUnexpectedValue(Expected `float` - serialized value may not be as expected [input_value=[0.0, 0.0, 0.1], input_type=list])
     PydanticSerializationUnexpectedValue(Expected `float` - serialized value may not be as expected [input_value=[-0.0, -0.0, -0.1], input_type=list])
-    PydanticSerializationUnexpectedValue(Expected `float` - serialized value may not be as expected [input_value=[0.24038889877811953, 0.1...474, 0.6019518807408161], input_type=list])
-    PydanticSerializationUnexpectedValue(Expected `float` - serialized value may not be as expected [input_value=[0.3182312213616574, 0.72...939, 0.6410545288170324], input_type=list])
-    PydanticSerializationUnexpectedValue(Expected `float` - serialized value may not be as expected [input_value=[0.7720463576057754, 0.48...918, 0.7979463377214876], input_type=list])
+    PydanticSerializationUnexpectedValue(Expected `float` - serialized value may not be as expected [input_value=[0.768655411136306, 0.910...226, 0.7383429005587996], input_type=list])
+    PydanticSerializationUnexpectedValue(Expected `float` - serialized value may not be as expected [input_value=[0.9066914167403476, 0.26...419, 0.2673900686231633], input_type=list])
+    PydanticSerializationUnexpectedValue(Expected `float` - serialized value may not be as expected [input_value=[0.5781669770472918, 0.99...61, 0.10445643526247705], input_type=list])
+    return self.__pydantic_serializer__.to_json(
+
+tests/unit/test_config.py::test_dft_result_edge_cases_energy[inf]
+tests/unit/test_config.py::test_dft_result_edge_cases_energy[-inf]
+tests/unit/test_config.py::test_dft_result_edge_cases_energy[nan]
+  /app/.venv/lib/python3.12/site-packages/pydantic/main.py:519: UserWarning: Pydantic serializer warnings:
+    PydanticSerializationUnexpectedValue(Expected `float` - serialized value may not be as expected [input_value=[0.0, 0.0, 0.0], input_type=list])
+    PydanticSerializationUnexpectedValue(Expected `float` - serialized value may not be as expected [input_value=[0.0, 0.0, 0.0], input_type=list])
+    PydanticSerializationUnexpectedValue(Expected `float` - serialized value may not be as expected [input_value=[0.0, 0.0, 0.0], input_type=list])
+    PydanticSerializationUnexpectedValue(Expected `float` - serialized value may not be as expected [input_value=[0.0, 0.0, 0.0], input_type=list])
     return self.__pydantic_serializer__.to_json(
 
 tests/unit/test_database.py::test_update_labels
@@ -49,10 +60,6 @@ tests/unit/test_database.py::test_get_all_labeled_atoms
     PydanticSerializationUnexpectedValue(Expected `float` - serialized value may not be as expected [input_value=[1.0, 1.0, 1.0], input_type=list])
     PydanticSerializationUnexpectedValue(Expected `float` - serialized value may not be as expected [input_value=[1.0, 1.0, 1.0], input_type=list])
     return self.__pydantic_serializer__.to_json(
-
-tests/integration/test_workflow.py::test_end_to_end_workflow
-  /app/src/mlip_autopipec/modules/labeling_engine.py:56: FutureWarning: Please use atoms.calc = calc
-    atoms.set_calculator(calc)
 
 tests/integration/test_workflow.py::test_end_to_end_workflow
   /app/.venv/lib/python3.12/site-packages/pydantic/main.py:519: UserWarning: Pydantic serializer warnings:
@@ -103,13 +110,14 @@ src/mlip_autopipec/__init__.py                           0      0   100%
 src/mlip_autopipec/cli.py                               40      7    82%   18-19, 29-30, 43-44, 56
 src/mlip_autopipec/config.py                            29      0   100%
 src/mlip_autopipec/database.py                          38      2    95%   92-93
+src/mlip_autopipec/interfaces.py                         8      2    75%   17, 22
 src/mlip_autopipec/modules/__init__.py                   0      0   100%
 src/mlip_autopipec/modules/explorer_sampler.py           0      0   100%
-src/mlip_autopipec/modules/labeling_engine.py           37      8    78%   37-38, 75-82
+src/mlip_autopipec/modules/labeling_engine.py           40      8    80%   62-63, 95-100
 src/mlip_autopipec/modules/simulation_engine.py          0      0   100%
 src/mlip_autopipec/modules/structure_generator.py        0      0   100%
-src/mlip_autopipec/modules/training_engine.py           20      2    90%   27-28
-src/mlip_autopipec/workflow.py                          22      0   100%
+src/mlip_autopipec/modules/training_engine.py           20      0   100%
+src/mlip_autopipec/workflow.py                          25      0   100%
 ----------------------------------------------------------------------------------
-TOTAL                                                 2424   2257     7%
-======================== 11 passed, 6 warnings in 1.96s ========================
+TOTAL                                                 2438   2257     7%
+======================== 16 passed, 8 warnings in 1.00s ========================

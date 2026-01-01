@@ -1,5 +1,5 @@
 import click
-from .workflow import WorkflowOrchestrator
+from .workflow import create_workflow_orchestrator
 from .database import AseDBWrapper
 from ase.build import molecule
 import os
@@ -18,7 +18,7 @@ def label(uid, config_path):
         click.echo(f"Error: Configuration file '{config_path}' not found.")
         return
 
-    orchestrator = WorkflowOrchestrator(config_path)
+    orchestrator = create_workflow_orchestrator(config_path)
     orchestrator.run_labeling_for_id(uid)
 
 @main.command()
@@ -29,7 +29,7 @@ def train(config_path):
         click.echo(f"Error: Configuration file '{config_path}' not found.")
         return
 
-    orchestrator = WorkflowOrchestrator(config_path)
+    orchestrator = create_workflow_orchestrator(config_path)
     orchestrator.run_training()
 
 @main.command()

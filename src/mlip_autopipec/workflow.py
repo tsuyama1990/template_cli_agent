@@ -2,9 +2,10 @@ from .database import AseDBWrapper
 from .modules.labeling_engine import LabelingEngine
 from .modules.training_engine import TrainingEngine
 from .config import DFTInputConfig, MLIPTrainingConfig
+from .interfaces import IWorkflowOrchestrator
 import yaml
 
-class WorkflowOrchestrator:
+class WorkflowOrchestrator(IWorkflowOrchestrator):
     """Orchestrates the entire MLIP generation workflow."""
 
     def __init__(self, config_path: str):
@@ -44,3 +45,18 @@ class WorkflowOrchestrator:
     def run_training(self):
         """Runs the MLIP model training process."""
         self.training_engine.train()
+
+def create_workflow_orchestrator(config_path: str) -> IWorkflowOrchestrator:
+    """
+    Factory function to create an instance of the workflow orchestrator.
+
+    This provides a single point of construction and decouples the client
+    (e.g., the CLI) from the concrete implementation details.
+
+    Args:
+        config_path: Path to the main YAML configuration file.
+
+    Returns:
+        An object that conforms to the IWorkflowOrchestrator interface.
+    """
+    return WorkflowOrchestrator(config_path)

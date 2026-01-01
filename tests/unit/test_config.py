@@ -21,6 +21,27 @@ def test_dft_result_valid():
     np.testing.assert_array_equal(reloaded_result.forces, result.forces)
     np.testing.assert_array_equal(reloaded_result.stress, result.stress)
 
+@pytest.mark.parametrize("value", [np.inf, -np.inf, np.nan])
+def test_dft_result_edge_cases_energy(value):
+    """Tests that non-finite float values are handled correctly for energy."""
+    result = DFTResult(
+        energy=value,
+        forces=np.zeros((1, 3)),
+        stress=np.zeros((3, 3))
+    )
+    # The value should be preserved
+    if np.isnan(value):
+        assert np.isnan(result.energy)
+    else:
+        assert result.energy == value
+
+    # Test round-trip serialization
+    json_data = result.model_dump_json()
+    # Test that serialization does not crash, acknowledging that standard
+    # JSON cannot represent inf/nan, so a perfect round-trip is not expected.
+    json_data = result.model_dump_json()
+    assert isinstance(json_data, str)
+
 def test_dft_result_invalid_forces():
     """Tests that a validation error is raised for incorrect forces type."""
     with pytest.raises(ValidationError) as excinfo:

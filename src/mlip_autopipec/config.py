@@ -12,7 +12,11 @@ class DFTInputConfig(BaseModel):
 
 class DFTResult(BaseModel):
     """Stores the output of a QE calculation."""
-    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
+    model_config = ConfigDict(
+        extra="forbid",
+        arbitrary_types_allowed=True,
+        allow_inf_nan=True
+    )
     energy: float
     forces: np.ndarray
     stress: np.ndarray
