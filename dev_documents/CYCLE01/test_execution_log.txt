@@ -1,0 +1,20 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0
+rootdir: /app
+configfile: pyproject.toml
+testpaths: tests
+plugins: devtools-0.12.2, langsmith-0.4.59, mock-3.15.1, hypothesis-6.148.7, anyio-4.12.0, cov-7.0.0, logfire-4.16.0, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 12 items
+
+tests/integration/test_workflow.py .                                     [  8%]
+tests/unit/test_config.py ........                                       [ 75%]
+tests/unit/test_database.py ...                                          [100%]
+
+=============================== warnings summary ===============================
+tests/integration/test_workflow.py::test_label_and_train_workflow
+  /app/.venv/lib/python3.12/site-packages/ase/io/espresso_namelist/namelist.py:107: DeprecationWarning: Use of kwarg(s) as keyword(s) is deprecated,use input_data instead
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 12 passed, 1 warning in 1.15s =========================
