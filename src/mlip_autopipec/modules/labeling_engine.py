@@ -87,7 +87,13 @@ class LabelingEngine(ILabelingEngine):
             )
 
             command = [self.qe_command, "-in", str(input_file)]
-            self.process_runner.run(command, str(output_file))
+            completed_process = self.process_runner.run(command, str(output_file))
+
+            if completed_process.returncode != 0:
+                raise RuntimeError(
+                    "Quantum Espresso calculation failed. Check the output file "
+                    f"for details: {output_file}"
+                )
 
             result_atoms = read(output_file, format="espresso-out")
 

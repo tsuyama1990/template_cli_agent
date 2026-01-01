@@ -12,7 +12,11 @@ from mlip_autopipec.modules.labeling_engine import LabelingEngine
 @pytest.fixture
 def mock_process_runner():
     """Fixture for a mocked IProcessRunner."""
-    return MagicMock()
+    runner = MagicMock()
+    completed_process = MagicMock()
+    completed_process.returncode = 0
+    runner.run.return_value = completed_process
+    return runner
 
 
 @pytest.fixture
@@ -67,3 +71,34 @@ def test_labeling_engine_uses_dft_config(mock_process_runner, mock_ase_io):
     # Assert that the result is parsed correctly
     assert result.energy == -1.0
     assert np.allclose(result.forces, [[0.1, 0.2, 0.3]])
+
+
+def test_labeling_engine_handles_qe_failure(mock_ase_io):
+    """
+    Tests that the LabelingEngine raises a RuntimeError if the
+    Quantum Espresso calculation fails.
+    """
+    mock_process_runner = MagicMock()
+    completed_process = MagicMock()
+    completed_process.returncode = 1  # Simulate a failure
+    mock_process_runner.run.return_value = completed_process
+
+    dft_config = DFTComputeConfig(
+        ecutwfc=50.0,
+        ecutrho=400.0,
+        kpoints_density=3.5,
+        magnetism=None,
+        control={"calculation": "vc-relax"},
+        pseudopotentials={"H": "H.UPF"},
+    )
+    labeling_engine = LabelingEngine(
+        dft_compute_config=dft_config,
+        process_runner=mock_process_runner,
+        qe_command="pw.x",
+    )
+    atoms_to_label = Atoms("H", positions=[(0, 0, 0)], cell=[10, 10, 10], pbc=True)
+
+    with pytest.raises(RuntimeError) as excinfo:
+        labeling_engine.label_structure(atoms_to_label)
+
+    assert "Quantum Espresso calculation failed" in str(excinfo.value)

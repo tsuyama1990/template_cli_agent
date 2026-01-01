@@ -274,10 +274,14 @@ class ConfigExpander:
     ) -> SimulationConfig:
         """Generates a detailed simulation configuration from user input."""
         if sim_input.temperature:
+            # If the user provides a temperature range, interpolate it into steps.
             steps = np.linspace(
                 sim_input.temperature[0], sim_input.temperature[1], 3, dtype=int
             ).tolist()
         else:
+            # Otherwise, create a default range from 300K up to 80% of the
+            # estimated melting point, which is a common heuristic for exploring
+            # the solid phase of a material.
             upper_bound = int(0.8 * melting_point)
             steps = np.linspace(300, upper_bound, 3, dtype=int).tolist()
 
@@ -286,6 +290,9 @@ class ConfigExpander:
     def _expand_dft_config(self, system_input: UserInputSystem) -> DFTComputeConfig:
         """Generates a detailed DFT configuration using heuristics."""
         try:
+            # The SSSP standard provides recommended cutoffs for each element.
+            # To ensure accuracy, we must use the maximum required cutoff
+            # among all elements present in the system.
             max_ecutwfc = max(SSSP_PRECISION_CUTOFFS[el][0] for el in system_input.elements)
             max_ecutrho = max(SSSP_PRECISION_CUTOFFS[el][1] for el in system_input.elements)
         except KeyError as e:
@@ -293,6 +300,8 @@ class ConfigExpander:
                 f"Unknown element '{e.args[0]}' provided. Cannot determine SSSP cutoff."
             ) from e
 
+        # Enable spin-polarized calculations automatically if known magnetic
+        # elements are present.
         magnetism = (
             "ferromagnetic"
             if any(el in MAGNETIC_ELEMENTS for el in system_input.elements)
@@ -304,6 +313,8 @@ class ConfigExpander:
         return DFTComputeConfig(
             ecutwfc=float(max_ecutwfc),
             ecutrho=float(max_ecutrho),
+            # A k-point density of 5.0 is a reasonable default for many systems,
+            # balancing accuracy and computational cost.
             kpoints_density=5.0,
             magnetism=magnetism,
             control={"calculation": "scf"},
