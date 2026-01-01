@@ -169,7 +169,7 @@ class GraphBuilder:
 
         # System Instruction: ARCHITECT_INSTRUCTION.md
         instruction = instruction_path.read_text(encoding="utf-8")
-        
+
         # Inject dynamic variables
         max_cycles = str(state.planned_cycle_count) if state.planned_cycle_count else "5"
         instruction = instruction.replace("{{max_cycles}}", max_cycles)

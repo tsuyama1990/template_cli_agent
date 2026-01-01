@@ -1,4 +1,3 @@
-
 import numpy as np
 import pytest
 from pydantic import ValidationError
@@ -22,9 +21,7 @@ def test_dft_input_config_valid():
 def test_dft_input_config_invalid():
     """Tests that a DFTInputConfig with missing fields raises a validation error."""
     with pytest.raises(ValidationError):
-        DFTInputConfig(
-            pseudopotentials={"H": "H.UPF"}, kpoints=(1, 1, 1), control={}
-        )
+        DFTInputConfig(pseudopotentials={"H": "H.UPF"}, kpoints=(1, 1, 1), control={})
 
 
 def test_dft_result_valid():

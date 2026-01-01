@@ -400,7 +400,7 @@ class JulesClient:
                     # 1. Standard "agentMessaged"
                     if "agentMessaged" in act:
                         msg = act["agentMessaged"].get("agentMessage")
-                    
+
                     # 2. "userActionRequired" (Check for key, not "type" field)
                     elif "userActionRequired" in act:
                         # Sometimes content is in detailed description or reason
@@ -411,7 +411,7 @@ class JulesClient:
                     # 3. Fallback for flat/test structure
                     if not msg:
                         msg = act.get("message")
-                        
+
                     # 4. Filter out generic status messages
                     if msg and "Jules is working" in msg:
                         continue
@@ -485,7 +485,13 @@ class JulesClient:
                         # --- 1. INTERACTIVE HANDLING CHECK ---
                         # Check for inquiries first. Even if state is COMPLETED/SUCCEEDED,
                         # the agent might have sent a message requiring response.
-                        if state in ["AWAITING_USER_FEEDBACK", "COMPLETED", "SUCCEEDED", "NEEDS_MORE_INFORMATION", "RUNNING"]:
+                        if state in [
+                            "AWAITING_USER_FEEDBACK",
+                            "COMPLETED",
+                            "SUCCEEDED",
+                            "NEEDS_MORE_INFORMATION",
+                            "RUNNING",
+                        ]:
                             inquiry_result = await self._check_for_inquiry(client, session_url)
 
                             if inquiry_result:

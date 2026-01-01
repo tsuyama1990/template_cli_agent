@@ -57,9 +57,7 @@ def mock_process_runner(mocker):
 
     mock = MagicMock(spec=IProcessRunner)
     mock.run.side_effect = mock_run
-    mocker.patch(
-        "mlip_autopipec.factories.SubprocessRunner", return_value=mock
-    )
+    mocker.patch("mlip_autopipec.factories.SubprocessRunner", return_value=mock)
     return mock
 
 
@@ -80,10 +78,7 @@ def test_label_and_train_workflow(mock_process_runner, tmp_path):
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert (
-            f"Labeling complete for structure ID: {structure_id}"
-            in result.output
-        )
+        assert f"Labeling complete for structure ID: {structure_id}" in result.output
 
         mock_process_runner.run.assert_called_once()
 
@@ -93,8 +88,6 @@ def test_label_and_train_workflow(mock_process_runner, tmp_path):
         assert dft_result.energy == pytest.approx(-242.62, abs=1e-1)
         np.testing.assert_array_equal(dft_result.stress, np.zeros((3, 3)))
 
-        result = runner.invoke(
-            app, ["train", "--db-path", str(db_path)], catch_exceptions=False
-        )
+        result = runner.invoke(app, ["train", "--db-path", str(db_path)], catch_exceptions=False)
         assert result.exit_code == 0
         assert "Training not implemented" in result.output

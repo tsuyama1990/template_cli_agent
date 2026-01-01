@@ -1,19 +1,13 @@
 import click
-from pydantic import ValidationError
 
-from mlip_autopipec.config import Settings
-from mlip_autopipec.factories import create_workflow_orchestrator
+from mlip_autopipec.app import create_app
 
 
 @click.group()
 @click.pass_context
 def app(ctx):
     """MLIP-AutoPipe: Automated MLIP Generation."""
-    try:
-        settings = Settings()
-        ctx.obj = settings
-    except ValidationError as e:
-        raise click.ClickException(f"Configuration error: {e}") from e
+    ctx.obj = create_app()
 
 
 @app.command()
@@ -30,10 +24,8 @@ def app(ctx):
 @click.pass_context
 def label(ctx, id: int, db_path: str | None):
     """Runs the DFT labeling for a single structure."""
-    settings = ctx.obj
-    db_path = db_path or settings.db_path
-    orchestrator = create_workflow_orchestrator(db_path, settings)
-    orchestrator.label_structure_by_id(id)
+    application = ctx.obj
+    application.label_structure(id, db_path)
 
 
 @app.command()
@@ -44,10 +36,8 @@ def label(ctx, id: int, db_path: str | None):
 @click.pass_context
 def train(ctx, db_path: str | None):
     """Trains the MLIP model on the existing labeled data."""
-    settings = ctx.obj
-    db_path = db_path or settings.db_path
-    orchestrator = create_workflow_orchestrator(db_path, settings)
-    orchestrator.run_training()
+    application = ctx.obj
+    application.train(db_path)
 
 
 if __name__ == "__main__":

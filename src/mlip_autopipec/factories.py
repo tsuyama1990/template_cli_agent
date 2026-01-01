@@ -9,9 +9,7 @@ from mlip_autopipec.runners import SubprocessRunner
 from mlip_autopipec.workflow import WorkflowOrchestrator
 
 
-def create_workflow_orchestrator(
-    db_path: str, settings: Settings
-) -> IWorkflowOrchestrator:
+def create_workflow_orchestrator(db_path: str, settings: Settings) -> IWorkflowOrchestrator:
     """
     Factory function to create a configured instance of the WorkflowOrchestrator.
 

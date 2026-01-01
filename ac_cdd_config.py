@@ -149,8 +149,6 @@ class ReviewerConfig(BaseSettings):
     )
 
 
-
-
 class Settings(BaseSettings):
     JULES_API_KEY: str | None = None
     OPENROUTER_API_KEY: str | None = None

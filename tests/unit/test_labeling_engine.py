@@ -1,5 +1,5 @@
 import subprocess
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from ase import Atoms
@@ -77,9 +77,7 @@ def test_label_structure_qe_failure(mock_process_runner, dft_config):
     """Tests the error handling when Quantum Espresso execution fails."""
     # Arrange
     atoms_to_label = Atoms("H2O", positions=[[0, 0, 0], [1, 0, 0], [0, 1, 0]])
-    mock_process_runner.run.side_effect = subprocess.CalledProcessError(
-        returncode=1, cmd="pw.x"
-    )
+    mock_process_runner.run.side_effect = subprocess.CalledProcessError(returncode=1, cmd="pw.x")
     engine = LabelingEngine(
         dft_input_configuration=dft_config,
         process_runner=mock_process_runner,
@@ -88,4 +86,30 @@ def test_label_structure_qe_failure(mock_process_runner, dft_config):
 
     # Act & Assert
     with pytest.raises(subprocess.CalledProcessError):
+        engine.label_structure(atoms_to_label)
+
+
+@patch("mlip_autopipec.modules.labeling_engine.read")
+def test_label_structure_malformed_output(mock_ase_read, mock_process_runner, dft_config):
+    """Tests the error handling when the QE output is malformed."""
+    # Arrange
+    atoms_to_label = Atoms("H2O", positions=[[0, 0, 0], [1, 0, 0], [0, 1, 0]])
+    mock_ase_read.side_effect = Exception("Malformed output")
+
+    def mock_run(command, stdout_path):
+        # The content of the output file is irrelevant for this test,
+        # as the read function is mocked.
+        with open(stdout_path, "w") as f:
+            f.write("dummy content")
+
+    mock_process_runner.run.side_effect = mock_run
+
+    engine = LabelingEngine(
+        dft_input_configuration=dft_config,
+        process_runner=mock_process_runner,
+        qe_command="pw.x",
+    )
+
+    # Act & Assert
+    with pytest.raises(Exception, match="Malformed output"):
         engine.label_structure(atoms_to_label)

@@ -13,6 +13,9 @@ class AseDBWrapper:
     This class provides a high-level API for interacting with the ASE database,
     handling the serialization and deserialization of DFT results and managing
     the state of each structure in the database.
+
+    Note on SQL Injection: This class relies on the `ase.db` library, which uses
+    parameterized queries under the hood, thus protecting against SQL injection.
     """
 
     def __init__(self, db_path: str):
@@ -97,7 +100,5 @@ class AseDBWrapper:
                 except Exception as e:
                     import logging
 
-                    logging.warning(
-                        f"Skipping corrupted data in database (ID: {row.id}): {e}"
-                    )
+                    logging.warning(f"Skipping corrupted data in database (ID: {row.id}): {e}")
         return results

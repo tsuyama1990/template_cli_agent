@@ -25,9 +25,7 @@ class DFTInputConfig(BaseModel):
     )
     kpoints: tuple[int, int, int] = Field(..., description="K-points grid.")
     ecutwfc: int = Field(..., gt=0, description="Wavefunction cutoff energy.")
-    control: dict[str, Any] = Field(
-        ..., description="Control parameters for the DFT calculation."
-    )
+    control: dict[str, Any] = Field(..., description="Control parameters for the DFT calculation.")
 
 
 class DFTResult(BaseModel):
@@ -58,21 +56,26 @@ class MLIPTrainingConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    model_type: ModelType = Field(
-        ..., description="Type of the MLIP model to be trained."
-    )
+    model_type: ModelType = Field(..., description="Type of the MLIP model to be trained.")
     r_cut: float = Field(..., gt=0, description="Cutoff radius for the potential.")
     loss_weights: dict[str, float] = Field(
         ..., description="Weights for the loss function components."
     )
 
+    @field_validator("loss_weights")
+    @classmethod
+    def validate_loss_weights(cls, v: dict[str, float]) -> dict[str, float]:
+        """Validates that the loss_weights dictionary contains the expected keys."""
+        expected_keys = {"energy", "forces"}
+        if not expected_keys.issubset(v.keys()):
+            raise ValueError(f"Loss weights must contain the keys {expected_keys}")
+        return v
+
 
 class Settings(BaseModel):
     """Manages application-wide settings."""
 
-    qe_command: str = Field(
-        "pw.x", description="The command to execute Quantum Espresso."
-    )
+    qe_command: str = Field("pw.x", description="The command to execute Quantum Espresso.")
     db_path: str = Field("asedb.db", description="Path to the ASE database file.")
     dft_input_configuration: DFTInputConfig = Field(
         default_factory=lambda: DFTInputConfig(

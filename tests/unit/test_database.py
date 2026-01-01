@@ -62,9 +62,7 @@ def test_get_all_labeled_atoms(temp_db):
 
     # Manually add a labeled atom to check retrieval
     id_labeled = db_wrapper.add_atoms(Atoms("Be"))
-    dft_result = DFTResult(
-        energy=-50.0, forces=np.zeros((1, 3)), stress=np.zeros((3, 3))
-    )
+    dft_result = DFTResult(energy=-50.0, forces=np.zeros((1, 3)), stress=np.zeros((3, 3)))
     db_wrapper.update_labels(id_labeled, dft_result)
 
     labeled_atoms = db_wrapper.get_all_labeled_atoms()

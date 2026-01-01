@@ -38,11 +38,6 @@ class TrainingEngine(ITrainingEngine):
             return
 
         print(f"Received {len(training_data)} labeled structures for training.")
-        print(
-            "Training model of type: "
-            f"{self.mlip_training_configuration.model_type.value}"
-        )
+        print(f"Training model of type: {self.mlip_training_configuration.model_type.value}")
 
-        raise NotImplementedError(
-            "Training with pacemaker-python is not yet implemented."
-        )
+        raise NotImplementedError("Training with pacemaker-python is not yet implemented.")
