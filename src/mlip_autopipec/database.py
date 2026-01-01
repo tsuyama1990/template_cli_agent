@@ -7,10 +7,17 @@ from mlip_autopipec.config import DFTResult
 
 
 class AseDBWrapper:
-    """A wrapper class for the ASE database to manage atomic structures and their labels."""
+    """
+    A wrapper class for the ASE database to manage atomic structures and their labels.
+
+    This class provides a high-level API for interacting with the ASE database,
+    handling the serialization and deserialization of DFT results and managing
+    the state of each structure in the database.
+    """
 
     def __init__(self, db_path: str):
-        """Initializes the database wrapper.
+        """
+        Initializes the database wrapper.
 
         Args:
             db_path: Path to the ASE database file.
@@ -62,6 +69,16 @@ class AseDBWrapper:
                 state="labeled",
                 dft_result=dft_result_json,
             )
+
+    def update_state(self, id: int, state: str):
+        """Updates the state of an entry.
+
+        Args:
+            id: The ID of the entry to update.
+            state: The new state to set.
+        """
+        with self._connect() as db:
+            db.update(id, state=state)
 
     def get_all_labeled_atoms(self) -> list[tuple[Atoms, DFTResult]]:
         """Retrieves all atoms that have been successfully labeled.

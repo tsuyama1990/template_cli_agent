@@ -65,33 +65,34 @@ def test_label_and_train_workflow(mock_subprocess_run, tmp_path):
     # Use CliRunner's built-in temporary file system
     runner = CliRunner()
     with runner.isolated_filesystem() as temp_dir:
-        db_path = Path(temp_dir) / "asedb.db"  # Match the hardcoded path in cli.py
+        db_path = Path(temp_dir) / "test.db"
         db_wrapper = AseDBWrapper(db_path=str(db_path))
 
-        # 1. Add an initial unlabeled structure
         atoms = Atoms("H2O", positions=[(0, 0, 0), (1, 0, 0), (0, 1, 0)])
-        id = db_wrapper.add_atoms(atoms)
-        assert id == 1
+        structure_id = db_wrapper.add_atoms(atoms)
+        assert structure_id == 1
 
-        # 2. Run the labeling CLI command
         result = runner.invoke(
-            app, ["label", "--id", str(id)], catch_exceptions=False
+            app,
+            ["label", "--id", str(structure_id), "--db-path", str(db_path)],
+            catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert f"Labeling complete for structure ID: {id}" in result.output
+        assert (
+            f"Labeling complete for structure ID: {structure_id}"
+            in result.output
+        )
 
-        # 3. Verify the subprocess was called
         mock_subprocess_run.assert_called_once()
 
-        # 4. Verify the database was updated
         labeled_data = db_wrapper.get_all_labeled_atoms()
         assert len(labeled_data) == 1
-        retrieved_atoms, dft_result = labeled_data[0]
+        _, dft_result = labeled_data[0]
         assert dft_result.energy == pytest.approx(-242.62, abs=1e-1)
-        # Verify that stress defaults to zero when parsing fails
         np.testing.assert_array_equal(dft_result.stress, np.zeros((3, 3)))
 
-        # 5. Run the training command (which is expected to fail gracefully)
-        result = runner.invoke(app, ["train"], catch_exceptions=False)
+        result = runner.invoke(
+            app, ["train", "--db-path", str(db_path)], catch_exceptions=False
+        )
         assert result.exit_code == 0
         assert "Training not implemented" in result.output

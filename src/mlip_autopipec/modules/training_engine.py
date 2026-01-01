@@ -1,16 +1,24 @@
 from mlip_autopipec.config import MLIPTrainingConfig
 from mlip_autopipec.database import AseDBWrapper
+from mlip_autopipec.interfaces import ITrainingEngine
 
 
-class TrainingEngine:
-    """Handles the training of the MLIP model."""
+class TrainingEngine(ITrainingEngine):
+    """
+    Handles the training of the MLIP model.
+
+    This class queries the database for labeled data, prepares it for the
+    training library (e.g., pacemaker), and executes the training process
+    to produce an MLIP model artifact.
+    """
 
     def __init__(
         self,
         training_config: MLIPTrainingConfig,
         db_wrapper: AseDBWrapper,
     ):
-        """Initializes the TrainingEngine.
+        """
+        Initializes the TrainingEngine.
 
         Args:
             training_config: Configuration for the MLIP training.
@@ -19,7 +27,7 @@ class TrainingEngine:
         self.training_config = training_config
         self.db_wrapper = db_wrapper
 
-    def train(self):
+    def train(self) -> None:
         """Trains the MLIP model using the labeled data from the database."""
         labeled_data = self.db_wrapper.get_all_labeled_atoms()
         if not labeled_data:

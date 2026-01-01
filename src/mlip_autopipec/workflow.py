@@ -1,44 +1,46 @@
-from mlip_autopipec.config import DFTInputConfig, MLIPTrainingConfig
-from mlip_autopipec.database import AseDBWrapper
-from mlip_autopipec.modules.labeling_engine import LabelingEngine
-from mlip_autopipec.modules.training_engine import TrainingEngine
+from mlip_autopipec.interfaces import (
+    ILabelingEngine,
+    ITrainingEngine,
+    IWorkflowOrchestrator,
+)
 
 
-class WorkflowOrchestrator:
-    """Orchestrates the entire MLIP generation workflow."""
+class WorkflowOrchestrator(IWorkflowOrchestrator):
+    """
+    Orchestrates the entire MLIP generation workflow.
+
+    This class is responsible for coordinating the different components of the
+    pipeline, such as the labeling and training engines, to execute the
+    complete workflow for generating an MLIP.
+    """
 
     def __init__(
         self,
-        dft_config: DFTInputConfig,
-        training_config: MLIPTrainingConfig,
-        db_path: str,
-        qe_command: str,
+        labeling_engine: ILabelingEngine,
+        training_engine: ITrainingEngine,
     ):
-        """Initializes the WorkflowOrchestrator.
+        """
+        Initializes the WorkflowOrchestrator.
 
         Args:
-            dft_config: Configuration for the DFT calculations.
-            training_config: Configuration for the MLIP training.
-            db_path: Path to the ASE database.
-            qe_command: The command to execute Quantum Espresso.
+            labeling_engine: An object that implements the ILabelingEngine interface.
+            training_engine: An object that implements the ITrainingEngine interface.
         """
-        self.db_wrapper = AseDBWrapper(db_path)
-        self.labeling_engine = LabelingEngine(
-            dft_config, self.db_wrapper, qe_command
-        )
-        self.training_engine = TrainingEngine(training_config, self.db_wrapper)
+        self.labeling_engine = labeling_engine
+        self.training_engine = training_engine
 
-    def run_labeling_for_id(self, id: int):
-        """Runs the labeling process for a specific structure ID.
+    def label_structure_by_id(self, structure_id: int) -> None:
+        """
+        Runs the labeling process for a specific structure ID.
 
         Args:
-            id: The ID of the structure to label.
+            structure_id: The ID of the structure to label.
         """
-        print(f"Starting labeling for structure ID: {id}")
-        self.labeling_engine.label_structure(id)
-        print(f"Labeling complete for structure ID: {id}")
+        print(f"Starting labeling for structure ID: {structure_id}")
+        self.labeling_engine.label_structure(structure_id)
+        print(f"Labeling complete for structure ID: {structure_id}")
 
-    def run_training(self):
+    def run_training(self) -> None:
         """Runs the MLIP model training process."""
         print("Starting training process.")
         try:
