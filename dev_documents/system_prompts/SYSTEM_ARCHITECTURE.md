@@ -1,146 +1,224 @@
-# System Architecture: MLIP-AutoPipe
+# SYSTEM_ARCHITECTURE.md
 
 ## 1. Summary
 
-The MLIP-AutoPipe (Machine Learning Interatomic Potential Automatic Pipeline) system is a next-generation computational materials science platform designed to automate the entire workflow of creating and utilising high-fidelity interatomic potentials. The core philosophy of the project is to "remove the human expert from the loop," addressing the significant bottlenecks that currently hinder the broad application of machine learning potentials. Traditionally, the development of MLIPs has been a craft, heavily reliant on the intuition and deep domain knowledge of experienced researchers. This manual process involves selecting appropriate training data, managing complex quantum mechanical calculations, and fine-tuning model hyperparameters. Such a dependency on human expertise makes the process slow, difficult to reproduce, and inaccessible to non-specialists. MLIP-AutoPipe aims to transform this paradigm by introducing a fully autonomous, self-directing, and robust pipeline that is accessible to both experts and novices in the field. By codifying expert knowledge into automated heuristics and intelligent algorithms, the system not only accelerates the development process from months to days but also introduces a level of rigor and reproducibility that is often difficult to achieve in manual workflows. It democratises access to high-quality potentials, enabling a broader range of scientists and engineers to leverage the power of atomistic simulations for materials discovery and design without requiring years of specialised training in computational physics.
+The MLIP-AutoPipe (Machine Learning Interatomic Potential - Automated Pipeline) system is a next-generation computational materials science platform designed to automate the entire lifecycle of creating, validating, and deploying high-fidelity interatomic potentials. The core philosophy of the project is "removing the human expert from the loop," addressing the most significant bottleneck in modern materials simulation: the reliance on expert intuition and manual intervention. Currently, the process of generating training data for MLIPs—deciding which atomic configurations to simulate under specific conditions—is a highly specialized and time-consuming task. This system replaces that ad-hoc process with a robust, physics-informed, and autonomous workflow. By leveraging a combination of physical heuristics, advanced sampling techniques, and active learning, MLIP-AutoPipe empowers researchers to generate bespoke, first-principles-accurate potentials simply by providing a material's composition.
 
-The system takes minimal user input—typically just the chemical composition of a material—and orchestrates a complex sequence of tasks to deliver a bespoke, highly accurate MLIP. This process begins with intelligent initial structure generation, where physics-based heuristics are employed to create a diverse and physically meaningful set of atomic configurations without resorting to expensive first-principles calculations. It then uses a state-of-the-art universal potential, MACE, as a surrogate model to rapidly explore the material's vast configuration space. This exploration is coupled with an information-theoretic sampling strategy, known as DIRECT sampling, to identify the most informative atomic structures for training the MLIP. These selected structures are then automatically labelled using the Quantum Espresso engine, which is integrated with robust error handling and automatic parameter optimisation to ensure high-quality data. The training engine then uses this data to build the MLIP, employing a delta learning technique to improve accuracy by learning the residual error relative to a physical baseline potential. The final, crucial stage is an on-the-fly active learning loop, where the newly trained potential is used in simulations, its uncertainty is continuously monitored, and any new, informative configurations encountered are fed back into the training set for iterative refinement. This closed-loop system ensures that the potential becomes progressively more accurate and reliable over time. By automating these intricate steps, MLIP-AutoPipe will democratise the creation of bespoke MLIPs, enabling researchers to focus on scientific discovery rather than the laborious mechanics of potential development, ultimately accelerating the pace of innovation in materials science, chemistry, and engineering.
+The system is engineered to be a comprehensive solution, covering every stage from initial data generation to advanced, long-timescale simulations. It begins by programmatically generating a diverse and physically meaningful set of initial atomic structures without resorting to computationally expensive Ab Initio Molecular Dynamics (AIMD). It employs methods tailored to different material classes, such as Special Quasirandom Structures (SQS) for alloys and Normal Mode Sampling (NMS) for molecules. The pipeline then uses a state-of-the-art universal potential, MACE, as a surrogate model to rapidly explore a vast configuration space, identifying unique and informative structures for expensive quantum mechanical calculations.
+
+Labelling is handled by an automated engine that interfaces with Quantum Espresso, a widely-used DFT code. This module intelligently manages calculation parameters, ensuring robust and high-quality results without manual tuning. The training engine implements a "Delta Learning" approach, where the MLIP learns the difference between a simple physical baseline potential and the true DFT energies, leading to more accurate and stable models. The final, and most innovative, stage is the deployment of the trained potential in an "on-the-fly" simulation loop. Here, the system actively monitors the simulation for excursions into uncharted atomic configurations, automatically triggers new DFT calculations to label these new configurations, and retrains the potential, creating a self-improving, autonomous learning cycle. This enables the exploration of complex phenomena like phase transitions and diffusion over timescales far exceeding what is possible with direct AIMD. The entire workflow is managed by a sophisticated orchestrator, ensuring seamless data flow and traceability through a centralized database, making the process reproducible and transparent.
 
 ## 2. System Design Objectives
 
-The primary objective of MLIP-AutoPipe is to deliver a fully autonomous, "zero-touch" pipeline for the generation of bespoke, high-accuracy machine learning interatomic potentials. The success of the system will be measured against several key criteria that define its utility, robustness, and efficiency. These objectives guide the architectural decisions and feature prioritisation throughout the development process.
+The primary objective of the MLIP-AutoPipe system is to democratize the creation of high-quality machine learning potentials, making them accessible to a broader range of scientists and engineers, not just computational physics experts. This is achieved through a set of carefully defined design goals that prioritize automation, robustness, efficiency, and extensibility.
 
-**Autonomy and Usability:** The foremost goal is to eliminate the need for expert human intervention. The system must be capable of making intelligent decisions at every stage, from initial data generation to active learning. This means abstracting away the complexities of DFT calculations, hyperparameter tuning, and sampling strategies. The user interface should be minimal, requiring only essential inputs like chemical composition and target simulation conditions. Success here means that a non-expert user can reliably generate a high-quality potential without needing to understand the intricate physics or computer science underpinning the pipeline. This objective will be achieved through a sophisticated heuristic engine that automatically determines optimal calculation parameters, from DFT cutoffs to MD temperatures. It also involves implementing robust, self-correcting mechanisms within the pipeline, such as the automated recovery from failed DFT calculations, which shields the user from common technical hurdles. The final CLI will be designed for clarity and simplicity, with self-documenting commands and helpful error messages.
+**Automation and User Experience:** The foremost goal is to create a zero-touch pipeline. The user interaction is intentionally minimized to specifying the material composition and the desired simulation conditions (e.g., temperature range). All subsequent steps—parameter selection for DFT calculations, choice of sampling strategy, hyperparameter tuning for the MLIP, and active learning decisions—are handled autonomously by the system. This objective directly supports the core philosophy of eliminating the human expert from the repetitive and error-prone tasks of data generation and model training.
 
-**Accuracy and Reliability:** The generated potentials must be of sufficient accuracy to rival those produced by manual, expert-driven methods. They should faithfully reproduce the underlying potential energy surface as described by first-principles calculations. The system must include mechanisms for quantifying and systematically reducing uncertainty. The active learning loop is central to this objective, ensuring that the potential is continuously refined and validated against new data. Reliability also extends to the software's robustness; it must handle a wide range of materials and gracefully recover from common failures in DFT calculations or simulation runs. To achieve this, we will enforce the use of high-quality, standardized protocols like SSSP for DFT parameterisation. The delta learning approach will be a core feature, as it focuses the MLIP's learning capacity on the complex quantum mechanical effects not captured by simpler classical potentials. Furthermore, the uncertainty quantification in the active learning loop will be based on committee models, a proven technique for robustly estimating model confidence.
+**Physical Robustness and Accuracy:** The system is designed to be grounded in physical principles. Instead of relying on purely data-driven black-box methods, it incorporates domain knowledge at every stage. Initial structures are generated based on physical heuristics appropriate for the material type (alloy, molecular, ionic). The active learning loop is guided by uncertainty quantification, a principled way to identify regions where the model's predictions are unreliable. The "Delta Learning" strategy ensures that the MLIP correctly captures fundamental physical interactions, such as short-range repulsion, by building upon a simple, known physical potential. The objective is to produce potentials that are not only accurate within their training domain but also behave physically reasonably when extrapolating.
 
-**Efficiency and Scalability:** Computational cost is a major constraint in materials simulation. The system is designed to be highly efficient by minimising the number of expensive DFT calculations required. This is achieved through a multi-faceted strategy: intelligent initial structure generation, the use of a computationally cheap surrogate model (MACE) for exploration, and information-theoretic sampling to select only the most valuable data points for labelling. The software architecture must be scalable, capable of leveraging parallel computing resources (both for DFT calculations and machine learning tasks) to handle large systems and complex materials efficiently. Performance-critical code sections, such as the descriptor calculations for DIRECT sampling, will be optimised using JIT compilation with Numba. The system will also be designed to integrate with job scheduling systems, allowing the DFT calculation workloads to be distributed across high-performance computing clusters.
+**Computational Efficiency:** A major constraint in materials simulation is the immense computational cost of first-principles calculations. A key design objective is to minimize the number of expensive DFT calculations required to train a high-quality potential. This is achieved through a multi-pronged strategy: using a fast surrogate model (MACE) to pre-screen candidates, employing intelligent sampling (DIRECT) to select the most informative data points, and using an active learning loop that focuses computational resources only on new, previously unseen configurations. By avoiding redundant calculations and focusing on information-rich data, the system aims to reduce the time-to-solution for generating a reliable potential by an order of magnitude or more compared to traditional methods.
 
-**Modularity and Extensibility:** The field of materials modelling is in constant evolution, with new algorithms and models emerging regularly. To ensure long-term viability, MLIP-AutoPipe is designed with a modular architecture. Each component—the structure generator, the labelling engine, the training engine—is a distinct, swappable module with a well-defined interface. This will allow the system to be easily updated with new DFT codes (e.g., VASP, CP2K), MLIP frameworks (e.g., NequIP, Allegro), or sampling algorithms as they become available, preventing technological lock-in and fostering a platform for future research and development. This modularity also facilitates easier testing and maintenance of the codebase. The choice of a modern Python foundation with clear class-based modules and dependency management via `pyproject.toml` is a direct implementation of this philosophy.
+**Modularity and Extensibility:** The field of materials informatics is rapidly evolving, with new algorithms and models constantly emerging. The system architecture is therefore designed to be highly modular and loosely coupled. Each component (Structure Generator, Explorer, Labeling Engine, etc.) is a distinct module with a well-defined interface. This allows for future upgrades and substitutions with minimal disruption. For example, the Quantum Espresso labeling engine could be swapped for another DFT code, or a new MLIP model architecture could be integrated into the training engine. This ensures the long-term viability and relevance of the platform, allowing it to incorporate state-of-the-art methods as they become available.
 
 ## 3. System Architecture
 
-The MLIP-AutoPipe system is architected as a modular, five-component pipeline orchestrated by a central workflow manager. This design promotes separation of concerns, allowing each module to be developed, tested, and updated independently. Data flows sequentially through the modules, with persistent storage and tracking handled by a central ASE database, ensuring full provenance for every calculation.
+The MLIP-AutoPipe system is designed as a modular, five-stage pipeline orchestrated by a central workflow manager. Data persistence and traceability are managed through an ASE (Atomic Simulation Environment) database, which acts as the single source of truth for all structures, calculations, and model parameters.
 
 ```mermaid
 graph TD
-    A[User Input: input.yaml] --> B(Workflow Orchestrator);
-    B --> C{Module A: Structure Generator};
-    C --> D[ASE Database];
-    B --> E{Module B: Explorer & Sampler};
-    E --> D;
-    B --> F{Module C: Labelling Engine};
-    F --> D;
-    B --> G{Module D: Training Engine};
-    G --> D;
-    B --> H{Module E: Simulation Engine};
-    H --> D;
-    D -- Structures & Results --> B;
-    subgraph "MLIP-AutoPipe Core"
-        C; E; F; G; H;
+    subgraph User Interaction
+        A[input.yaml] --> B{Config Expander};
     end
+
+    subgraph Core Pipeline
+        B --> C[Full Config: exec_config_dump.yaml];
+        C --> D{Workflow Orchestrator};
+
+        D -- Manages --> E[Module A: Structure Generator];
+        D -- Manages --> F[Module B: Explorer & Sampler];
+        D -- Manages --> G[Module C: Labeling Engine];
+        D -- Manages --> H[Module D: Training Engine];
+        D -- Manages --> I[Module E: Simulation Engine];
+    end
+
+    subgraph Data & Models
+        J[(ASE Database)]
+        K[MLIP Models]
+    end
+
+    subgraph External Tools
+        L[Quantum Espresso];
+        M[LAMMPS];
+        N[MACE Model];
+    end
+
+    E -- Stores Initial Structures --> J;
+    J -- Provides Structures --> F;
+    F -- Uses --> N;
+    F -- Selects Candidates --> G;
+    G -- Uses --> L;
+    G -- Stores Labeled Data --> J;
+    J -- Provides Training Data --> H;
+    H -- Creates/Updates --> K;
+    K -- Used by --> I;
+    I -- Uses --> M;
+    I -- Detects Uncertainty --> G;
+
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style C fill:#ccf,stroke:#333,stroke-width:2px
+    style J fill:#f9d,stroke:#333,stroke-width:2px
+    style K fill:#d9f,stroke:#333,stroke-width:2px
 ```
 
-1.  **Workflow Orchestrator:** This is the central nervous system of the pipeline. It parses the user's high-level configuration (`input.yaml`), expands it into a detailed execution plan (`exec_config_dump.yaml`) using a physics-based heuristic engine, and then directs the flow of data and execution between the different modules. It is responsible for initiating tasks, monitoring their progress, and managing the state of each atomic structure in the database (e.g., transitioning it from `needs_labelling` to `labelled`). It also manages the active learning loop, deciding when to stop the simulation and trigger a re-training cycle.
+**Component Breakdown:**
 
-2.  **Module A: Structure Generator:** This module is responsible for creating the initial seed data for the pipeline. It takes the material's composition and, based on an automated analysis of its bonding characteristics (alloy, molecular, ionic, etc.), employs the most appropriate physics-based heuristic to generate a diverse set of initial atomic structures. This avoids the need for expensive *ab initio* molecular dynamics for initial data generation. All generated structures are registered in the central ASE database with a status of `generated`.
+1.  **Config Expander:** This initial component is a heuristic engine that translates the user's high-level `input.yaml` into a comprehensive `exec_config_dump.yaml`. It analyzes the elemental composition to infer material type, selects appropriate DFT parameters based on established protocols (like SSSP), and sets up default simulation parameters, effectively codifying expert knowledge.
 
-3.  **Module B: Explorer & Sampler:** This module uses a pre-trained, universal MLIP (MACE) as a fast surrogate model to perform large-scale molecular dynamics simulations. It explores a vast region of the material's phase space at a fraction of the cost of DFT. The resulting trajectory is then analysed using information-theoretic methods (DIRECT sampling) to identify a small, diverse, and highly informative subset of structures that will be most beneficial for training the bespoke MLIP. These selected candidate structures are flagged in the database with a status of `selected_for_labelling` for the next stage.
+2.  **Workflow Orchestrator:** This is the central nervous system of the pipeline. It reads the full configuration file and directs the execution flow, passing data between the different modules. It is responsible for initiating each stage, handling dependencies, and managing the overall state of the workflow.
 
-4.  **Module C: Labelling Engine:** This module takes the structures selected by the Explorer & Sampler and performs high-precision DFT calculations on them using Quantum Espresso. It automates the entire process, including the generation of input files, selection of pseudopotentials and cutoff energies (following the SSSP protocol), and management of the calculation jobs. Crucially, it includes robust error-handling and recovery mechanisms to deal with common DFT convergence issues. The calculated energies, forces, and stresses are then stored back into the ASE database, associated with their respective atomic structures, and the status is changed to `labelled`.
+3.  **Module A: Structure Generator:** This module is responsible for creating the initial seed data for the MLIP. It does not perform any DFT calculations. Instead, it uses fast, physically-motivated algorithms to generate a diverse set of structures. This includes SQS for alloys, Normal Mode Sampling for molecules, AIRSS for ionic materials, and Melt-Quench techniques for covalent systems.
 
-5.  **Module D: Training Engine:** This module uses the DFT-labelled data stored in the database to train the bespoke MLIP. It employs a "delta learning" strategy, training the model to predict the difference between the DFT results and a simpler, physics-based reference potential (like Lennard-Jones). This approach often leads to better accuracy and data efficiency. The engine handles the optimisation of the MLIP's hyperparameters and saves the trained model artifact for use in the final module. In the context of active learning, this module will train an ensemble of models to facilitate uncertainty quantification.
+4.  **Module B: Explorer & Sampler:** This module takes the initial structures and uses a pre-trained, general-purpose surrogate model (MACE) to rapidly explore the potential energy surface. It runs large-scale MD simulations with the fast surrogate to generate millions of configurations, which are then clustered based on structural similarity. A DIRECT sampling algorithm selects a small, representative, and information-rich subset of these configurations to be passed to the expensive labeling engine.
 
-6.  **Module E: Simulation Engine:** This is the application and refinement stage. The newly trained MLIP is used to run large-scale, long-timescale simulations (MD or kMC). During these simulations, the engine continuously monitors the model's uncertainty by evaluating the variance in predictions from the model ensemble. If the simulation ventures into a region of configuration space where the model is uncertain, the engine triggers the active learning loop. It extracts the novel structure, sends it back to the Labelling Engine (Module C) for DFT calculation, and then retrains the MLIP (Module D) with this new data point, thus iteratively improving the potential's robustness and accuracy.
+5.  **Module C: Labeling Engine:** This module acts as a robust, automated interface to a DFT code (Quantum Espresso). It receives atomic structures, automatically generates the necessary input files with appropriate parameters (k-points, cutoffs, smearing), executes the calculation, parses the output to extract energy, forces, and stress, and handles common errors and convergence issues automatically.
+
+6.  **Module D: Training Engine:** This module takes the DFT-labeled data from the database and trains the MLIP. It implements the Delta Learning strategy, fitting the model to the residual between a baseline physical potential (like Lennard-Jones) and the DFT data. It also includes logic for hyperparameter optimization to ensure the best possible model is trained.
+
+7.  **Module E: Simulation Engine:** This is the active learning and deployment component. It uses the trained MLIP within a simulation engine like LAMMPS to run large-scale MD or kMC simulations. Crucially, it incorporates an "on-the-fly" uncertainty quantification mechanism. When the simulation enters a configuration where the MLIP's prediction is uncertain, this module traps the configuration, sends it back to the Labeling Engine for DFT calculation, and triggers the Training Engine to retrain and improve the model.
+
+8.  **ASE Database:** This is the central data repository. It stores every atomic structure, its corresponding DFT labels, provenance information (how it was generated), and metadata. This ensures data integrity, reproducibility, and allows for efficient querying and data reuse.
 
 ## 4. Design Architecture
 
-The software architecture of MLIP-AutoPipe is designed to be modular, maintainable, and extensible, adhering to modern Python development practices. The codebase will be organised into a clear, hierarchical file structure that separates concerns and promotes code reuse.
+The project follows a modern Python project structure, emphasizing modularity and clear separation of concerns. The core logic is encapsulated within the `mlip_autopipec` package, located in the `src/` directory.
 
 **File Structure:**
 
 ```
-src/
-└── mlip_autopipec/
-    ├── __init__.py
-    ├── cli.py              # Command-line interface entry point (using Click)
-    ├── config/
-    │   ├── expander.py     # Heuristic engine for config expansion
-    │   └── models.py       # Pydantic models for configuration
-    ├── data/
-    │   ├── database.py     # ASE DB wrapper and data access layer
-    │   └── models.py       # Pydantic models for database objects
-    ├── modules/
-    │   ├── __init__.py
-    │   ├── a_structure_generator.py
-    │   ├── b_explorer_sampler.py
-    │   ├── c_labelling_engine.py
-    │   ├── d_training_engine.py
-    │   └── e_simulation_engine.py
-    ├── utils/
-    │   ├── dft_utils.py    # Helpers for Quantum Espresso
-    │   └── parallel.py   # Parallel execution helpers
-    └── orchestrator.py     # Main workflow orchestration logic
-tests/
-pyproject.toml
+.
+├── dev_documents/
+├── src/
+│   └── mlip_autopipec/
+│       ├── __init__.py
+│       ├── cli.py              # Main entry point (Click-based CLI)
+│       ├── configs/
+│       │   └── __init__.py
+│       │   └── models.py       # Pydantic models for configuration files
+│       ├── data/
+│       │   ├── __init__.py
+│       │   └── database.py     # ASE Database wrapper and data management
+│       ├── modules/
+│       │   ├── __init__.py
+│       │   ├── a_structure_generator.py
+│       │   ├── b_explorer_sampler.py
+│       │   ├── c_labeling_engine.py
+│       │   ├── d_training_engine.py
+│       │   └── e_simulation_engine.py
+│       ├── utils/
+│       │   ├── __init__.py
+│       │   └── dft_utils.py    # Helpers for DFT input/output parsing
+│       └── workflow.py         # The Workflow Orchestrator logic
+├── tests/
+│   ├── e2e/
+│   ├── property/
+│   └── unit/
+├── pyproject.toml
+└── README.md
 ```
 
-**Class/Function Definitions Overview:**
+**Data Models (Pydantic-based):**
 
-*   **`cli.py`**: Contains the main `click` command group, providing entry points for running the pipeline (e.g., `mlip-pipe run input.yaml`). This module is the primary user-facing component. It handles parsing command-line arguments, validating inputs like file paths, and configuring system-level concerns like logging verbosity. It then instantiates and delegates control to the `Orchestrator`.
-*   **`orchestrator.py`**: The `Orchestrator` class is the core of the system. It will be initialised with the full configuration and will have methods like `run_pipeline()`, which will sequentially call the different modules. It manages the overall state of the workflow, deciding which module to run next based on the state of the data in the database. It is also responsible for managing the active learning loop, including versioning of the trained potentials.
-*   **`config/expander.py`**: The `ConfigExpander` class contains the logic to read a minimal `input.yaml` and produce a fully-specified `exec_config_dump.yaml`. It will house methods like `_infer_bond_type()` and `_select_dft_params()`. This class encapsulates the "expert knowledge" of the system.
-*   **`config/models.py`**: Defines Pydantic models (`MinimalConfig`, `FullConfig`, `DFTParams`, etc.) for strong typing and validation of all configuration parameters. This ensures that all components receive a valid and complete set of parameters before execution, preventing runtime errors due to misconfiguration.
-*   **`data/database.py`**: The `AseDB` class provides a high-level API for interacting with the project's database, with methods for adding new structures, querying by state (e.g., `get_unlabelled_structures`), and updating with results. This abstraction isolates the rest of the application from the specific database implementation.
-*   **`modules/*.py`**: Each module is implemented as a class (e.g., `StructureGenerator`, `LabellingEngine`). Each class has a primary public method, e.g., `run()`, which is called by the orchestrator. This encapsulates the logic for each stage of the pipeline. For example, `LabellingEngine.run()` iterates through structures needing labels, calls a private `_run_qe()` method, and handles results and errors.
-*   **`utils/*.py`**: This package contains stateless helper functions used across different modules, such as functions to generate QE input files or to parallelise DFT calculations across multiple cores.
+The system's configuration is strictly defined by Pydantic models located in `src/mlip_autopipec/configs/models.py`. This ensures type safety, validation, and provides a clear data contract for the entire application.
 
-**Data Models:**
+*   `SystemConfig`: Defines the physical system (elements, composition).
+*   `SimulationConfig`: Defines the simulation parameters (temperature, active learning strategy).
+*   `DFTComputeConfig`: Specifies all parameters for the DFT engine, including the code, command, pseudopotentials, and convergence settings.
+*   `MLIPTrainingConfig`: Contains settings for the training process, such as the model type, cutoff radius, and loss function weights.
+*   `MainConfig`: The top-level model that aggregates all other configuration models. This corresponds to the `exec_config_dump.yaml`.
 
-The system will rely heavily on Pydantic for defining clear, validated data structures for both configuration and runtime data.
+**Class/Function Overview:**
 
-*   **Configuration Models**: As described above, these models define the structure of the `input.yaml` and `exec_config_dump.yaml` files, ensuring all required parameters are present and correctly typed before the pipeline starts.
-*   **Data Models**: For data passing between modules or stored in the database's metadata, Pydantic models will also be used. For example, a `DFTResult` model could be defined to hold the energy, forces, stress, and convergence status of a calculation, ensuring a consistent data structure is always used when updating the database. The primary data carrier, however, will be the `ase.Atoms` object itself, with results attached via its `calc` attribute or stored in its `info` dictionary. The `AseDB` wrapper will manage the serialisation of this data to and from the database. This combination of ASE for atomic data and Pydantic for metadata provides a robust and type-safe data handling strategy.
+*   `cli.py`: Implements the main command-line interface using `click`. The primary command `mlip-pipe` will take the `input.yaml` as an argument.
+*   `workflow.py`: Contains the `WorkflowOrchestrator` class. This class is instantiated in the CLI and is responsible for loading the configuration and executing the main pipeline logic in sequence.
+*   `configs/models.py`: Defines the Pydantic models mentioned above. It will also contain a `ConfigExpander` class responsible for the heuristic logic that converts the minimal `input.yaml` to the full `exec_config_dump.yaml`.
+*   `data/database.py`: Implements a wrapper around the ASE Db, providing higher-level methods for adding/retrieving structures, querying by state (e.g., 'unlabeled', 'labeled'), and managing metadata.
+*   `modules/`: Each file corresponds to a module in the system architecture. It will contain a primary class (e.g., `StructureGenerator`, `LabelingEngine`) that encapsulates the logic for that stage of the pipeline. These classes will be instantiated and called by the `WorkflowOrchestrator`.
+*   `utils/dft_utils.py`: Contains helper functions for interacting with DFT codes, such as functions to parse Quantum Espresso output files to extract forces and energies, or to generate input files from ASE `Atoms` objects.
+
+This architecture ensures that the core logic of each pipeline stage is isolated, making it easy to test, maintain, and upgrade individual components independently. The orchestrator acts as a coordinator, ensuring that these components work together seamlessly.
 
 ## 5. Implementation Plan
 
-The development of MLIP-AutoPipe is broken down into five sequential and logical cycles, ensuring a phased rollout of functionality. Each cycle builds upon the previous one, culminating in the fully autonomous pipeline.
+The project will be developed over five distinct cycles, each focusing on a logical subset of the total functionality. This phased approach allows for incremental development, testing, and delivery.
 
-**Cycle 01: Core Engine & Workflow Foundation**
-This foundational cycle focuses on establishing the backbone of the pipeline. The primary goal is to create a workflow that can take a pre-existing set of atomic structures, label them using an automated DFT engine, and train a basic MLIP. This cycle intentionally omits automated structure generation and active learning to focus on the core calculation and training loop. We will establish the project structure, dependency management with `uv`, and the basic `Orchestrator` logic. Key deliverables include a robust `LabellingEngine` (Module C) that can reliably run Quantum Espresso, handle its outputs, and recover from basic errors, and a functional `TrainingEngine` (Module D) that can train an ACE potential from the generated data. The Two-Tier configuration system will be introduced, although the heuristic engine will be minimal at this stage. This cycle will also involve setting up the ASE database wrapper and defining the initial data schema, including the status flags for tracking structures. We will implement the core logic for parsing QE output files, a non-trivial task that requires robust handling of different formats and potential error messages. The `TrainingEngine` will include the baseline implementation of the delta learning strategy, which is fundamental to the accuracy of the final potential. This initial cycle validates the most critical third-party integrations—Quantum Espresso and the ACE training library—and ensures they can be controlled programmatically.
+**Cycle 01: Core Engine - Automated Labeling and Training**
+This foundational cycle focuses on creating the essential components for a non-active learning workflow. The goal is to establish a pipeline that can take a set of pre-existing atomic structures, label them using DFT, and train a basic MLIP.
+*   **Features:**
+    *   Implement the Pydantic models for configuration (`configs/models.py`).
+    *   Develop the ASE Database wrapper (`data/database.py`) for data persistence.
+    *   Implement the `LabelingEngine` (`modules/c_labeling_engine.py`) with a robust interface to Quantum Espresso, including automated parameter setting and error handling.
+    *   Implement the `TrainingEngine` (`modules/d_training_engine.py`) to train an ACE model using the Delta Learning approach.
+    *   Create the initial `WorkflowOrchestrator` (`workflow.py`) to connect these components.
+    *   Develop the basic CLI (`cli.py`) to run this linear workflow.
 
-**Cycle 02: Automated Structure Generation & Configuration Expansion**
-This cycle tackles the crucial "cold start" problem: generating the initial dataset. Here, we will develop the `StructureGenerator` (Module A). This involves implementing the logic to automatically classify a material based on its composition and then apply the appropriate heuristic—SQS for alloys, Normal Mode Sampling for molecules, and so on. The goal is to produce a diverse, physically relevant set of structures without any DFT calculations. In parallel, the `ConfigExpander` heuristic engine will be significantly enhanced. It will be developed to intelligently infer optimal DFT parameters, simulation temperatures, and other key settings from the minimal user input, truly beginning to "remove the expert from the loop" at the configuration stage. The implementation will involve integrating with materials science libraries like `pymatgen` to access the necessary data for bond characterization and heuristic rule implementation. The SQS implementation will likely wrap a robust external code like `icet`, and the interface will be carefully managed. This cycle is about codifying expert knowledge that typically precedes any MLIP workflow into a fully automated and reproducible software component.
+**Cycle 02: Structure Generation and Configuration Expansion**
+This cycle builds upon the core engine by automating the initial steps of the workflow: configuration and data generation. The goal is to remove the need for the user to provide initial structures.
+*   **Features:**
+    *   Develop the `ConfigExpander` logic to translate a minimal `input.yaml` into a full `exec_config_dump.yaml`.
+    *   Implement `Module A: StructureGenerator` (`modules/a_structure_generator.py`) with initial support for SQS for alloys and NMS for molecules, based on the automatically determined material type.
+    *   Integrate the `StructureGenerator` into the `WorkflowOrchestrator`.
 
-**Cycle 03: Efficient Exploration with a Surrogate Model**
-This cycle focuses on dramatically improving the data efficiency of the pipeline. We will implement the `Explorer & Sampler` (Module B). This involves integrating the pre-trained MACE universal potential as a surrogate model. The module will use MACE to run very fast, large-scale MD simulations to explore the material's energy landscape. The core technical challenge of this cycle is the implementation of the DIRECT sampling algorithm. This will involve calculating SOAP/ACE descriptors for the vast number of frames in the MD trajectory and then using a computationally efficient clustering and sampling method, optimised with Numba, to select the most informative structures for expensive DFT labelling. This will ensure that DFT resources are spent only on data points that provide the most new information. This implementation will require careful performance engineering. The descriptor calculation loop, which can be a significant bottleneck, will be profiled and optimized, likely using Numba to achieve near-native code speed. The choice of clustering algorithm (e.g., Mini-Batch K-Means) will be critical to handle the potentially millions of frames generated by the MD simulations efficiently.
+**Cycle 03: Surrogate-Based Exploration and Sampling**
+This cycle introduces the concept of efficient exploration, aiming to drastically reduce the number of DFT calculations needed.
+*   **Features:**
+    *   Integrate the MACE universal potential as a surrogate model.
+    *   Implement `Module B: Explorer & Sampler` (`modules/b_explorer_sampler.py`). This includes running MD with MACE to generate a large trajectory.
+    *   Implement the descriptor calculation (e.g., SOAP) and the DIRECT sampling algorithm to select a diverse subset of structures for labeling.
+    *   Optimize performance-critical parts of the sampling process using Numba.
 
-**Cycle 04: Active Learning and Long-Timescale Simulation**
-With the core components in place, this cycle closes the loop, transforming the linear pipeline into a self-improving, autonomous system. We will develop the `SimulationEngine` (Module E) and integrate the full On-the-Fly (OTF) active learning workflow. The engine will use the bespoke MLIP trained in Cycle 01-03 to run simulations. It will continuously monitor the model's uncertainty during the simulation. When uncertainty exceeds a dynamic threshold, the simulation is paused, the new structure is extracted (with advanced handling for periodic boundaries), and it is passed back to Module C for labelling and Module D for retraining. This cycle will also involve integrating advanced simulation techniques like Adaptive kMC, enabling the exploration of rare events and long-timescale phenomena. A key design decision here will be the implementation of the uncertainty metric. We will implement an ensemble-based approach, where the `TrainingEngine` is modified to produce a committee of models. The `SimulationEngine` will then calculate the variance of the predictions from this committee, a robust and widely used method for uncertainty quantification.
+**Cycle 04: Active Learning and On-the-Fly Simulation**
+This is the most advanced cycle, closing the loop to create a fully autonomous, self-improving system.
+*   **Features:**
+    *   Implement `Module E: SimulationEngine` (`modules/e_simulation_engine.py`) to run MD or kMC simulations with the trained MLIP using LAMMPS.
+    *   Develop the on-the-fly uncertainty quantification mechanism.
+    *   Implement the logic to trap high-uncertainty structures and send them back to the `LabelingEngine`.
+    *   Modify the `WorkflowOrchestrator` to handle this iterative, non-linear loop, allowing the model to be retrained multiple times within a single run.
+    *   Implement advanced boundary treatment for cluster extraction to ensure physical realism.
 
-**Cycle 05: User Interface, Finalisation, and Documentation**
-The final cycle focuses on usability, robustness, and polish. A user-friendly command-line interface (CLI) will be built using the `click` library, providing clear commands, options, and feedback to the user. The code will be thoroughly documented, and comprehensive user guides and tutorials will be written. This cycle also involves rigorous testing of the entire integrated pipeline on a diverse set of benchmark materials to ensure its robustness and reliability. The goal of this phase is to transition the project from a collection of powerful tools into a polished, accessible, and well-documented scientific software package. This includes implementing rich console outputs using libraries like `rich` to display progress bars and structured logs, making the long-running process transparent to the user. A full suite of end-to-end benchmark tests on known materials will be performed to scientifically validate that the generated potentials are physically reasonable.
+**Cycle 05: Advanced Features and Usability**
+The final cycle focuses on refining the system, adding more advanced physics, and improving the user experience.
+*   **Features:**
+    *   Enhance `StructureGenerator` with support for Ionic (AIRSS) and Covalent (Melt-Quench) materials.
+    *   Implement advanced features in the `LabelingEngine`, such as automatic handling of magnetism and Spin-Orbit Coupling.
+    *   Refine the kMC implementation in the `SimulationEngine` with tiered rate calculations for efficiency.
+    *   Improve documentation, add tutorials, and enhance the CLI with more user-friendly outputs and progress indicators.
 
 ## 6. Test Strategy
 
-The testing strategy for MLIP-AutoPipe is multi-layered, incorporating unit, integration, and end-to-end tests to ensure correctness, reliability, and scientific validity at every level of the system.
+The testing strategy is designed to be comprehensive, covering all levels of the software stack from individual functions to the full end-to-end workflow. Testing is integrated into each development cycle.
 
-**Cycle 01: Core Engine & Workflow Foundation**
-*   **Unit Tests:** Each utility function, such as QE input file parsers, will be tested in isolation. The `LabellingEngine` will be tested using mock `subprocess.run` calls to simulate QE execution, verifying that it correctly handles successful runs, errors (e.g., SCF non-convergence), and the parsing of output files. The `TrainingEngine`'s data preparation logic will be tested to ensure data is correctly formatted for the ACE model. We will create a suite of static QE output files that represent different success and failure modes and test the parser against each one to ensure it extracts data correctly or raises the appropriate exception. The delta learning calculation will be tested with a simple, known potential to verify the correctness of the subtraction.
-*   **Integration Tests:** We will test the flow between the `Orchestrator`, `LabellingEngine`, and `TrainingEngine`. This will use a small, fixed set of pre-computed atomic structures and their expected DFT results stored on disk. The test will run the pipeline, which will call a mocked QE (that returns the pre-computed results), and verify that the `TrainingEngine` receives the data correctly and that a model file is produced. This test ensures the database interactions and the state transitions (`needs_labelling` -> `labelled`) are handled correctly.
+**Unit Testing:**
+Each module will have a corresponding suite of unit tests located in `tests/unit/`. The primary goal is to test components in isolation.
+*   **Approach:** External dependencies such as the file system, database, and actual DFT/MD codes will be mocked using libraries like `pytest-mock`. For example, when testing the `LabelingEngine`, `subprocess.run` will be patched to return pre-defined Quantum Espresso output, allowing verification of the parsing logic without actually running DFT.
+*   **Cycle 01:** Write unit tests for the database wrapper (mocking `ase.db.connect`), the `LabelingEngine`'s output parser, and the `TrainingEngine`'s interaction with the ACE library.
+*   **Cycle 02:** Test the `ConfigExpander`'s heuristic logic with various minimal inputs. Test the `StructureGenerator`'s output for different material types to ensure it produces valid `Atoms` objects.
+*   **Cycle 03:** Test the DIRECT sampling algorithm with known datasets to ensure correctness. Test the performance of Numba-optimized functions.
+*   **Cycle 04:** Test the uncertainty quantification logic with mock model outputs. Test the cluster extraction and boundary treatment algorithms.
+*   **Cycle 05:** Add tests for the new structure generation methods and advanced DFT features.
 
-**Cycle 02: Automated Structure Generation & Configuration Expansion**
-*   **Unit Tests:** The bond-type classification logic will be tested with various chemical formulas. Each structure generation method (SQS, NMS, etc.) will be tested to ensure it produces the correct number and format of structures with valid `ase.Atoms` objects. The `ConfigExpander` will be tested to verify that minimal configurations are correctly expanded into full, valid configurations for a range of material types, checking that the inferred DFT parameters are sensible.
-*   **Integration Tests:** A test will run the `StructureGenerator` and verify that the generated structures are correctly saved into a test database. Another test will link the `ConfigExpander` to the `Orchestrator`, ensuring that a minimal `input.yaml` successfully triggers the expanded configuration used by the pipeline modules, and no parameters are missing for the downstream components.
+**Integration Testing:**
+Integration tests will verify the interaction and data flow between different modules of the pipeline. These will be located in `tests/e2e/`.
+*   **Approach:** These tests will use a real (but small and temporary) ASE database and will involve limited, controlled calls to external codes where necessary. For example, testing the link between the `Explorer` and `LabelingEngine` will involve writing candidate structures to the test database and verifying that the `LabelingEngine` correctly retrieves and processes them.
+*   **Cycle 01:** Create a test that verifies the orchestrator can successfully run the `LabelingEngine` and then the `TrainingEngine`, passing data correctly through the test database.
+*   **Cycle 02:** Test the flow from `ConfigExpander` to `StructureGenerator` to the database.
+*   **Cycle 03:** Test the integration of the `Explorer & Sampler` with the database and the `LabelingEngine`.
+*   **Cycle 04:** Design a test for a single, complete active learning loop, using a mock model that returns high uncertainty for a specific structure to trigger the retraining pathway.
 
-**Cycle 03: Efficient Exploration with a Surrogate Model**
-*   **Unit Tests:** The descriptor calculation functions (e.g., SOAP/ACE) will be tested for correctness and performance (benchmarked with Numba). The clustering and sampling logic of the DIRECT algorithm will be tested with synthetic data to ensure it selects a diverse and representative subset of points. The test will create a synthetic dataset with clear clusters of varying densities and assert that the stratified sampling selects representatives from each cluster.
-*   **Integration Tests:** A full integration test for Module B will be created. It will use a short, pre-recorded MD trajectory. The test will run the descriptor calculation, clustering, and sampling, and verify that the correct structures are flagged in the test database for subsequent labelling. We will mock the MACE model to avoid GPU dependencies in standard CI environments. This test will focus on verifying that the number of selected structures matches the user's request.
-
-**Cycle 04: Active Learning and Long-Timescale Simulation**
-*   **Unit Tests:** The uncertainty calculation method, based on model committees, will be tested to ensure it returns sensible values. The logic for extracting a sub-structure for re-training, including the advanced boundary treatment, will be tested in isolation to prevent artifacts from periodic boundaries.
-*   **End-to-End (E2E) Tests:** This cycle requires the first true E2E test. It will be a "short loop" test that runs the entire pipeline on a very simple system (e.g., a silicon dimer). The test will: 1. Generate an initial structure. 2. Label it. 3. Train a trivial MLIP ensemble. 4. Run a short MD simulation with the `SimulationEngine`. 5. Force the uncertainty to be high to trigger the active learning loop. 6. Verify that a new structure is extracted and sent back to the labelling queue. This test confirms that the entire feedback loop is wired correctly, including the re-training and model versioning.
-
-**Cycle 05: User Interface, Finalisation, and Documentation**
-*   **Unit Tests:** The `click`-based CLI will be tested using `CliRunner` to verify that all commands, arguments, and options work as expected and that appropriate error messages are shown for invalid input. This includes testing for non-existent files, malformed configs, and help text generation.
-*   **E2E Tests:** A suite of E2E tests will be developed for a range of benchmark materials (e.g., Si, FePt, an ionic crystal). These tests will run the full pipeline from a minimal `input.yaml` and verify the final outcome. While we won't check for the exact scientific accuracy of the potential (as this is non-deterministic), we will assert that the pipeline completes successfully, a potential file is created, and the database contains structures in all the expected states. We will also perform basic scientific validation, like checking that the lattice constant of a crystal is reasonable, to ensure the potential is not nonsensical. These tests serve as the ultimate validation of the integrated system.
+**End-to-End (E2E) / User Acceptance Testing (UAT):**
+E2E tests will validate the entire workflow from a user's perspective, running the full pipeline on small, well-understood physical systems. These tests also serve as the basis for the UAT defined in the `UAT.md` files for each cycle.
+*   **Approach:** These tests will use the `click.testing.CliRunner` to invoke the command-line interface with a minimal `input.yaml` for a simple system (e.g., a Si diamond cell or an Ar dimer). They will run actual, albeit very fast, DFT and MD calculations. The tests will assert that the pipeline completes successfully and that the final output (e.g., a trained model file, simulation trajectory) is created and has the expected properties.
+*   **Cycle 01:** A UAT to demonstrate that a set of provided Si structures can be labeled and a model trained.
+*   **Cycle 02:** A UAT to show that providing `input.yaml` with `elements: ["Si"]` automatically generates initial structures and runs the workflow.
+*   **Cycle 03 & 04:** A UAT for an FePt alloy, demonstrating the surrogate exploration and a single iteration of the active learning loop.
+*   **Cycle 05:** UATs demonstrating the new features on appropriate material systems.
+The test suite will be run automatically via CI on every commit to ensure that new changes do not introduce regressions.
