@@ -11,7 +11,7 @@ from dev_src.ac_cdd_core.utils import detect_package_dir, read_prompt
 
 
 class PathsConfig(BaseSettings):
-    model_config = SettingsConfigDict(extra="ignore")
+    model_config = SettingsConfigDict(extra="forbid")
     documents_dir: str = "dev_documents"
     package_dir: str = Field(default_factory=detect_package_dir)
     contracts_dir: str = ""
@@ -32,14 +32,14 @@ class PathsConfig(BaseSettings):
 
 
 class JulesConfig(BaseSettings):
-    model_config = SettingsConfigDict(extra="ignore")
+    model_config = SettingsConfigDict(extra="forbid")
     executable: str = "jules"
     timeout_seconds: int = 7200
     polling_interval_seconds: int = 120
 
 
 class ToolsConfig(BaseSettings):
-    model_config = SettingsConfigDict(extra="ignore")
+    model_config = SettingsConfigDict(extra="forbid")
     jules_cmd: str = "jules"
     gh_cmd: str = "gh"
     audit_cmd: str = "bandit"
@@ -51,7 +51,7 @@ class ToolsConfig(BaseSettings):
 
 
 class SandboxConfig(BaseSettings):
-    model_config = SettingsConfigDict(extra="ignore")
+    model_config = SettingsConfigDict(extra="forbid")
     template: str | None = None
     timeout: int = 3600
     cwd: str = "/home/user/project"
@@ -71,7 +71,7 @@ class SandboxConfig(BaseSettings):
 
 
 class AgentsConfig(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", extra="forbid")
     auditor_model: str = Field(
         default="openrouter/google/gemini-pro-1.5", validation_alias="SMART_MODEL"
     )
@@ -81,7 +81,7 @@ class AgentsConfig(BaseSettings):
 
 
 class ReviewerConfig(BaseSettings):
-    model_config = SettingsConfigDict(extra="ignore")
+    model_config = SettingsConfigDict(extra="forbid")
     smart_model: str = Field(
         default="claude-3-5-sonnet",
         description="Model for editing code (Fixer)",
@@ -139,7 +139,7 @@ class ACCDDSettings(BaseSettings):
     def integration_branch(self) -> str:
         return f"{self.session.integration_branch_prefix}/{self.current_session_id}/integration"
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="allow")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="forbid")
 
 
 config = ACCDDSettings()
