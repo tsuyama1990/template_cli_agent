@@ -89,8 +89,11 @@ class AseDBWrapper:
         results = []
         with self._connect() as db:
             for row in db.select(state="labeled"):
-                atoms = row.toatoms()
-                dft_result_json = row.key_value_pairs["dft_result"]
-                dft_result = DFTResult.model_validate_json(dft_result_json)
-                results.append((atoms, dft_result))
+                try:
+                    atoms = row.toatoms()
+                    dft_result_json = row.key_value_pairs["dft_result"]
+                    dft_result = DFTResult.model_validate_json(dft_result_json)
+                    results.append((atoms, dft_result))
+                except Exception as e:
+                    print(f"Skipping corrupted data in database (ID: {row.id}): {e}")
         return results

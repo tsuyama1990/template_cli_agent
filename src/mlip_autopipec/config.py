@@ -65,3 +65,11 @@ class MLIPTrainingConfig(BaseModel):
     loss_weights: dict[str, float] = Field(
         ..., description="Weights for the loss function components."
     )
+
+
+class Settings(BaseModel):
+    """Manages application-wide settings."""
+
+    qe_command: str = Field(
+        "pw.x", description="The command to execute Quantum Espresso."
+    )

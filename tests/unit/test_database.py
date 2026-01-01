@@ -70,3 +70,25 @@ def test_get_all_labeled_atoms(temp_db):
     labeled_atoms = db_wrapper.get_all_labeled_atoms()
     assert len(labeled_atoms) == 1
     assert labeled_atoms[0][0].get_chemical_symbols() == ["Be"]
+
+
+def test_get_all_labeled_atoms_corrupted_data(temp_db):
+    """Tests that corrupted data in the database is gracefully skipped."""
+    db_wrapper = AseDBWrapper(db_path=temp_db)
+    atoms = Atoms("C")
+    id_corrupted = db_wrapper.add_atoms(atoms)
+
+    # Manually insert corrupted data
+    with db_wrapper._connect() as db:
+        db.update(id_corrupted, state="labeled", dft_result="invalid json")
+
+    labeled_atoms = db_wrapper.get_all_labeled_atoms()
+    assert len(labeled_atoms) == 0
+
+
+def test_database_connection_error(tmp_path):
+    """Tests that a connection error is handled gracefully."""
+    db_path = tmp_path / "non_existent_dir" / "test.db"
+    db_wrapper = AseDBWrapper(db_path=str(db_path))
+    with pytest.raises(OSError):
+        db_wrapper.add_atoms(Atoms("H"))

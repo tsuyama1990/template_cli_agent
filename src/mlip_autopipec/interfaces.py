@@ -41,3 +41,21 @@ class IWorkflowOrchestrator(ABC):
     def run_training(self) -> None:
         """Runs the MLIP model training process."""
         pass
+
+
+class IProcessRunner(ABC):
+    """Interface for running external processes."""
+
+    @abstractmethod
+    def run(self, command: list[str], stdout_path: str) -> None:
+        """
+        Runs an external command and redirects its stdout to a file.
+
+        Args:
+            command: The command to run as a list of strings.
+            stdout_path: The path to the file to redirect stdout to.
+
+        Raises:
+            subprocess.CalledProcessError: If the command returns a non-zero exit code.
+        """
+        pass
