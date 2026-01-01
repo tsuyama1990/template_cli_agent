@@ -37,8 +37,27 @@ class ITrainingEngine(ABC):
         pass
 
 
+class IStructureGenerator(ABC):
+    """Interface for a structure generator."""
+
+    @abstractmethod
+    def generate(self) -> list[Atoms]:
+        """
+        Generates a list of initial atomic structures.
+
+        Returns:
+            A list of ase.Atoms objects.
+        """
+        pass
+
+
 class IWorkflowOrchestrator(ABC):
     """Interface for the main workflow orchestrator."""
+
+    @abstractmethod
+    def run(self) -> None:
+        """Runs the main workflow."""
+        pass
 
     @abstractmethod
     def label_structure_by_id(self, structure_id: int) -> None:

@@ -106,3 +106,7 @@ ELEMENT_MELTING_POINTS: dict[str, int] = {
     "Si": 1687,
     "Al": 933,
 }
+
+# --- Structure Generation Constants ---
+ALLOY_TARGET_ATOMS: int = 64
+ALLOY_STRAIN_MAGNITUDE: float = 0.05

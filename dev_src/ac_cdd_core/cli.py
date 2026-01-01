@@ -262,9 +262,8 @@ def run_cycle(
                     # Priority to explicit ID if provided, else None (auto-load)
                     target_resume_id = resume_id if resume_id else None
                     resume_info = await SessionManager.resume_jules_session(target_resume_id)
-                    console.print(
-                        f"[green]✓ Resumed Jules session with PR: {resume_info.get('pr_url', 'None')}[/green]"
-                    )
+                    pr_url = resume_info.get("pr_url", "None")
+                    console.print(f"[green]✓ Resumed Jules session with PR: {pr_url}[/green]")
 
                 # Load session (Sync)
                 session_data = SessionManager.load_or_reconcile_session(
@@ -289,7 +288,8 @@ def run_cycle(
                 ):
                     if saved_active_cycle != "01":
                         console.print(
-                            f"[yellow]Auto-Switching to saved Active Cycle: {saved_active_cycle}[/yellow]"
+                            "[yellow]Auto-Switching to saved Active Cycle: "
+                            f"{saved_active_cycle}[/yellow]"
                         )
                         target_cycle = saved_active_cycle
 
@@ -397,8 +397,8 @@ def run_cycle(
                         raw_list = found_cycles
                         # console.print(f"[dim]Loaded cycle plan from {p.name}: {raw_list}[/dim]")
                         break
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Skipping malformed plan file {p.name}: {e}")
 
         # 2. Fallback: Scan Directory for CYCLExx
         if not raw_list:
@@ -431,8 +431,10 @@ def run_cycle(
                 active = data["active_cycle_id"]
                 if active in raw_list:
                     start_index = raw_list.index(active)
+                    skipped_cycles = raw_list[start_index - 1] if start_index > 0 else "None"
                     console.print(
-                        f"[yellow]Taking up from saved active cycle: {active} (Skipping 01-{raw_list[start_index - 1] if start_index > 0 else 'None'})[/yellow]"
+                        f"[yellow]Taking up from saved active cycle: {active} "
+                        f"(Skipping 01-{skipped_cycles})[/yellow]"
                     )
                     cycles_to_run = raw_list[start_index:]
 

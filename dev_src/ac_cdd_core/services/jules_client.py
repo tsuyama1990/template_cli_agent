@@ -36,33 +36,52 @@ class JulesApiClient:
     BASE_URL = "https://jules.googleapis.com/v1alpha"
 
     def __init__(self, api_key: str | None = None):
-        self.api_key = api_key or settings.JULES_API_KEY
-        if not self.api_key:
+        # Allow None initially
+        self.api_key = api_key
+
+    def _get_api_key(self) -> str:
+        """Lazy loads and validates the API key."""
+        if self.api_key:
+            return self.api_key
+
+        # --- Lazy Loading Logic ---
+        loaded_key = settings.JULES_API_KEY.get_secret_value() if settings.JULES_API_KEY else None
+        if not loaded_key:
             from dotenv import load_dotenv
 
             load_dotenv()
-            self.api_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
+            loaded_key = os.getenv("JULES_API_KEY") or os.getenv("GOOGLE_API_KEY")
 
-        if not self.api_key:
-            # Last ditch attempt
+        # Last ditch attempt
+        if not loaded_key:
             try:
                 if Path(".env").exists():
                     content = Path(".env").read_text()
                     for line in content.splitlines():
                         if line.startswith("JULES_API_KEY="):
-                            self.api_key = line.split("=", 1)[1].strip().strip('"')
+                            loaded_key = line.split("=", 1)[1].strip().strip('"')
+                            break
             except Exception:
                 logger.debug("Skipping malformed .env line during key check.")
 
-        if not self.api_key:
+        # --- Validation ---
+        if not loaded_key:
             # If still missing, check if we should allow dummy for testing
             if os.environ.get("AC_CDD_AUTO_APPROVE") or "PYTEST_CURRENT_TEST" in os.environ:
                 logger.warning("Jules API Key missing in Test Environment. Using dummy key.")
                 self.api_key = "dummy_jules_key"
+                return self.api_key
             else:
+                # This will be caught by the calling function and wrapped
                 raise ValueError("API Key not found for Jules API.")
 
-        self.headers = {"x-goog-api-key": self.api_key, "Content-Type": "application/json"}
+        self.api_key = loaded_key
+        return self.api_key
+
+    @property
+    def headers(self) -> dict[str, str]:
+        """Dynamically gets headers with the validated API key."""
+        return {"x-goog-api-key": self._get_api_key(), "Content-Type": "application/json"}
 
     def _request(self, method: str, endpoint: str, data: dict | None = None) -> dict[str, Any]:
         # DETOUR: Check for dummy key to avoid network calls
@@ -173,10 +192,9 @@ class JulesClient:
 
         self.manager_agent = manager_agent
 
-        # Instantiate internal API client for delegation
-        self.api_client = JulesApiClient(
-            api_key=self.credentials.token if self.credentials else settings.JULES_API_KEY
-        )
+        # Instantiate internal API client for delegation.
+        # It will lazy-load its own API key.
+        self.api_client = JulesApiClient()
 
     async def _sleep(self, seconds: float) -> None:
         """Async sleep wrapper for easier mocking in tests."""
@@ -187,20 +205,35 @@ class JulesClient:
         return self.api_client.list_activities(session_id_path)
 
     def _get_headers(self) -> dict[str, str]:
-        headers = {
-            "Content-Type": "application/json",
-        }
+        headers = {"Content-Type": "application/json"}
 
-        # Quickstart: "To authenticate your requests, pass the API key in the X-Goog-Api-Key header"
-        if settings.JULES_API_KEY:
-            headers["X-Goog-Api-Key"] = settings.JULES_API_KEY
+        # Jules documentation prioritizes API Key.
+        api_key = None
+        try:
+            # Use the unified key loading logic from the sync client
+            api_key = self.api_client._get_api_key()
+        except ValueError:
+            # This is raised if no key is found and not in a test env.
+            # We can proceed to check for ADC.
+            pass
 
-        # If credentials exist, use them too (standard GCP behavior allows both)
-        # But for Jules Alpha with API Key access, Key is primary.
-        if self.credentials:
+        if api_key and "dummy_jules_key" not in api_key:
+            headers["x-goog-api-key"] = api_key
+        elif self.credentials:
+            logger.debug("Jules API key not found, using Google ADC for authentication.")
             if not self.credentials.valid:
-                self.credentials.refresh(GoogleAuthRequest())
+                self.credentials.refresh(GoogleAuthRequest())  # Note: sync call
             headers["Authorization"] = f"Bearer {self.credentials.token}"
+        elif api_key == "dummy_jules_key":
+            # This is a test environment, don't add any auth headers.
+            # Calls will be mocked.
+            pass
+        else:
+            # No real API key, no ADC, and not a test env.
+            raise JulesSessionError(
+                "Authentication failed: No JULES_API_KEY found and "
+                "Google Application Default Credentials are not available."
+            )
 
         return headers
 
@@ -235,19 +268,22 @@ class JulesClient:
         """
         # DETOUR for JulesClient (Async HTTPX logic)
         # Check if internal API client is in dummy mode AND http client is NOT mocked by test
-        if self.api_client.api_key == "dummy_jules_key" and not self._is_httpx_mocked():
-            logger.info("Test Mode: Simulating Jules Session run.")
-            return {
-                "session_name": f"sessions/dummy-{session_id}",
-                "pr_url": "https://github.com/dummy/repo/pull/1",
-                "status": "success",
-                "cycles": ["01", "02"],  # For architect session
-            }
+        try:
+            is_dummy = self.api_client._get_api_key() == "dummy_jules_key"
+            if is_dummy and not self._is_httpx_mocked():
+                logger.info("Test Mode: Simulating Jules Session run.")
+                return {
+                    "session_name": f"sessions/dummy-{session_id}",
+                    "pr_url": "https://github.com/dummy/repo/pull/1",
+                    "status": "success",
+                    "cycles": ["01", "02"],  # For architect session
+                }
+        except ValueError:
+            # This means no API key and not in a test env, so we'll fail below.
+            pass
 
-        if not settings.JULES_API_KEY and not self.credentials:
-            if "PYTEST_CURRENT_TEST" not in os.environ:
-                raise JulesSessionError("Missing JULES_API_KEY or ADC credentials.")
-            # For tests, allow proceeding if mocked later, or fail later if real call attempted.
+        # This will raise JulesSessionError if no auth is available.
+        self._get_headers()
 
         # 1. Prepare Source Context
         try:

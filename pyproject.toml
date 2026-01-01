@@ -34,6 +34,7 @@ dependencies = [
     "click",
     "litellm>=1.80.11",
     "numpy",
+    "pymatgen",
 ]
 
 [tool.uv]

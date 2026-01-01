@@ -28,6 +28,35 @@ def app() -> None:
     help="Path to the user input YAML file.",
 )
 @click.option(
+    "--db-path",
+    type=str,
+    default=None,
+    help="Override the path to the ASE database file specified in the config.",
+)
+def run(config_path: str, db_path: str | None) -> None:
+    """Runs the full MLIP generation workflow."""
+    user_input = UserInputConfig.from_yaml(config_path)
+    expander = ConfigExpander()
+    full_config = expander.expand(user_input)
+
+    if db_path:
+        full_config.db_path = db_path
+
+    full_config.to_yaml("exec_config_dump.yaml")
+
+    application = Application(full_config)
+    application.run()
+
+
+@app.command()
+@click.option(
+    "--config",
+    "config_path",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False),
+    help="Path to the user input YAML file.",
+)
+@click.option(
     "--id",
     required=True,
     type=int,

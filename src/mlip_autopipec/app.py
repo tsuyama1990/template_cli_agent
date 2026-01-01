@@ -60,3 +60,10 @@ class Application:
         """
         orchestrator = self._get_orchestrator()
         orchestrator.run_training()
+
+    def run(self) -> None:
+        """
+        Runs the full MLIP generation workflow.
+        """
+        orchestrator = self._get_orchestrator()
+        orchestrator.run()

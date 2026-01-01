@@ -1,6 +1,7 @@
 from mlip_autopipec.database import AseDBWrapper
 from mlip_autopipec.interfaces import (
     ILabelingEngine,
+    IStructureGenerator,
     ITrainingEngine,
     IWorkflowOrchestrator,
 )
@@ -17,6 +18,7 @@ class WorkflowOrchestrator(IWorkflowOrchestrator):
 
     def __init__(
         self,
+        structure_generator: IStructureGenerator,
         labeling_engine: ILabelingEngine,
         training_engine: ITrainingEngine,
         db_wrapper: AseDBWrapper,
@@ -25,13 +27,33 @@ class WorkflowOrchestrator(IWorkflowOrchestrator):
         Initializes the WorkflowOrchestrator.
 
         Args:
+            structure_generator: An object that implements the IStructureGenerator interface.
             labeling_engine: An object that implements the ILabelingEngine interface.
             training_engine: An object that implements the ITrainingEngine interface.
             db_wrapper: A wrapper for the ASE database.
         """
+        self.structure_generator = structure_generator
         self.labeling_engine = labeling_engine
         self.training_engine = training_engine
         self.db_wrapper = db_wrapper
+
+    def run(self) -> None:
+        """Runs the main workflow."""
+        if self.db_wrapper.is_empty():
+            print("Database is empty. Generating initial structures...")
+            structures = self.structure_generator.generate()
+            for atoms in structures:
+                self.db_wrapper.add_atoms(atoms, state="unlabeled")
+            print(f"Successfully saved {len(structures)} new structures to the database.")
+        else:
+            print("Database is not empty. Skipping initial structure generation.")
+
+        # The rest of the workflow logic will be added in subsequent cycles.
+        # For now, we just generate structures, label them, and train.
+        unlabeled_ids = self.db_wrapper.get_unlabeled_ids()
+        for structure_id in unlabeled_ids:
+            self.label_structure_by_id(structure_id)
+        self.run_training()
 
     def label_structure_by_id(self, structure_id: int) -> None:
         """
