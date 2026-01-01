@@ -92,12 +92,14 @@ class LabelingEngine:
                         "Could not parse output."
                     )
 
-            except FileNotFoundError:
+            except FileNotFoundError as e:
                 logger.error(
                     f"    ...Error: Command '{self.config.command}' not found. "
                     "Ensure Quantum Espresso is in your PATH."
                 )
-                raise
+                raise FileNotFoundError(
+                    f"Command '{self.config.command}' not found."
+                ) from e
             except subprocess.CalledProcessError as e:
                 logger.error(
                     f"    ...DFT calculation for ID {row_id} failed with exit code "
@@ -105,7 +107,9 @@ class LabelingEngine:
                 )
                 if e.stderr:
                     logger.error(f"    ...Error output:\n{e.stderr.decode()}")
-                raise
+                raise subprocess.CalledProcessError(
+                    e.returncode, e.cmd, output=e.output, stderr=e.stderr
+                ) from e
 
         logger.info("Labeling Engine finished.")
         return results

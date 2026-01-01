@@ -57,6 +57,8 @@ class AseDBWrapper:
             A list of AtomsRow objects where `labelled=False`.
         """
         with self._connect() as db:
+            # Note: The ase.db.select method does not support parameterized queries.
+            # This is a potential security risk if user input is ever used here.
             return list(db.select('labelled=False'))
 
     def update_row_with_dft_results(self, row_id: int, dft_results: dict[str, Any]):
@@ -92,4 +94,6 @@ class AseDBWrapper:
             A list of AtomsRow objects where `labelled=True`.
         """
         with self._connect() as db:
+            # Note: The ase.db.select method does not support parameterized queries.
+            # This is a potential security risk if user input is ever used here.
             return list(db.select('labelled=True'))

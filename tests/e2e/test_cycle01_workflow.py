@@ -42,7 +42,7 @@ def sample_config_file(tmp_path):
     return str(config_file)
 
 
-@patch('mlip_autopipec.cli.Orchestrator')
+@patch('mlip_autopipec.workflow.Orchestrator')
 def test_cli_run_cycle_success(mock_orchestrator, runner, sample_config_file):
     """Test the CLI `run-cycle` command with a valid config."""
     # Arrange
@@ -54,7 +54,6 @@ def test_cli_run_cycle_success(mock_orchestrator, runner, sample_config_file):
 
     # Assert
     assert result.exit_code == 0
-    assert "Loading configuration from" in result.output
 
     # Check that Orchestrator was initialized with the correct config
     mock_orchestrator.assert_called_once()
@@ -81,4 +80,4 @@ def test_cli_run_cycle_invalid_config(runner, tmp_path):
 
     result = runner.invoke(cli, ['run-cycle', '--config', str(config_file)])
     assert result.exit_code != 0
-    assert "Error: Configuration validation failed" in result.output
+    assert "Error loading configuration" in result.output

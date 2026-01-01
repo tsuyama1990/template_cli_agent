@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from ase import Atoms
 
-from mlip_autopipec.data.models import DFTCompute
+from mlip_autopipec.data.models import DFTCompute, DFTResults
 from mlip_autopipec.utils.dft_utils import (
     KBAR_TO_EV_A3,
     RY_AU_TO_EV_A,
@@ -16,6 +16,7 @@ from mlip_autopipec.utils.dft_utils import (
 
 @pytest.fixture
 def sample_dft_config():
+    """Fixture for a sample DFTCompute config."""
     return DFTCompute(
         code="quantum_espresso",
         command="pw.x",
@@ -27,6 +28,7 @@ def sample_dft_config():
 
 @pytest.fixture
 def sample_atoms():
+    """Fixture for a sample Atoms object."""
     return Atoms(
         'Si',
         cell=[[2.7, 2.7, 0], [2.7, 0, 2.7], [0, 2.7, 2.7]],
@@ -47,6 +49,7 @@ total stress  (Ry/bohr**3)                (kbar)     P=      -1.12
 """
 
 def test_create_qe_input_from_atoms_robust(sample_atoms, sample_dft_config):
+    """Test the generation of a QE input file with robust parsing."""
     pseudos = {'Si': 'Si.pbe-n-rrkjus_psl.1.0.0.UPF'}
     input_str = create_qe_input_from_atoms(sample_atoms, sample_dft_config, pseudos)
 
@@ -94,9 +97,11 @@ def test_create_qe_input_from_atoms_robust(sample_atoms, sample_dft_config):
     assert " ".join(k_points[0].split()) == '3 3 3 0 0 0'
 
 def test_parse_qe_output_success():
+    """Test successful parsing of a QE output file."""
     results = parse_qe_output(SAMPLE_QE_OUTPUT)
 
     assert results is not None
+    assert isinstance(results, DFTResults)
     assert results.energy == pytest.approx(-7.88151989 * RY_TO_EV)
     expected_forces = np.array(
         [[-0.00000011, -0.00000011, 0.00000022]]
@@ -108,15 +113,24 @@ def test_parse_qe_output_success():
     assert np.allclose(results.stress, expected_stress)
 
 def test_parse_qe_output_failure():
+    """Test parsing of a failed/incomplete QE output."""
     results = parse_qe_output("This is not a valid QE output.")
     assert results is None
 
 def test_parse_qe_output_no_energy():
+    """Test parsing when energy is missing."""
     output = SAMPLE_QE_OUTPUT.replace("!    total energy", "some other text")
     results = parse_qe_output(output)
     assert results is None
 
 def test_parse_qe_output_no_forces():
+    """Test parsing when forces are missing."""
     output = SAMPLE_QE_OUTPUT.replace("Forces acting on atoms", "Some other text")
+    results = parse_qe_output(output)
+    assert results is None
+
+def test_parse_qe_output_no_stress():
+    """Test parsing when stress is missing."""
+    output = SAMPLE_QE_OUTPUT.replace("total stress", "some other text")
     results = parse_qe_output(output)
     assert results is None
