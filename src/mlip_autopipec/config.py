@@ -9,6 +9,7 @@ from pydantic import (
     Field,
     field_serializer,
     field_validator,
+    model_validator,
 )
 
 # --- User Input Schemas (Minimal) ---
@@ -99,6 +100,18 @@ class FullConfig(BaseModel):
     mlip_training: MLIPTrainingConfig
     qe_command: str = "pw.x"
     db_path: str = "asedb.db"
+
+    @model_validator(mode="after")
+    def validate_pseudos_exist_for_all_elements(self) -> "FullConfig":
+        """
+        Ensures that a pseudopotential is defined for every element in the system.
+        """
+        elements = set(self.system.elements)
+        pseudo_elements = set(self.dft_compute.pseudopotentials.keys())
+        if not elements.issubset(pseudo_elements):
+            missing = elements - pseudo_elements
+            raise ValueError(f"Missing pseudopotentials for elements: {sorted(list(missing))}")
+        return self
 
     def to_yaml(self, path: str) -> None:
         """Saves the configuration to a YAML file."""

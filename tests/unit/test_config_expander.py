@@ -90,3 +90,21 @@ def test_invalid_input_raises_error():
     """Tests that invalid user input raises a ValidationError."""
     with pytest.raises(ValidationError):
         UserInputConfig.model_validate({"system": {"elements": []}})  # No elements
+
+
+def test_missing_pseudopotential_raises_error(fept_input: UserInputConfig):
+    """
+    Tests that a FullConfig validation error is raised if an element
+    is missing a pseudopotential.
+    """
+    expander = ConfigExpander()
+    full_config = expander.expand(fept_input)
+
+    # Manually create an invalid state
+    full_config.dft_compute.pseudopotentials.pop("Pt")
+
+    with pytest.raises(ValidationError) as excinfo:
+        # Re-validate the modified model to trigger the validator
+        full_config.model_validate(full_config.model_dump())
+
+    assert "Missing pseudopotentials for elements: ['Pt']" in str(excinfo.value)
