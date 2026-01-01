@@ -6,6 +6,7 @@ from pydantic import (
     ConfigDict,
     FilePath,
     field_validator,
+    model_validator,
 )
 
 
@@ -20,11 +21,11 @@ class DFTCompute(BaseModel):
     ecutrho: float
     kpoints_density: float
 
-    @field_validator('ecutrho')
-    def ecutrho_ge_ecutwfc(cls, v, values):
-        if 'ecutwfc' in values.data and v < values.data['ecutwfc']:
+    @model_validator(mode='after')
+    def ecutrho_ge_ecutwfc(self):
+        if self.ecutrho < self.ecutwfc:
             raise ValueError('ecutrho must be greater than or equal to ecutwfc')
-        return v
+        return self
 
 
 class MLIPTraining(BaseModel):
@@ -37,11 +38,11 @@ class MLIPTraining(BaseModel):
     base_potential: str | None = None
     loss_weights: dict[str, float]
 
-    @field_validator('base_potential')
-    def base_potential_required_for_delta_learning(cls, v, values):
-        if 'delta_learning' in values.data and values.data['delta_learning'] and v is None:
+    @model_validator(mode='after')
+    def base_potential_required_for_delta_learning(self):
+        if self.delta_learning and self.base_potential is None:
             raise ValueError('base_potential must be specified for delta_learning')
-        return v
+        return self
 
 
 class Cycle01Config(BaseModel):
@@ -55,7 +56,7 @@ class Cycle01Config(BaseModel):
 
 class DFTResults(BaseModel):
     """Data model for storing results from a DFT calculation."""
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
     energy: float
     forces: np.ndarray

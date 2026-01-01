@@ -74,11 +74,13 @@ def test_update_row_with_dft_results(db_wrapper):
     atoms = Atoms('Si', positions=[(0, 0, 0)])
     db_wrapper.add_atoms([atoms])
 
-    dft_results = {
+    from mlip_autopipec.data.models import DFTResults
+    dft_results_data = {
         'energy': -10.0,
         'forces': np.array([[0.1, 0.2, 0.3]]),
-        'stress': np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]), # Voigt form
+        'stress': np.array([[0.1, 0.6, 0.5], [0.6, 0.2, 0.4], [0.5, 0.4, 0.3]]),
     }
+    dft_results = DFTResults(**dft_results_data)
 
     db_wrapper.update_row_with_dft_results(1, dft_results)
 
@@ -89,8 +91,10 @@ def test_update_row_with_dft_results(db_wrapper):
     # Check that calculator results are correctly stored
     updated_atoms = updated_row.toatoms()
     assert updated_atoms.get_potential_energy() == pytest.approx(-10.0)
-    assert np.allclose(updated_atoms.get_forces(), dft_results['forces'])
-    assert np.allclose(updated_atoms.get_stress(), dft_results['stress'])
+    assert np.allclose(updated_atoms.get_forces(), dft_results.forces)
+    # The stress is converted to Voigt form in the calculator
+    voigt_stress = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6])
+    assert np.allclose(updated_atoms.get_stress(), voigt_stress)
 
 def test_get_all_labeled_rows(db_wrapper, temp_db_path):
     """Test retrieving all successfully labeled rows."""

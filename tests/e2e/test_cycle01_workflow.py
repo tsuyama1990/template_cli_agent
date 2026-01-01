@@ -5,7 +5,6 @@ import yaml
 from click.testing import CliRunner
 
 from mlip_autopipec.cli import cli
-from mlip_autopipec.data.models import Cycle01Config
 
 
 @pytest.fixture
@@ -46,6 +45,9 @@ def sample_config_file(tmp_path):
 def test_cli_run_cycle_success(mock_orchestrator, runner, sample_config_file):
     """Test the CLI `run-cycle` command with a valid config."""
     # Arrange
+    from mlip_autopipec.data.database import AseDBWrapper
+    from mlip_autopipec.modules.c_labeling_engine import LabelingEngine
+    from mlip_autopipec.modules.d_training_engine import TrainingEngine
     mock_orchestrator_instance = mock_orchestrator.return_value
     mock_orchestrator_instance.run_label_and_train_workflow.return_value = None
 
@@ -55,11 +57,17 @@ def test_cli_run_cycle_success(mock_orchestrator, runner, sample_config_file):
     # Assert
     assert result.exit_code == 0
 
-    # Check that Orchestrator was initialized with the correct config
+    # Check that Orchestrator was initialized with the correct dependencies
     mock_orchestrator.assert_called_once()
-    call_args = mock_orchestrator.call_args[0]
-    assert len(call_args) == 1
-    assert isinstance(call_args[0], Cycle01Config)
+
+    # After refactoring, dependencies are injected via keyword arguments
+    call_kwargs = mock_orchestrator.call_args.kwargs
+    assert 'db_wrapper' in call_kwargs
+    assert isinstance(call_kwargs['db_wrapper'], AseDBWrapper)
+    assert 'labeling_engine' in call_kwargs
+    assert isinstance(call_kwargs['labeling_engine'], LabelingEngine)
+    assert 'training_engine' in call_kwargs
+    assert isinstance(call_kwargs['training_engine'], TrainingEngine)
 
     # Check that the main workflow method was called
     mock_orchestrator_instance.run_label_and_train_workflow.assert_called_once()

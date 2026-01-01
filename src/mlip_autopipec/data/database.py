@@ -1,16 +1,23 @@
-from typing import Any
-
 import ase.db
 from ase import Atoms
 from ase.calculators.singlepoint import SinglePointCalculator
+from ase.stress import full_3x3_to_voigt_6_stress
+
+from mlip_autopipec.data.models import DFTResults
 
 
 class AseDBWrapper:
-    """A wrapper class for the ASE database to handle data persistence."""
+    """
+    A wrapper class for the ASE database to handle data persistence.
+
+    This wrapper ensures that all interactions with the ASE database are
+    handled consistently and safely.
+    """
 
     def __init__(self, db_path: str):
         """
         Initializes the AseDBWrapper.
+
         Args:
             db_path: The path to the ASE database file.
         """
@@ -19,15 +26,17 @@ class AseDBWrapper:
         self.db_path = db_path
 
     def _connect(self) -> ase.db.core.Database:
-        """Returns a connection to the database."""
+        """Returns a new connection to the database."""
         return ase.db.connect(self.db_path)
 
     def add_atoms(self, atoms_list: list[Atoms], **kwargs):
         """
         Adds a list of Atoms objects to the database.
+
         Args:
             atoms_list: A list of ASE Atoms objects.
-            **kwargs: Key-value pairs to add to each row. 'labelled' will be overwritten.
+            **kwargs: Key-value pairs to add to each row. The 'labelled' key
+                      will be overwritten.
         """
         kvp = kwargs.copy()
         kvp['labelled'] = False
@@ -39,10 +48,6 @@ class AseDBWrapper:
     def get_row(self, row_id: int) -> ase.db.row.AtomsRow | None:
         """
         Retrieves a single AtomsRow object by its ID.
-        Args:
-            row_id: The ID of the row to retrieve.
-        Returns:
-            The AtomsRow object, or None if not found.
         """
         with self._connect() as db:
             try:
@@ -53,31 +58,26 @@ class AseDBWrapper:
     def get_rows_to_label(self) -> list[ase.db.row.AtomsRow]:
         """
         Retrieves rows from the database that have not been labeled yet.
-        Returns:
-            A list of AtomsRow objects where `labelled=False`.
         """
         with self._connect() as db:
-            # Note: The ase.db.select method does not support parameterized queries.
-            # This is a potential security risk if user input is ever used here.
-            return list(db.select('labelled=False'))
+            return list(db.select(labelled=False))
 
-    def update_row_with_dft_results(self, row_id: int, dft_results: dict[str, Any]):
+    def update_row_with_dft_results(self, row_id: int, dft_results: DFTResults):
         """
         Updates a row with DFT results and marks it as labeled.
-        Args:
-            row_id: The ID of the row to update.
-            dft_results: A dictionary containing DFT results, must have 'energy',
-                         'forces', and 'stress' keys.
         """
         with self._connect() as db:
             row = db.get(id=row_id)
             atoms = row.toatoms()
 
+            # The SinglePointCalculator requires stress in 6-element Voigt form.
+            voigt_stress = full_3x3_to_voigt_6_stress(dft_results.stress)
+
             calc = SinglePointCalculator(
                 atoms,
-                energy=dft_results.get('energy'),
-                forces=dft_results.get('forces'),
-                stress=dft_results.get('stress'),
+                energy=dft_results.energy,
+                forces=dft_results.forces,
+                stress=voigt_stress,
             )
             atoms.calc = calc
 
@@ -86,14 +86,9 @@ class AseDBWrapper:
 
             db.update(row_id, atoms=atoms, **new_kvp)
 
-
     def get_all_labeled_rows(self) -> list[ase.db.row.AtomsRow]:
         """
         Retrieves all rows that have been successfully labeled.
-        Returns:
-            A list of AtomsRow objects where `labelled=True`.
         """
         with self._connect() as db:
-            # Note: The ase.db.select method does not support parameterized queries.
-            # This is a potential security risk if user input is ever used here.
-            return list(db.select('labelled=True'))
+            return list(db.select(labelled=True))

@@ -50,66 +50,84 @@ class LabelingEngine:
             logger.info(
                 f"  Processing structure {i+1}/{len(structures)} (ID: {row_id})..."
             )
-
-            calc_dir = f"calc_{row_id}"
-            os.makedirs(calc_dir, exist_ok=True)
-
-            input_content = create_qe_input_from_atoms(
-                atoms, self.config, self.config.pseudopotentials
-            )
-            input_file_path = os.path.join(calc_dir, QE_INPUT_FILENAME)
-            output_file_path = os.path.join(calc_dir, QE_OUTPUT_FILENAME)
-
-            with open(input_file_path, 'w') as f:
-                f.write(input_content)
-
-            command = self.config.command.split() + ['-in', input_file_path]
-
             try:
-                with open(output_file_path, 'w') as out_f:
-                    subprocess.run(  # noqa: S603
-                        command,
-                        stdout=out_f,
-                        stderr=subprocess.PIPE,
-                        check=True,
-                        shell=False,
-                    )
-
-                with open(output_file_path) as f:
-                    output_content = f.read()
-
-                dft_results = parse_qe_output(output_content)
-
+                dft_results = self._run_single_calculation(row_id, atoms)
                 if dft_results:
-                    logger.info(
-                        f"    ...DFT calculation successful. "
-                        f"Energy: {dft_results.energy:.4f} eV"
-                    )
                     results.append((row_id, dft_results))
-                else:
-                    logger.warning(
-                        f"    ...DFT calculation for ID {row_id} failed: "
-                        "Could not parse output."
-                    )
-
-            except FileNotFoundError as e:
-                logger.error(
-                    f"    ...Error: Command '{self.config.command}' not found. "
-                    "Ensure Quantum Espresso is in your PATH."
-                )
-                raise FileNotFoundError(
-                    f"Command '{self.config.command}' not found."
-                ) from e
-            except subprocess.CalledProcessError as e:
-                logger.error(
-                    f"    ...DFT calculation for ID {row_id} failed with exit code "
-                    f"{e.returncode}."
-                )
-                if e.stderr:
-                    logger.error(f"    ...Error output:\n{e.stderr.decode()}")
-                raise subprocess.CalledProcessError(
-                    e.returncode, e.cmd, output=e.output, stderr=e.stderr
-                ) from e
+            except (OSError, subprocess.SubprocessError) as e:
+                logger.error(f"    ...Critical error processing structure ID {row_id}. "
+                             f"Skipping this structure. Error: {e}", exc_info=True)
+                # Continue to the next structure
+                continue
 
         logger.info("Labeling Engine finished.")
         return results
+
+    def _run_single_calculation(self, row_id: int, atoms: Atoms) -> DFTResults | None:
+        """Runs a single DFT calculation for a given atoms object."""
+        calc_dir = f"calc_{row_id}"
+        try:
+            os.makedirs(calc_dir, exist_ok=True)
+        except OSError as e:
+            logger.error(f"    ...Could not create calculation directory '{calc_dir}'.")
+            raise OSError(f"Failed to create directory '{calc_dir}'") from e
+
+        input_file_path = os.path.join(calc_dir, QE_INPUT_FILENAME)
+        output_file_path = os.path.join(calc_dir, QE_OUTPUT_FILENAME)
+
+        try:
+            input_content = create_qe_input_from_atoms(
+                atoms, self.config, self.config.pseudopotentials
+            )
+            with open(input_file_path, 'w') as f:
+                f.write(input_content)
+        except OSError as e:
+            logger.error(f"    ...Could not write to input file '{input_file_path}'.")
+            raise OSError(f"Failed to write file '{input_file_path}'") from e
+
+        command = self.config.command.split() + ['-in', input_file_path]
+
+        try:
+            with open(output_file_path, 'w') as out_f:
+                subprocess.run(  # noqa: S603
+                    command,
+                    stdout=out_f,
+                    stderr=subprocess.PIPE,
+                    check=True,
+                    shell=False,
+                )
+        except FileNotFoundError as e:
+            logger.error(
+                f"    ...Error: Command '{self.config.command}' not found. "
+                "Ensure Quantum Espresso is in your PATH."
+            )
+            raise FileNotFoundError(f"Command '{self.config.command}' not found.") from e
+        except subprocess.CalledProcessError as e:
+            logger.error(
+                f"    ...DFT calculation for ID {row_id} failed with exit code "
+                f"{e.returncode}."
+            )
+            if e.stderr:
+                logger.error(f"    ...Error output:\n{e.stderr.decode()}")
+            raise e # Re-raise to be caught by the main loop
+
+        try:
+            with open(output_file_path) as f:
+                output_content = f.read()
+        except OSError as e:
+            logger.error(f"    ...Could not read output file '{output_file_path}'.")
+            raise OSError(f"Failed to read file '{output_file_path}'") from e
+
+        dft_results = parse_qe_output(output_content)
+        if dft_results:
+            logger.info(
+                f"    ...DFT calculation successful. "
+                f"Energy: {dft_results.energy:.4f} eV"
+            )
+            return dft_results
+
+        logger.warning(
+            f"    ...DFT calculation for ID {row_id} finished, "
+            "but output could not be parsed."
+        )
+        return None

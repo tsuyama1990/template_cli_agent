@@ -31,9 +31,10 @@ def test_labeling_engine_success(
 ):
     """Test the LabelingEngine's successful execution path."""
     mock_create.return_value = "dummy_qe_input"
-    mock_parse.return_value = DFTResults(
-        energy=-1360.5, forces=[[1, 1, 1]], stress=[1, 2, 3, 4, 5, 6]
+    dft_result_instance = DFTResults(
+        energy=-1360.5, forces=[[1, 1, 1]], stress=[[1, 6, 5], [6, 2, 4], [5, 4, 3]]
     )
+    mock_parse.return_value = dft_result_instance
     mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0)
 
     structures_to_label = [(1, Atoms('Si'))]
@@ -46,17 +47,21 @@ def test_labeling_engine_success(
 
     assert len(results) == 1
     assert results[0][0] == 1
-    assert isinstance(results[0][1], DFTResults)
+    assert results[0][1] == dft_result_instance
 
 
 @patch('os.makedirs')
 @patch('builtins.open')
 @patch('subprocess.run')
 @patch('mlip_autopipec.modules.c_labeling_engine.create_qe_input_from_atoms')
-def test_labeling_engine_dft_failure(
+def test_labeling_engine_dft_failure_is_handled(
     mock_create, mock_run, mock_open, mock_makedirs, dft_config
 ):
-    """Test that the engine raises an exception on DFT failure."""
+    """
+    Test that the engine handles a DFT failure gracefully by logging it
+    and continuing, resulting in an empty results list for that structure.
+    """
+    mock_create.return_value = "dummy_input"
     mock_run.side_effect = subprocess.CalledProcessError(
         returncode=1, cmd="pw.x", stderr=b"QE error"
     )
@@ -64,8 +69,11 @@ def test_labeling_engine_dft_failure(
     structures_to_label = [(1, Atoms('Si'))]
     engine = LabelingEngine(dft_config)
 
-    with pytest.raises(subprocess.CalledProcessError):
-        engine.execute(structures_to_label)
+    # After refactoring, the engine should catch the exception and log it,
+    # not re-raise it. The final result list should be empty.
+    results = engine.execute(structures_to_label)
+
+    assert results == []
 
 
 @patch('os.makedirs')
@@ -77,6 +85,7 @@ def test_labeling_engine_parsing_failure(
     mock_parse, mock_create, mock_run, mock_open, mock_makedirs, dft_config
 ):
     """Test that the engine returns an empty list for parsing failures."""
+    mock_create.return_value = "dummy_input"
     mock_parse.return_value = None
     mock_run.return_value = subprocess.CompletedProcess(args=[], returncode=0)
 

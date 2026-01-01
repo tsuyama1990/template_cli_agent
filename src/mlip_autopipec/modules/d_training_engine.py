@@ -33,9 +33,6 @@ class TrainingEngine:
     def execute(self, atoms_list: list[Atoms]):
         """
         Executes the training workflow.
-
-        Args:
-            atoms_list: A list of ASE Atoms objects with DFT results.
         """
         logger.info("Starting Training Engine...")
         if not atoms_list:
@@ -45,21 +42,14 @@ class TrainingEngine:
         logger.info(f"Received {len(atoms_list)} labeled structures for training.")
         training_data = self._prepare_training_data(atoms_list)
 
+        # MACE model initialization and training loop (simplified)
         model = MACE(
-            r_max=self.config.r_cut,
-            num_bessel=8,
-            num_polynomial_basis=4,
-            radial_MLP=[64, 64, 64],
-            interaction_cls_first=None,
-            interaction_cls=None,
-            hidden_irreps="128x0e + 128x1o",
-            atomic_energies=np.zeros(len(Z_TABLE.zs)),
-            avg_num_neighbors=15,
-            atomic_numbers=Z_TABLE.zs,
-            correlation=3,
-            gate=torch.nn.functional.silu,
+            r_max=self.config.r_cut, num_bessel=8, num_polynomial_basis=4,
+            radial_MLP=[64, 64, 64], interaction_cls_first=None, interaction_cls=None,
+            hidden_irreps="128x0e + 128x1o", atomic_energies=np.zeros(len(Z_TABLE.zs)),
+            avg_num_neighbors=15, atomic_numbers=Z_TABLE.zs, correlation=3,
+            gate=torch.nn.functional.silu
         )
-
         logger.info("Starting simplified training loop...")
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
         loss_fn = torch.nn.MSELoss()
@@ -91,13 +81,9 @@ class TrainingEngine:
         if not self.config.delta_learning:
             return atoms_list
 
-        logger.info(
-            f"Applying delta learning with base potential: {self.config.base_potential}"
-        )
+        logger.info(f"Applying delta learning with base potential: {self.config.base_potential}")
         if self.config.base_potential != 'lj_auto':
-            raise NotImplementedError(
-                "Only 'lj_auto' is supported for base_potential in Cycle 1."
-            )
+            raise NotImplementedError("Only 'lj_auto' is supported for base_potential in Cycle 1.")
 
         base_calc = LennardJones()
         processed_atoms_list = []
@@ -106,7 +92,14 @@ class TrainingEngine:
             dft_energy = atoms.get_potential_energy()
             dft_forces = atoms.get_forces()
 
-            temp_atoms = atoms.copy()
+            # Create a new, clean Atoms object for the base calculation to prevent
+            # state leakage from the original object's calculator.
+            temp_atoms = Atoms(
+                symbols=atoms.get_chemical_symbols(),
+                positions=atoms.get_positions(),
+                cell=atoms.get_cell(),
+                pbc=atoms.get_pbc(),
+            )
             temp_atoms.calc = base_calc
             base_energy = temp_atoms.get_potential_energy()
             base_forces = temp_atoms.get_forces()
@@ -114,11 +107,11 @@ class TrainingEngine:
             delta_energy = dft_energy - base_energy
             delta_forces = dft_forces - base_forces
 
-            delta_atoms = atoms.copy()
+            # Create the final Atoms object with the delta values
+            delta_atoms = temp_atoms.copy() # Now it's safe to copy
             delta_atoms.calc = SinglePointCalculator(
-                delta_atoms, energy=delta_energy, forces=delta_forces
+                atoms=delta_atoms, energy=delta_energy, forces=delta_forces
             )
-
             processed_atoms_list.append(delta_atoms)
 
         return processed_atoms_list
