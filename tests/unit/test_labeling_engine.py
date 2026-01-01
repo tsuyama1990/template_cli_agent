@@ -1,24 +1,12 @@
 import subprocess
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import numpy as np
 import pytest
 from ase import Atoms
 
-from mlip_autopipec.config import DFTInputConfig
-from mlip_autopipec.database import AseDBWrapper
+from mlip_autopipec.config import DFTInputConfig, DFTResult
 from mlip_autopipec.interfaces import IProcessRunner
 from mlip_autopipec.modules.labeling_engine import LabelingEngine
-
-
-@pytest.fixture
-def mock_db_wrapper():
-    """Fixture for a mocked AseDBWrapper."""
-    mock = MagicMock(spec=AseDBWrapper)
-    mock.get_atoms_by_id.return_value = Atoms(
-        "H2O", positions=[[0, 0, 0], [1, 0, 0], [0, 1, 0]]
-    )
-    return mock
 
 
 @pytest.fixture
@@ -38,23 +26,10 @@ def dft_config():
     )
 
 
-@patch("ase.io.read")
-def test_label_structure_success(
-    mock_ase_read, mock_db_wrapper, mock_process_runner, dft_config
-):
+def test_label_structure_success(mock_process_runner, dft_config):
     """Tests the successful execution of the label_structure method."""
     # Arrange
-    mock_atoms_with_results = Atoms(
-        "H2O", positions=[[0, 0, 0], [1, 0, 0], [0, 1, 0]]
-    )
-    mock_calculator = MagicMock()
-    mock_calculator.results = {
-        "energy": -1.0,
-        "forces": np.array([[0.1, 0.2, 0.3]] * 3),
-        "stress": np.eye(3) * 0.5,
-    }
-    mock_atoms_with_results.calc = mock_calculator
-    mock_ase_read.return_value = mock_atoms_with_results
+    atoms_to_label = Atoms("H2O", positions=[[0, 0, 0], [1, 0, 0], [0, 1, 0]])
 
     def mock_run(command, stdout_path):
         with open(stdout_path, "w") as f:
@@ -84,43 +59,33 @@ def test_label_structure_success(
     mock_process_runner.run.side_effect = mock_run
 
     engine = LabelingEngine(
-        dft_config=dft_config,
-        db_wrapper=mock_db_wrapper,
+        dft_input_configuration=dft_config,
         process_runner=mock_process_runner,
         qe_command="pw.x",
     )
 
     # Act
-    engine.label_structure(1)
+    result = engine.label_structure(atoms_to_label)
 
     # Assert
-    mock_db_wrapper.get_atoms_by_id.assert_called_once_with(1)
+    assert isinstance(result, DFTResult)
+    assert result.energy == pytest.approx(-242.606, abs=1e-3)
     mock_process_runner.run.assert_called_once()
-    mock_db_wrapper.update_labels.assert_called_once()
 
 
-def test_label_structure_qe_failure(
-    mock_db_wrapper, mock_process_runner, dft_config
-):
+def test_label_structure_qe_failure(mock_process_runner, dft_config):
     """Tests the error handling when Quantum Espresso execution fails."""
     # Arrange
+    atoms_to_label = Atoms("H2O", positions=[[0, 0, 0], [1, 0, 0], [0, 1, 0]])
     mock_process_runner.run.side_effect = subprocess.CalledProcessError(
         returncode=1, cmd="pw.x"
     )
     engine = LabelingEngine(
-        dft_config=dft_config,
-        db_wrapper=mock_db_wrapper,
+        dft_input_configuration=dft_config,
         process_runner=mock_process_runner,
         qe_command="pw.x",
     )
 
-    # Act
-    engine.label_structure(1)
-
-    # Assert
-    mock_db_wrapper.get_atoms_by_id.assert_called_once_with(1)
-    mock_process_runner.run.assert_called_once()
-    mock_db_wrapper.update_state.assert_called_once_with(
-        1, "labeling_failed"
-    )
-    mock_db_wrapper.update_labels.assert_not_called()
+    # Act & Assert
+    with pytest.raises(subprocess.CalledProcessError):
+        engine.label_structure(atoms_to_label)

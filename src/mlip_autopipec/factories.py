@@ -1,7 +1,4 @@
 from mlip_autopipec.config import (
-    DFTInputConfig,
-    MLIPTrainingConfig,
-    ModelType,
     Settings,
 )
 from mlip_autopipec.database import AseDBWrapper
@@ -28,24 +25,13 @@ def create_workflow_orchestrator(
     Returns:
         A fully configured object that implements the IWorkflowOrchestrator interface.
     """
-    dft_config = DFTInputConfig(
-        pseudopotentials={"H": "H.UPF", "O": "O.UPF"},
-        kpoints=(1, 1, 1),
-        ecutwfc=60,
-        control={"calculation": "scf"},
-    )
-
-    training_config = MLIPTrainingConfig(
-        model_type=ModelType.ACE,
-        r_cut=5.0,
-        loss_weights={"energy": 1.0, "forces": 100.0},
-    )
-
     db_wrapper = AseDBWrapper(db_path)
     process_runner = SubprocessRunner()
     labeling_engine = LabelingEngine(
-        dft_config, db_wrapper, process_runner, settings.qe_command
+        settings.dft_input_configuration,
+        process_runner,
+        settings.qe_command,
     )
-    training_engine = TrainingEngine(training_config, db_wrapper)
+    training_engine = TrainingEngine(settings.mlip_training_configuration)
 
-    return WorkflowOrchestrator(labeling_engine, training_engine)
+    return WorkflowOrchestrator(labeling_engine, training_engine, db_wrapper)

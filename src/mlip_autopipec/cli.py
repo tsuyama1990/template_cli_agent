@@ -25,13 +25,13 @@ def app(ctx):
 )
 @click.option(
     "--db-path",
-    default="asedb.db",
     help="Path to the ASE database file.",
 )
 @click.pass_context
-def label(ctx, id: int, db_path: str):
+def label(ctx, id: int, db_path: str | None):
     """Runs the DFT labeling for a single structure."""
     settings = ctx.obj
+    db_path = db_path or settings.db_path
     orchestrator = create_workflow_orchestrator(db_path, settings)
     orchestrator.label_structure_by_id(id)
 
@@ -39,13 +39,13 @@ def label(ctx, id: int, db_path: str):
 @app.command()
 @click.option(
     "--db-path",
-    default="asedb.db",
     help="Path to the ASE database file.",
 )
 @click.pass_context
-def train(ctx, db_path: str):
+def train(ctx, db_path: str | None):
     """Trains the MLIP model on the existing labeled data."""
     settings = ctx.obj
+    db_path = db_path or settings.db_path
     orchestrator = create_workflow_orchestrator(db_path, settings)
     orchestrator.run_training()
 

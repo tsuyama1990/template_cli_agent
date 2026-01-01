@@ -73,3 +73,19 @@ class Settings(BaseModel):
     qe_command: str = Field(
         "pw.x", description="The command to execute Quantum Espresso."
     )
+    db_path: str = Field("asedb.db", description="Path to the ASE database file.")
+    dft_input_configuration: DFTInputConfig = Field(
+        default_factory=lambda: DFTInputConfig(
+            pseudopotentials={"H": "H.UPF", "O": "O.UPF"},
+            kpoints=(1, 1, 1),
+            ecutwfc=60,
+            control={"calculation": "scf"},
+        )
+    )
+    mlip_training_configuration: MLIPTrainingConfig = Field(
+        default_factory=lambda: MLIPTrainingConfig(
+            model_type=ModelType.ACE,
+            r_cut=5.0,
+            loss_weights={"energy": 1.0, "forces": 100.0},
+        )
+    )

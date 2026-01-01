@@ -3,14 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from mlip_autopipec.config import MLIPTrainingConfig, ModelType
-from mlip_autopipec.database import AseDBWrapper
 from mlip_autopipec.modules.training_engine import TrainingEngine
-
-
-@pytest.fixture
-def mock_db_wrapper():
-    """Fixture for a mocked AseDBWrapper."""
-    return MagicMock(spec=AseDBWrapper)
 
 
 @pytest.fixture
@@ -23,29 +16,24 @@ def training_config():
     )
 
 
-def test_train_no_data(mock_db_wrapper, training_config):
+def test_train_no_data(training_config):
     """Tests that the training engine handles the case where there is no data."""
     # Arrange
-    mock_db_wrapper.get_all_labeled_atoms.return_value = []
-    engine = TrainingEngine(
-        training_config=training_config, db_wrapper=mock_db_wrapper
-    )
+    engine = TrainingEngine(mlip_training_configuration=training_config)
 
     # Act
-    engine.train()
+    engine.train([])
 
     # Assert
-    mock_db_wrapper.get_all_labeled_atoms.assert_called_once()
+    # No assertion needed, just checking that it doesn't raise an exception
+    pass
 
 
-def test_train_raises_not_implemented_error(mock_db_wrapper, training_config):
+def test_train_raises_not_implemented_error(training_config):
     """Tests that the train method raises NotImplementedError."""
     # Arrange
-    mock_db_wrapper.get_all_labeled_atoms.return_value = [(MagicMock(), MagicMock())]
-    engine = TrainingEngine(
-        training_config=training_config, db_wrapper=mock_db_wrapper
-    )
+    engine = TrainingEngine(mlip_training_configuration=training_config)
 
     # Act & Assert
     with pytest.raises(NotImplementedError):
-        engine.train()
+        engine.train([(MagicMock(), MagicMock())])

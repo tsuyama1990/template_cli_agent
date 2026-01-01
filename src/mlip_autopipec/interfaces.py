@@ -1,16 +1,23 @@
 from abc import ABC, abstractmethod
 
+from ase import Atoms
+
+from mlip_autopipec.config import DFTResult
+
 
 class ILabelingEngine(ABC):
     """Interface for a labeling engine that processes atomic structures."""
 
     @abstractmethod
-    def label_structure(self, structure_id: int) -> None:
+    def label_structure(self, atoms: Atoms) -> DFTResult:
         """
         Labels a single atomic structure by running a calculation.
 
         Args:
-            structure_id: The ID of the structure in the database to label.
+            atoms: The ASE Atoms object to label.
+
+        Returns:
+            A DFTResult object containing the calculated energy, forces, and stress.
         """
         pass
 
@@ -19,8 +26,14 @@ class ITrainingEngine(ABC):
     """Interface for a training engine that trains an MLIP model."""
 
     @abstractmethod
-    def train(self) -> None:
-        """Trains the MLIP model using the labeled data from the database."""
+    def train(self, training_data: list[tuple[Atoms, DFTResult]]) -> None:
+        """
+        Trains the MLIP model using the provided labeled data.
+
+        Args:
+            training_data: A list of tuples, each containing an Atoms object
+                           and its corresponding DFTResult.
+        """
         pass
 
 

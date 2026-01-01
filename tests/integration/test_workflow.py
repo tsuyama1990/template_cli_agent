@@ -1,5 +1,6 @@
 import subprocess
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
@@ -8,6 +9,7 @@ from click.testing import CliRunner
 
 from mlip_autopipec.cli import app
 from mlip_autopipec.database import AseDBWrapper
+from mlip_autopipec.interfaces import IProcessRunner
 
 # A more realistic dummy Quantum Espresso output file content
 DUMMY_QE_OUTPUT = """
@@ -45,24 +47,24 @@ DUMMY_QE_OUTPUT = """
 
 
 @pytest.fixture
-def mock_subprocess_run(mocker):
-    """Mocks subprocess.run to simulate a QE execution."""
+def mock_process_runner(mocker):
+    """Mocks IProcessRunner to simulate a QE execution."""
 
-    def mock_run(*args, **kwargs):
-        command_list = args[0]
-        # The output is now redirected to stdout, which is a file object
-        output_file_handle = kwargs.get("stdout")
-        if output_file_handle:
-            output_file_handle.write(DUMMY_QE_OUTPUT)
-            output_file_handle.flush()
-        return subprocess.CompletedProcess(args=command_list, returncode=0)
+    def mock_run(command, stdout_path):
+        with open(stdout_path, "w") as f:
+            f.write(DUMMY_QE_OUTPUT)
+        return subprocess.CompletedProcess(args=command, returncode=0)
 
-    return mocker.patch("subprocess.run", side_effect=mock_run)
+    mock = MagicMock(spec=IProcessRunner)
+    mock.run.side_effect = mock_run
+    mocker.patch(
+        "mlip_autopipec.factories.SubprocessRunner", return_value=mock
+    )
+    return mock
 
 
-def test_label_and_train_workflow(mock_subprocess_run, tmp_path):
+def test_label_and_train_workflow(mock_process_runner, tmp_path):
     """An integration test for the full label-and-train workflow."""
-    # Use CliRunner's built-in temporary file system
     runner = CliRunner()
     with runner.isolated_filesystem() as temp_dir:
         db_path = Path(temp_dir) / "test.db"
@@ -83,7 +85,7 @@ def test_label_and_train_workflow(mock_subprocess_run, tmp_path):
             in result.output
         )
 
-        mock_subprocess_run.assert_called_once()
+        mock_process_runner.run.assert_called_once()
 
         labeled_data = db_wrapper.get_all_labeled_atoms()
         assert len(labeled_data) == 1
