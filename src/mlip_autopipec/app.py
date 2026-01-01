@@ -1,4 +1,4 @@
-from mlip_autopipec.config import Settings
+from mlip_autopipec.config import FullConfig
 from mlip_autopipec.factories import create_workflow_orchestrator
 from mlip_autopipec.interfaces import IWorkflowOrchestrator
 
@@ -6,59 +6,40 @@ from mlip_autopipec.interfaces import IWorkflowOrchestrator
 class Application:
     """The main application class."""
 
-    def __init__(self, settings: Settings):
+    def __init__(self, config: FullConfig):
         """
         Initializes the application.
 
         Args:
-            settings: The application settings.
+            config: The application's full, expanded configuration.
         """
-        self.settings = settings
+        self.config = config
         self.orchestrator: IWorkflowOrchestrator | None = None
 
-    def _get_orchestrator(self, db_path: str | None) -> IWorkflowOrchestrator:
+    def _get_orchestrator(self) -> IWorkflowOrchestrator:
         """
         Gets a configured instance of the workflow orchestrator.
-
-        Args:
-            db_path: The path to the database file.
 
         Returns:
             A configured instance of the workflow orchestrator.
         """
         if self.orchestrator is None:
-            db_path = db_path or self.settings.db_path
-            self.orchestrator = create_workflow_orchestrator(db_path, self.settings)
+            self.orchestrator = create_workflow_orchestrator(self.config)
         return self.orchestrator
 
-    def label_structure(self, structure_id: int, db_path: str | None) -> None:
+    def label_structure(self, structure_id: int) -> None:
         """
         Labels a single atomic structure.
 
         Args:
             structure_id: The ID of the structure to label.
-            db_path: The path to the database file.
         """
-        orchestrator = self._get_orchestrator(db_path)
+        orchestrator = self._get_orchestrator()
         orchestrator.label_structure_by_id(structure_id)
 
-    def train(self, db_path: str | None) -> None:
+    def train(self) -> None:
         """
         Trains the MLIP model.
-
-        Args:
-            db_path: The path to the database file.
         """
-        orchestrator = self._get_orchestrator(db_path)
+        orchestrator = self._get_orchestrator()
         orchestrator.run_training()
-
-
-def create_app() -> Application:
-    """
-    Creates a new application instance.
-
-    Returns:
-        A new application instance.
-    """
-    settings = Settings()
-    return Application(settings)

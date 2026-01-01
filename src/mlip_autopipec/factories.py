@@ -1,6 +1,4 @@
-from mlip_autopipec.config import (
-    Settings,
-)
+from mlip_autopipec.config import FullConfig
 from mlip_autopipec.database import AseDBWrapper
 from mlip_autopipec.interfaces import IWorkflowOrchestrator
 from mlip_autopipec.modules.labeling_engine import LabelingEngine
@@ -9,7 +7,7 @@ from mlip_autopipec.runners import SubprocessRunner
 from mlip_autopipec.workflow import WorkflowOrchestrator
 
 
-def create_workflow_orchestrator(db_path: str, settings: Settings) -> IWorkflowOrchestrator:
+def create_workflow_orchestrator(config: FullConfig) -> IWorkflowOrchestrator:
     """
     Factory function to create a configured instance of the WorkflowOrchestrator.
 
@@ -17,19 +15,20 @@ def create_workflow_orchestrator(db_path: str, settings: Settings) -> IWorkflowO
     CLI and other entry points cleaner and more decoupled.
 
     Args:
-        db_path: Path to the ASE database file.
-        settings: The application settings.
+        config: The fully expanded application configuration.
 
     Returns:
         A fully configured object that implements the IWorkflowOrchestrator interface.
     """
-    db_wrapper = AseDBWrapper(db_path)
+    db_wrapper = AseDBWrapper(config.db_path)
     process_runner = SubprocessRunner()
     labeling_engine = LabelingEngine(
-        settings.dft_input_configuration,
+        config.dft_compute,  # Pass the DFTComputeConfig sub-model
         process_runner,
-        settings.qe_command,
+        config.qe_command,
     )
-    training_engine = TrainingEngine(settings.mlip_training_configuration)
+    training_engine = TrainingEngine(
+        config.mlip_training  # Pass the MLIPTrainingConfig sub-model
+    )
 
     return WorkflowOrchestrator(labeling_engine, training_engine, db_wrapper)
