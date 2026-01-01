@@ -25,12 +25,12 @@ def test_init_raises_error_for_empty_path():
     with pytest.raises(ValueError):
         AseDBWrapper("")
 
-def test_add_atoms(db_wrapper, temp_db_path):
-    """Test adding atoms to the database."""
+def test_add_structures(db_wrapper, temp_db_path):
+    """Test adding structures to the database."""
     atoms1 = Atoms('H', positions=[(0, 0, 0)])
     atoms2 = Atoms('He', positions=[(1, 1, 1)])
 
-    db_wrapper.add_atoms([atoms1, atoms2], source="test")
+    db_wrapper.add_structures([atoms1, atoms2], source="test")
 
     with connect(temp_db_path) as db:
         assert len(db) == 2
@@ -46,7 +46,7 @@ def test_add_atoms(db_wrapper, temp_db_path):
 def test_get_row(db_wrapper):
     """Test retrieving a single row by ID."""
     atoms = Atoms('C', positions=[(0, 0, 0)])
-    db_wrapper.add_atoms([atoms])
+    db_wrapper.add_structures([atoms])
 
     row = db_wrapper.get_row(1)
     assert row is not None
@@ -60,7 +60,7 @@ def test_get_rows_to_label(db_wrapper, temp_db_path):
     atoms_unlabeled = Atoms('N')
     atoms_labeled = Atoms('O')
 
-    db_wrapper.add_atoms([atoms_unlabeled]) # Adds with labelled=False
+    db_wrapper.add_structures([atoms_unlabeled]) # Adds with labelled=False
     with connect(temp_db_path) as db:
         db.write(atoms_labeled, key_value_pairs={'labelled': True})
 
@@ -72,7 +72,7 @@ def test_get_rows_to_label(db_wrapper, temp_db_path):
 def test_update_row_with_dft_results(db_wrapper):
     """Test updating a row with DFT calculation results."""
     atoms = Atoms('Si', positions=[(0, 0, 0)])
-    db_wrapper.add_atoms([atoms])
+    db_wrapper.add_structures([atoms])
 
     from mlip_autopipec.data.models import DFTResults
     dft_results_data = {
@@ -101,7 +101,7 @@ def test_get_all_labeled_rows(db_wrapper, temp_db_path):
     atoms_unlabeled = Atoms('F')
     atoms_labeled = Atoms('Ne')
 
-    db_wrapper.add_atoms([atoms_unlabeled])
+    db_wrapper.add_structures([atoms_unlabeled])
     with connect(temp_db_path) as db:
         db.write(atoms_labeled, key_value_pairs={'labelled': True})
 

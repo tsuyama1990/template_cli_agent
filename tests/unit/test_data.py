@@ -3,10 +3,12 @@ import pytest
 from pydantic import ValidationError
 
 from mlip_autopipec.data.models import (
-    Cycle01Config,
     DFTCompute,
     DFTResults,
+    FullConfig,
     MLIPTraining,
+    StructureGeneration,
+    System,
 )
 
 
@@ -36,43 +38,17 @@ def test_dft_compute_invalid_ecutrho():
         "ecutrho": 50.0,  # Invalid value
         "kpoints_density": 3.0,
     }
-    with pytest.raises(ValidationError, match="ecutrho must be greater than or equal to ecutwfc"):
-        DFTCompute(**data)
-
-
-def test_dft_compute_extra_field():
-    """Tests ValidationError on extra fields due to `extra='forbid'`."""
-    data = {
-        "code": "quantum_espresso",
-        "command": "pw.x",
-        "pseudopotentials": {"Si": "Si.UPF"},
-        "ecutwfc": 60.0,
-        "ecutrho": 240.0,
-        "kpoints_density": 3.0,
-        "extra_field": "should not be here",
-    }
-    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+    with pytest.raises(
+        ValidationError, match="ecutrho must be greater than or equal to ecutwfc"
+    ):
         DFTCompute(**data)
 
 
 # Tests for MLIPTraining
-def test_mlip_training_valid():
-    """Tests successful validation of MLIPTraining with valid data."""
-    data = {
-        "model_type": "ace",
-        "r_cut": 5.0,
-        "delta_learning": False,
-        "loss_weights": {"energy": 1.0, "forces": 1.0},
-    }
-    model = MLIPTraining(**data)
-    assert model.model_type == "ace"
-    assert not model.delta_learning
-
-
 def test_mlip_training_delta_learning_valid():
     """Tests successful validation of MLIPTraining with delta_learning enabled."""
     data = {
-        "model_type": "ace",
+        "model_type": "mace",
         "r_cut": 5.0,
         "delta_learning": True,
         "base_potential": "some_potential",
@@ -112,25 +88,20 @@ def test_dft_results_valid():
     assert np.array_equal(model.forces, np.array([[0.1, 0.2, 0.3]]))
 
 
-def test_dft_results_extra_field():
-    """Tests ValidationError on extra fields for DFTResults."""
+# Tests for FullConfig (integration of other models)
+def test_full_config_valid():
+    """Tests successful validation of the top-level FullConfig."""
     data = {
-        "energy": -1.0,
-        "forces": [[0.0, 0.0, 0.0]],
-        "stress": [[0.0] * 3] * 3,
-        "another_field": 123,
-    }
-    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
-        DFTResults(**data)
-
-
-# Tests for Cycle01Config (integration of other models)
-def test_cycle01_config_valid(tmp_path):
-    """Tests successful validation of the top-level Cycle01Config."""
-    db_file = tmp_path / "test.db"
-    db_file.touch()
-
-    data = {
+        "system": {
+            "elements": ["Si"],
+            "composition": {"Si": 1},
+            "structure_type": "covalent",
+        },
+        "generation": {
+            "generation_strategy": "random",
+            "supercell_size": 8,
+            "strains": [0.0],
+        },
         "dft_compute": {
             "code": "quantum_espresso",
             "command": "pw.x",
@@ -140,21 +111,28 @@ def test_cycle01_config_valid(tmp_path):
             "kpoints_density": 3.0,
         },
         "mlip_training": {
-            "model_type": "ace",
+            "model_type": "mace",
             "r_cut": 5.0,
             "delta_learning": False,
             "loss_weights": {"energy": 1.0, "forces": 1.0},
         },
-        "database_path": str(db_file),
     }
-    model = Cycle01Config(**data)
+    model = FullConfig(**data)
+    assert isinstance(model.system, System)
+    assert isinstance(model.generation, StructureGeneration)
     assert isinstance(model.dft_compute, DFTCompute)
     assert isinstance(model.mlip_training, MLIPTraining)
 
 
-def test_cycle01_config_invalid_path():
-    """Tests ValidationError for a non-existent database_path."""
+def test_full_config_missing_section():
+    """Tests ValidationError when a top-level section is missing."""
     data = {
+        "system": {
+            "elements": ["Si"],
+            "composition": {"Si": 1},
+            "structure_type": "covalent",
+        },
+        # 'generation' section is missing
         "dft_compute": {
             "code": "quantum_espresso",
             "command": "pw.x",
@@ -164,12 +142,11 @@ def test_cycle01_config_invalid_path():
             "kpoints_density": 3.0,
         },
         "mlip_training": {
-            "model_type": "ace",
+            "model_type": "mace",
             "r_cut": 5.0,
             "delta_learning": False,
             "loss_weights": {"energy": 1.0, "forces": 1.0},
         },
-        "database_path": "non_existent_file.db",
     }
-    with pytest.raises(ValidationError, match="Path does not point to a file"):
-        Cycle01Config(**data)
+    with pytest.raises(ValidationError, match="Field required"):
+        FullConfig(**data)

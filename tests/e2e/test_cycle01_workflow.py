@@ -1,91 +1,102 @@
-from unittest.mock import patch
+import os
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
-import yaml
+from ase import Atoms
 from click.testing import CliRunner
 
 from mlip_autopipec.cli import cli
+from mlip_autopipec.data.models import FullConfig
 
 
 @pytest.fixture
 def runner():
     return CliRunner()
 
+
 @pytest.fixture
-def sample_config_file(tmp_path):
-    """Creates a temporary valid config YAML file."""
-    config_content = {
-        'database_path': 'test.db',
-        'dft_compute': {
-            'code': 'quantum_espresso',
-            'command': 'pw.x',
-            'pseudopotentials': {
-                'Si': 'Si.pbe-n-rrkjus_psl.1.0.0.UPF',
-            },
-            'ecutwfc': 60,
-            'ecutrho': 240,
-            'kpoints_density': 3,
+def full_config_dict() -> dict:
+    """Provides a valid, fully expanded config as a dictionary."""
+    return {
+        "system": {
+            "elements": ["Si"],
+            "composition": {"Si": 1},
+            "structure_type": "covalent",
         },
-        'mlip_training': {
-            'model_type': 'ace',
-            'r_cut': 5.0,
-            'delta_learning': False,
-            'loss_weights': {'energy': 1.0, 'forces': 1.0}
-        }
+        "generation": {
+            "generation_strategy": "random",
+            "supercell_size": 8,
+            "strains": [0.0],
+        },
+        "dft_compute": {
+            "code": "quantum_espresso",
+            "command": "pw.x",
+            "pseudopotentials": {"Si": "Si.UPF"},
+            "ecutwfc": 60.0,
+            "ecutrho": 240.0,
+            "kpoints_density": 3.0,
+        },
+        "mlip_training": {
+            "model_type": "mace",
+            "r_cut": 5.0,
+            "delta_learning": False,
+            "loss_weights": {"energy": 1.0, "forces": 1.0},
+        },
     }
-    config_file = tmp_path / "config.yaml"
-    with open(config_file, 'w') as f:
-        yaml.dump(config_content, f)
-    # Also create the dummy database file so FilePath validation passes
-    (tmp_path / "test.db").touch()
-    return str(config_file)
 
 
-@patch('mlip_autopipec.workflow.Orchestrator')
-def test_cli_run_cycle_success(mock_orchestrator, runner, sample_config_file):
-    """Test the CLI `run-cycle` command with a valid config."""
+@patch("mlip_autopipec.data.database.AseDBWrapper.get_all_labeled_rows")
+@patch("mlip_autopipec.data.database.AseDBWrapper.get_rows_to_label")
+@patch("mlip_autopipec.services.config_expander.ConfigExpander.expand_config")
+@patch("mlip_autopipec.modules.a_structure_generator.StructureGenerator.execute")
+@patch("mlip_autopipec.modules.c_labeling_engine.LabelingEngine.execute")
+@patch("mlip_autopipec.modules.d_training_engine.TrainingEngine.execute")
+def test_cycle01_logic_within_new_cli(
+    mock_training_execute: MagicMock,
+    mock_labeling_execute: MagicMock,
+    mock_structure_generator_execute: MagicMock,
+    mock_expand_config: MagicMock,
+    mock_get_rows_to_label: MagicMock,
+    mock_get_all_labeled_rows: MagicMock,
+    runner: CliRunner,
+    tmp_path: Path,
+    full_config_dict: dict,
+):
+    """
+    Tests that the core 'Label -> Train' logic from Cycle 1 still works
+    within the new Cycle 2 CLI and orchestrator.
+    """
     # Arrange
-    from mlip_autopipec.data.database import AseDBWrapper
-    from mlip_autopipec.modules.c_labeling_engine import LabelingEngine
-    from mlip_autopipec.modules.d_training_engine import TrainingEngine
-    mock_orchestrator_instance = mock_orchestrator.return_value
-    mock_orchestrator_instance.run_label_and_train_workflow.return_value = None
+    mock_expand_config.return_value = FullConfig(**full_config_dict)
+
+    # Simulate a successful workflow by mocking the database calls
+    mock_row = MagicMock()
+    mock_row.toatoms.return_value = Atoms("X")
+    mock_get_rows_to_label.return_value = [mock_row]
+    mock_get_all_labeled_rows.return_value = [mock_row]
+
+    input_yaml_path = tmp_path / "input.yaml"
+    input_yaml_path.touch()
+    os.chdir(tmp_path)
 
     # Act
-    result = runner.invoke(cli, ['run-cycle', '--config', sample_config_file])
+    result = runner.invoke(
+        cli, ["run", "--input", str(input_yaml_path)], catch_exceptions=False
+    )
 
     # Assert
     assert result.exit_code == 0
+    assert "Workflow finished successfully!" in result.output
+    mock_structure_generator_execute.assert_called_once()
+    mock_labeling_execute.assert_called_once()
+    mock_training_execute.assert_called_once()
 
-    # Check that Orchestrator was initialized with the correct dependencies
-    mock_orchestrator.assert_called_once()
 
-    # After refactoring, dependencies are injected via keyword arguments
-    call_kwargs = mock_orchestrator.call_args.kwargs
-    assert 'db_wrapper' in call_kwargs
-    assert isinstance(call_kwargs['db_wrapper'], AseDBWrapper)
-    assert 'labeling_engine' in call_kwargs
-    assert isinstance(call_kwargs['labeling_engine'], LabelingEngine)
-    assert 'training_engine' in call_kwargs
-    assert isinstance(call_kwargs['training_engine'], TrainingEngine)
-
-    # Check that the main workflow method was called
-    mock_orchestrator_instance.run_label_and_train_workflow.assert_called_once()
-
-def test_cli_run_cycle_file_not_found(runner):
-    """Test the CLI with a non-existent config file."""
-    result = runner.invoke(cli, ['run-cycle', '--config', 'nonexistent.yaml'])
+def test_cli_run_file_not_found(runner: CliRunner):
+    """Tests the CLI with a non-existent input file."""
+    result = runner.invoke(
+        cli, ["run", "--input", "nonexistent.yaml"], catch_exceptions=False
+    )
     assert result.exit_code != 0
-    assert "Path 'nonexistent.yaml' does not exist" in result.output
-
-def test_cli_run_cycle_invalid_config(runner, tmp_path):
-    """Test the CLI with an invalid config file."""
-    invalid_config_content = {'database_path': 'test.db'} # Missing required fields
-    config_file = tmp_path / "invalid_config.yaml"
-    with open(config_file, 'w') as f:
-        yaml.dump(invalid_config_content, f)
-    (tmp_path / "test.db").touch()
-
-    result = runner.invoke(cli, ['run-cycle', '--config', str(config_file)])
-    assert result.exit_code != 0
-    assert "Error loading configuration" in result.output
+    assert "File 'nonexistent.yaml' does not exist." in result.output

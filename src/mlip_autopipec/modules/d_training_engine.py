@@ -92,8 +92,7 @@ class TrainingEngine:
             dft_energy = atoms.get_potential_energy()
             dft_forces = atoms.get_forces()
 
-            # Create a new, clean Atoms object for the base calculation to prevent
-            # state leakage from the original object's calculator.
+            # Create a clean Atoms object for the base calculation.
             temp_atoms = Atoms(
                 symbols=atoms.get_chemical_symbols(),
                 positions=atoms.get_positions(),
@@ -107,11 +106,18 @@ class TrainingEngine:
             delta_energy = dft_energy - base_energy
             delta_forces = dft_forces - base_forces
 
-            # Create the final Atoms object with the delta values
-            delta_atoms = temp_atoms.copy() # Now it's safe to copy
-            delta_atoms.calc = SinglePointCalculator(
-                atoms=delta_atoms, energy=delta_energy, forces=delta_forces
+            # To definitively avoid any calculator state leakage, we construct
+            # a new Atoms object from scratch instead of copying the original.
+            final_atoms = Atoms(
+                symbols=atoms.get_chemical_symbols(),
+                positions=atoms.get_positions(),
+                cell=atoms.get_cell(),
+                pbc=atoms.get_pbc(),
             )
-            processed_atoms_list.append(delta_atoms)
+            # Attach a new calculator containing only the delta values.
+            final_atoms.calc = SinglePointCalculator(
+                atoms=final_atoms, energy=delta_energy, forces=delta_forces
+            )
+            processed_atoms_list.append(final_atoms)
 
         return processed_atoms_list
