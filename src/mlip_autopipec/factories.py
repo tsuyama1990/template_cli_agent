@@ -12,6 +12,7 @@ from mlip_autopipec.config import FullConfig
 from mlip_autopipec.database import AseDBWrapper
 from mlip_autopipec.interfaces import IStructureGenerator, IWorkflowOrchestrator
 from mlip_autopipec.modules.alloy_generator import AlloyGenerator
+from mlip_autopipec.modules.explorer_sampler import Explorer
 from mlip_autopipec.modules.labeling_engine import LabelingEngine
 from mlip_autopipec.modules.molecule_generator import MoleculeGenerator
 from mlip_autopipec.modules.training_engine import TrainingEngine
@@ -67,7 +68,12 @@ def create_workflow_orchestrator(config: FullConfig) -> IWorkflowOrchestrator:
     )
     training_engine = TrainingEngine(config.mlip_training)
     structure_generator = create_structure_generator(config)
+    explorer = Explorer(config.explorer, config.simulation, db_wrapper)
 
     return WorkflowOrchestrator(
-        structure_generator, labeling_engine, training_engine, db_wrapper
+        structure_generator,
+        explorer,
+        labeling_engine,
+        training_engine,
+        db_wrapper,
     )

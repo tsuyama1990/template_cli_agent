@@ -4,8 +4,19 @@ import pytest
 from ase import Atoms
 
 from mlip_autopipec.database import AseDBWrapper
-from mlip_autopipec.interfaces import ILabelingEngine, IStructureGenerator, ITrainingEngine
+from mlip_autopipec.interfaces import (
+    IExplorer,
+    ILabelingEngine,
+    IStructureGenerator,
+    ITrainingEngine,
+)
 from mlip_autopipec.workflow import WorkflowOrchestrator
+
+
+@pytest.fixture
+def mock_explorer():
+    """Fixture for a mocked IExplorer."""
+    return MagicMock(spec=IExplorer)
 
 
 @pytest.fixture
@@ -33,7 +44,11 @@ def mock_db_wrapper():
 
 
 def test_run_workflow_with_empty_db_generates_and_labels(
-    mock_structure_generator, mock_labeling_engine, mock_training_engine, mock_db_wrapper
+    mock_explorer,
+    mock_structure_generator,
+    mock_labeling_engine,
+    mock_training_engine,
+    mock_db_wrapper,
 ):
     """
     Tests that the main run() method correctly calls the structure generator
@@ -44,9 +59,11 @@ def test_run_workflow_with_empty_db_generates_and_labels(
     generated_atoms = [Atoms("H"), Atoms("He")]
     mock_structure_generator.generate.return_value = generated_atoms
     mock_db_wrapper.get_unlabeled_ids.return_value = [1, 2]
+    mock_explorer.explore.return_value = []
 
     orchestrator = WorkflowOrchestrator(
         structure_generator=mock_structure_generator,
+        explorer=mock_explorer,
         labeling_engine=mock_labeling_engine,
         training_engine=mock_training_engine,
         db_wrapper=mock_db_wrapper,
@@ -60,8 +77,8 @@ def test_run_workflow_with_empty_db_generates_and_labels(
     mock_structure_generator.generate.assert_called_once()
 
     expected_calls = [
-        call(generated_atoms[0], state="unlabeled"),
-        call(generated_atoms[1], state="unlabeled"),
+        call(generated_atoms[0], state="unlabeled", is_initial=True),
+        call(generated_atoms[1], state="unlabeled", is_initial=True),
     ]
     mock_db_wrapper.add_atoms.assert_has_calls(expected_calls, any_order=True)
 
@@ -71,7 +88,11 @@ def test_run_workflow_with_empty_db_generates_and_labels(
 
 
 def test_run_workflow_with_populated_db_skips_generation(
-    mock_structure_generator, mock_labeling_engine, mock_training_engine, mock_db_wrapper
+    mock_explorer,
+    mock_structure_generator,
+    mock_labeling_engine,
+    mock_training_engine,
+    mock_db_wrapper,
 ):
     """
     Tests that the main run() method skips structure generation if the
@@ -80,9 +101,11 @@ def test_run_workflow_with_populated_db_skips_generation(
     # Arrange
     mock_db_wrapper.is_empty.return_value = False
     mock_db_wrapper.get_unlabeled_ids.return_value = [3, 4]
+    mock_explorer.explore.return_value = []
 
     orchestrator = WorkflowOrchestrator(
         structure_generator=mock_structure_generator,
+        explorer=mock_explorer,
         labeling_engine=mock_labeling_engine,
         training_engine=mock_training_engine,
         db_wrapper=mock_db_wrapper,
@@ -101,12 +124,17 @@ def test_run_workflow_with_populated_db_skips_generation(
 
 
 def test_label_structure_by_id(
-    mock_structure_generator, mock_labeling_engine, mock_training_engine, mock_db_wrapper
+    mock_explorer,
+    mock_structure_generator,
+    mock_labeling_engine,
+    mock_training_engine,
+    mock_db_wrapper,
 ):
     """Tests that label_structure_by_id correctly calls the labeling engine."""
     # Arrange
     orchestrator = WorkflowOrchestrator(
         structure_generator=mock_structure_generator,
+        explorer=mock_explorer,
         labeling_engine=mock_labeling_engine,
         training_engine=mock_training_engine,
         db_wrapper=mock_db_wrapper,
@@ -123,13 +151,18 @@ def test_label_structure_by_id(
 
 
 def test_label_structure_by_id_failure(
-    mock_structure_generator, mock_labeling_engine, mock_training_engine, mock_db_wrapper
+    mock_explorer,
+    mock_structure_generator,
+    mock_labeling_engine,
+    mock_training_engine,
+    mock_db_wrapper,
 ):
     """Tests that label_structure_by_id correctly handles a labeling failure."""
     # Arrange
     mock_labeling_engine.label_structure.side_effect = Exception("Labeling failed")
     orchestrator = WorkflowOrchestrator(
         structure_generator=mock_structure_generator,
+        explorer=mock_explorer,
         labeling_engine=mock_labeling_engine,
         training_engine=mock_training_engine,
         db_wrapper=mock_db_wrapper,
@@ -146,12 +179,17 @@ def test_label_structure_by_id_failure(
 
 
 def test_run_training(
-    mock_structure_generator, mock_labeling_engine, mock_training_engine, mock_db_wrapper
+    mock_explorer,
+    mock_structure_generator,
+    mock_labeling_engine,
+    mock_training_engine,
+    mock_db_wrapper,
 ):
     """Tests that run_training correctly calls the training engine."""
     # Arrange
     orchestrator = WorkflowOrchestrator(
         structure_generator=mock_structure_generator,
+        explorer=mock_explorer,
         labeling_engine=mock_labeling_engine,
         training_engine=mock_training_engine,
         db_wrapper=mock_db_wrapper,
@@ -166,13 +204,18 @@ def test_run_training(
 
 
 def test_run_training_failure(
-    mock_structure_generator, mock_labeling_engine, mock_training_engine, mock_db_wrapper
+    mock_explorer,
+    mock_structure_generator,
+    mock_labeling_engine,
+    mock_training_engine,
+    mock_db_wrapper,
 ):
     """Tests that run_training correctly handles a training failure."""
     # Arrange
     mock_training_engine.train.side_effect = Exception("Training failed")
     orchestrator = WorkflowOrchestrator(
         structure_generator=mock_structure_generator,
+        explorer=mock_explorer,
         labeling_engine=mock_labeling_engine,
         training_engine=mock_training_engine,
         db_wrapper=mock_db_wrapper,

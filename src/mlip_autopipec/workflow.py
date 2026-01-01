@@ -1,5 +1,6 @@
 from mlip_autopipec.database import AseDBWrapper
 from mlip_autopipec.interfaces import (
+    IExplorer,
     ILabelingEngine,
     IStructureGenerator,
     ITrainingEngine,
@@ -19,6 +20,7 @@ class WorkflowOrchestrator(IWorkflowOrchestrator):
     def __init__(
         self,
         structure_generator: IStructureGenerator,
+        explorer: IExplorer,
         labeling_engine: ILabelingEngine,
         training_engine: ITrainingEngine,
         db_wrapper: AseDBWrapper,
@@ -28,25 +30,37 @@ class WorkflowOrchestrator(IWorkflowOrchestrator):
 
         Args:
             structure_generator: An object that implements the IStructureGenerator interface.
+            explorer: An object that implements the IExplorer interface.
             labeling_engine: An object that implements the ILabelingEngine interface.
             training_engine: An object that implements the ITrainingEngine interface.
             db_wrapper: A wrapper for the ASE database.
         """
         self.structure_generator = structure_generator
+        self.explorer = explorer
         self.labeling_engine = labeling_engine
         self.training_engine = training_engine
         self.db_wrapper = db_wrapper
 
-    def run(self) -> None:
+    def run(self, run_exploration: bool = True) -> None:
         """Runs the main workflow."""
         if self.db_wrapper.is_empty():
             print("Database is empty. Generating initial structures...")
             structures = self.structure_generator.generate()
             for atoms in structures:
-                self.db_wrapper.add_atoms(atoms, state="unlabeled")
+                self.db_wrapper.add_atoms(atoms, state="unlabeled", is_initial=True)
             print(f"Successfully saved {len(structures)} new structures to the database.")
         else:
             print("Database is not empty. Skipping initial structure generation.")
+
+        if run_exploration:
+            explored_frames = self.explorer.explore()
+            if explored_frames:
+                print(f"Adding {len(explored_frames)} explored frames to the database...")
+                for atoms in explored_frames:
+                    self.db_wrapper.add_atoms(atoms, state="unlabeled", is_initial=False)
+                print("Finished adding explored frames.")
+        else:
+            print("Skipping exploration phase as requested.")
 
         # The rest of the workflow logic will be added in subsequent cycles.
         # For now, we just generate structures, label them, and train.

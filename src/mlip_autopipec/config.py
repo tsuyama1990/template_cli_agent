@@ -126,6 +126,22 @@ class SimulationConfig(BaseModel):
     initial_structures_to_generate: int = 10
 
 
+class ExplorerConfig(BaseModel):
+    """
+    Configuration for the surrogate-based exploration phase.
+
+    Attributes:
+        surrogate_model: The name of the pre-trained surrogate model to use.
+        md_steps_per_structure: The number of MD steps to run for each initial structure.
+        thermostat: The type of thermostat to use for the MD simulation (e.g., 'NVT').
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    surrogate_model: str = "mace_mp"
+    md_steps_per_structure: int = 10000
+    thermostat: str = "NVT"
+
+
 class DFTComputeConfig(BaseModel):
     """
     Detailed configuration for the DFT (Quantum Espresso) calculations.
@@ -180,6 +196,7 @@ class FullConfig(BaseModel):
     Attributes:
         system: Detailed system configuration.
         simulation: Detailed simulation configuration.
+        explorer: Configuration for the surrogate-based exploration phase.
         dft_compute: Detailed DFT calculation configuration.
         mlip_training: Detailed MLIP training configuration.
         qe_command: The command to execute Quantum Espresso.
@@ -189,6 +206,7 @@ class FullConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     system: SystemConfig
     simulation: SimulationConfig
+    explorer: ExplorerConfig
     dft_compute: DFTComputeConfig
     mlip_training: MLIPTrainingConfig
     qe_command: str = "pw.x"
@@ -248,13 +266,19 @@ class ConfigExpander:
         )
         dft_compute = self._expand_dft_config(user_input.system)
         mlip_training = self._default_mlip_config()
+        explorer = self._default_explorer_config()
 
         return FullConfig(
             system=system,
             simulation=simulation,
+            explorer=explorer,
             dft_compute=dft_compute,
             mlip_training=mlip_training,
         )
+
+    def _default_explorer_config(self) -> ExplorerConfig:
+        """Returns a default explorer configuration."""
+        return ExplorerConfig()
 
     def _expand_system_config(self, system_input: UserInputSystem) -> SystemConfig:
         """Generates a detailed system configuration from user input."""

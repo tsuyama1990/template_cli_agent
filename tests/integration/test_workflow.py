@@ -109,6 +109,10 @@ def test_full_workflow_from_composition(
     mocker.patch(
         "mlip_autopipec.modules.training_engine.TrainingEngine.train", return_value=None
     )
+    # Mock the explorer to avoid running real MACE calculations
+    mock_explorer = MagicMock()
+    mock_explorer.explore.return_value = []
+    mocker.patch("mlip_autopipec.factories.Explorer", return_value=mock_explorer)
 
     runner = CliRunner()
     with runner.isolated_filesystem() as temp_dir:
@@ -126,7 +130,14 @@ def test_full_workflow_from_composition(
         # Run the full workflow
         result = runner.invoke(
             app,
-            ["run", "--config", str(config_path), "--db-path", str(db_path)],
+            [
+                "run",
+                "--config",
+                str(config_path),
+                "--db-path",
+                str(db_path),
+                "--no-run-exploration",  # Disable exploration for this test
+            ],
             catch_exceptions=False,
         )
         assert result.exit_code == 0
@@ -151,6 +162,55 @@ def test_full_workflow_from_composition(
 
         # 3. Verify Training
         assert "Training process finished." in result.output
+
+
+def test_workflow_with_exploration(mock_process_runner, temp_alloy_config_file, mocker):
+    """
+    Tests that the exploration step is correctly integrated into the workflow.
+    """
+    mocker.patch(
+        "mlip_autopipec.modules.training_engine.TrainingEngine.train", return_value=None
+    )
+
+    # Mock the explorer to return a fixed set of 2 new structures
+    mock_explorer = MagicMock()
+    explored_atoms = [Atoms("Fe"), Atoms("Pt")]
+    mock_explorer.explore.return_value = explored_atoms
+    mocker.patch("mlip_autopipec.factories.Explorer", return_value=mock_explorer)
+
+    runner = CliRunner()
+    with runner.isolated_filesystem() as temp_dir:
+        config_path = Path(temp_dir) / "input.yaml"
+        db_path = Path(temp_dir) / "test.db"
+        config_content = temp_alloy_config_file.read_text()
+        with open(config_path, "w") as f:
+            f.write(config_content)
+
+        db_wrapper = AseDBWrapper(db_path=str(db_path))
+        assert db_wrapper.is_empty()
+
+        # Run the workflow WITH exploration enabled
+        result = runner.invoke(
+            app,
+            ["run", "--config", str(config_path), "--db-path", str(db_path)],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+
+        # --- Assertions ---
+        # 1. Structure generation + Exploration
+        assert "Successfully saved 10 new structures" in result.output
+        mock_explorer.explore.assert_called_once()
+        assert "Adding 2 explored frames to the database" in result.output
+
+        # 2. Database state
+        # Should contain 10 initial structures + 2 explored ones
+        all_atoms = db_wrapper.get_all_labeled_atoms()
+        assert len(all_atoms) == 12
+
+        # 3. Labeling
+        # The labeling engine should have been called for all 12 structures
+        assert mock_process_runner.run.call_count == 12
 
 
 def test_workflow_skips_generation_if_db_not_empty(
@@ -181,7 +241,14 @@ def test_workflow_skips_generation_if_db_not_empty(
         # Run the full workflow
         result = runner.invoke(
             app,
-            ["run", "--config", str(config_path), "--db-path", str(db_path)],
+            [
+                "run",
+                "--config",
+                str(config_path),
+                "--db-path",
+                str(db_path),
+                "--no-run-exploration",
+            ],
             catch_exceptions=False,
         )
         assert result.exit_code == 0
