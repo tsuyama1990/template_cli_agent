@@ -39,7 +39,15 @@ class WorkflowOrchestrator(IWorkflowOrchestrator):
 
     def run(self) -> None:
         """Runs the main workflow."""
-        self.structure_generator.generate()
+        if self.db_wrapper.is_empty():
+            print("Database is empty. Generating initial structures...")
+            structures = self.structure_generator.generate()
+            for atoms in structures:
+                self.db_wrapper.add_atoms(atoms, state="unlabeled")
+            print(f"Successfully saved {len(structures)} new structures to the database.")
+        else:
+            print("Database is not empty. Skipping initial structure generation.")
+
         # The rest of the workflow logic will be added in subsequent cycles.
         # For now, we just generate structures, label them, and train.
         unlabeled_ids = self.db_wrapper.get_unlabeled_ids()

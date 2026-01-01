@@ -37,12 +37,21 @@ class ITrainingEngine(ABC):
         pass
 
 
+
+from ase import Atoms
+
+
 class IStructureGenerator(ABC):
     """Interface for a structure generator."""
 
     @abstractmethod
-    def generate(self) -> None:
-        """Generates initial structures if the database is empty."""
+    def generate(self) -> list[Atoms]:
+        """
+        Generates a list of initial atomic structures.
+
+        Returns:
+            A list of ase.Atoms objects.
+        """
         pass
 
 

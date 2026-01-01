@@ -5,15 +5,16 @@ configfile: pyproject.toml
 testpaths: tests
 plugins: devtools-0.12.2, langsmith-0.4.59, mock-3.15.1, hypothesis-6.148.7, anyio-4.12.0, cov-7.0.0, logfire-4.16.0, asyncio-1.3.0
 asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
-collected 29 items
+collected 28 items
 
 tests/integration/test_workflow.py .                                     [  3%]
-tests/unit/test_config_expander.py .......                               [ 27%]
-tests/unit/test_database.py .....                                        [ 44%]
-tests/unit/test_labeling_engine.py ..                                    [ 51%]
-tests/unit/test_structure_generator.py ........                          [ 79%]
-tests/unit/test_training_engine.py ..                                    [ 86%]
-tests/unit/test_workflow_orchestrator.py ....                            [100%]
+tests/unit/test_alloy_generator.py ....                                  [ 17%]
+tests/unit/test_config_expander.py .......                               [ 42%]
+tests/unit/test_database.py .....                                        [ 60%]
+tests/unit/test_labeling_engine.py ..                                    [ 67%]
+tests/unit/test_molecule_generator.py .....                              [ 85%]
+tests/unit/test_training_engine.py ..                                    [ 92%]
+tests/unit/test_workflow_orchestrator.py ..                              [100%]
 
 =============================== warnings summary ===============================
 tests/integration/test_workflow.py: 20 warnings
@@ -24,24 +25,26 @@ tests/integration/test_workflow.py: 20 warnings
 ================================ tests coverage ================================
 _______________ coverage: platform linux, python 3.12.12-final-0 _______________
 
-Name                                                Stmts   Miss  Cover   Missing
----------------------------------------------------------------------------------
-src/mlip_autopipec/__init__.py                          0      0   100%
-src/mlip_autopipec/app.py                              20      4    80%   54-55, 61-62
-src/mlip_autopipec/cli.py                              45     17    62%   73-83, 102-112, 116
-src/mlip_autopipec/config.py                          110      1    99%   352
-src/mlip_autopipec/constants.py                         3      0   100%
-src/mlip_autopipec/database.py                         46      2    96%   83-84
-src/mlip_autopipec/factories.py                        15      0   100%
-src/mlip_autopipec/interfaces.py                       29      7    76%   22, 37, 46, 55, 65, 70, 88
-src/mlip_autopipec/modules/__init__.py                  0      0   100%
-src/mlip_autopipec/modules/explorer_sampler.py          0      0   100%
-src/mlip_autopipec/modules/labeling_engine.py          35      3    91%   102, 108-109
-src/mlip_autopipec/modules/simulation_engine.py         0      0   100%
-src/mlip_autopipec/modules/structure_generator.py      74      9    88%   8-9, 63, 65, 100, 130-132, 136-138
-src/mlip_autopipec/modules/training_engine.py          13      0   100%
-src/mlip_autopipec/runners.py                           6      2    67%   25-26
-src/mlip_autopipec/workflow.py                         36      1    97%   77
----------------------------------------------------------------------------------
-TOTAL                                                 432     46    89%
-======================= 29 passed, 20 warnings in 3.63s ========================
+Name                                               Stmts   Miss  Cover   Missing
+--------------------------------------------------------------------------------
+src/mlip_autopipec/__init__.py                         0      0   100%
+src/mlip_autopipec/app.py                             20      4    80%   54-55, 61-62
+src/mlip_autopipec/cli.py                             45     17    62%   73-83, 102-112, 116
+src/mlip_autopipec/config.py                         110      1    99%   352
+src/mlip_autopipec/constants.py                        5      0   100%
+src/mlip_autopipec/database.py                        46      2    96%   83-84
+src/mlip_autopipec/factories.py                       23      3    87%   38-42
+src/mlip_autopipec/interfaces.py                      30      7    77%   22, 37, 55, 64, 74, 79, 97
+src/mlip_autopipec/modules/__init__.py                 0      0   100%
+src/mlip_autopipec/modules/alloy_generator.py         46      1    98%   85
+src/mlip_autopipec/modules/base_generator.py          10      1    90%   38
+src/mlip_autopipec/modules/explorer_sampler.py         0      0   100%
+src/mlip_autopipec/modules/labeling_engine.py         35      3    91%   102, 108-109
+src/mlip_autopipec/modules/molecule_generator.py      29      0   100%
+src/mlip_autopipec/modules/simulation_engine.py        0      0   100%
+src/mlip_autopipec/modules/training_engine.py         13      0   100%
+src/mlip_autopipec/runners.py                          6      2    67%   25-26
+src/mlip_autopipec/workflow.py                        42      9    79%   71-75, 84-89
+--------------------------------------------------------------------------------
+TOTAL                                                460     50    89%
+======================= 28 passed, 20 warnings in 3.79s ========================

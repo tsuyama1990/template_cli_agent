@@ -122,7 +122,7 @@ def test_full_workflow_from_composition(
             catch_exceptions=False,
         )
         assert result.exit_code == 0
-        assert "Successfully generated and saved" in result.output
+        assert "Successfully saved 10 new structures to the database." in result.output
 
         # 1. Verify Database State after the full run
         # The database should be populated, and all generated structures should now be labeled.
