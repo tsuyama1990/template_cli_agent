@@ -56,11 +56,10 @@ class CycleState(BaseModel):
     # Session tracking
     session_id: str | None = None
     integration_branch: str | None = None
-    integration_branch: str | None = None
     is_session_finalized: bool = False
 
     # Architect Config
-    planned_cycle_count: int | None = 5
+    planned_cycle_count: int = 5
 
     # Validators
     @field_validator("current_auditor_index")
@@ -86,7 +85,5 @@ class CycleState(BaseModel):
         return v
 
     class Config:
-        # Allow extra fields for flexibility during migration
-        extra = "allow"
-        # Enable validation on assignment
+        extra = "forbid"
         validate_assignment = True

@@ -53,26 +53,22 @@ def mock_process_runner(mocker):
     mock_runner.run.side_effect = mock_run
     mocker.patch("mlip_autopipec.factories.SubprocessRunner", return_value=mock_runner)
 
-    # 2. Mock the ASE parser
-    mock_atoms = Atoms(
-        "H2O",
-        positions=[(0, 0, 0), (1, 0, 0), (0, 1, 0)],
-        cell=np.eye(3) * 10,
-        pbc=True,
-    )
-    # Energy in Ry, converted to eV for ASE
-    energy = -17.83123456 * 13.6057
-    forces = np.random.rand(3, 3)
-    # ASE expects stress in a 6-element Voigt vector
-    stress = np.random.rand(6)
+    # 2. Mock the ASE parser to be generic
+    def mock_read(filepath, **kwargs) -> Atoms:
+        # Instead of a fixed H2O molecule, create a mock for any given atoms object
+        # that will be passed to the labeling engine. We don't have the atoms object
+        # here, but we can create a generic one that has the required properties.
+        atoms = Atoms("X", positions=[[0, 0, 0]], cell=np.eye(3) * 10, pbc=True)
+        energy = -17.83123456 * 13.6057
+        forces = np.random.rand(1, 3)
+        stress = np.random.rand(6)
+        from ase.calculators.singlepoint import SinglePointCalculator
+        atoms.calc = SinglePointCalculator(
+            atoms=atoms, energy=energy, forces=forces, stress=stress
+        )
+        return atoms
 
-    from ase.calculators.singlepoint import SinglePointCalculator
-
-    mock_atoms.calc = SinglePointCalculator(
-        atoms=mock_atoms, energy=energy, forces=forces, stress=stress
-    )
-
-    mocker.patch("mlip_autopipec.modules.labeling_engine.read", return_value=mock_atoms)
+    mocker.patch("mlip_autopipec.modules.labeling_engine.read", side_effect=mock_read)
 
     return mock_runner
 
@@ -84,6 +80,18 @@ def temp_alloy_config_file(tmp_path):
         "system": {"elements": ["Fe", "Pt"], "composition": "FePt"},
     }
     config_path = tmp_path / "input_alloy.yaml"
+    with open(config_path, "w") as f:
+        yaml.dump(config_content, f)
+    return config_path
+
+
+@pytest.fixture
+def temp_h_config_file(tmp_path):
+    """Creates a temporary user input config file for a hydrogen atom."""
+    config_content = {
+        "system": {"elements": ["H"], "composition": "H"},
+    }
+    config_path = tmp_path / "input_h.yaml"
     with open(config_path, "w") as f:
         yaml.dump(config_content, f)
     return config_path
@@ -143,3 +151,42 @@ def test_full_workflow_from_composition(
 
         # 3. Verify Training
         assert "Training process finished." in result.output
+
+
+def test_workflow_skips_generation_if_db_not_empty(
+    mock_process_runner, temp_h_config_file, mocker
+):
+    """
+    Tests that the workflow correctly skips the structure generation step
+    if the database is already populated.
+    """
+    mocker.patch(
+        "mlip_autopipec.modules.training_engine.TrainingEngine.train", return_value=None
+    )
+
+    runner = CliRunner()
+    with runner.isolated_filesystem() as temp_dir:
+        config_path = Path(temp_dir) / "input.yaml"
+        db_path = Path(temp_dir) / "test.db"
+
+        config_content = temp_h_config_file.read_text()
+        with open(config_path, "w") as f:
+            f.write(config_content)
+
+        # Pre-populate the database
+        db_wrapper = AseDBWrapper(db_path=str(db_path))
+        db_wrapper.add_atoms(Atoms("H"), state="unlabeled")
+        assert not db_wrapper.is_empty()
+
+        # Run the full workflow
+        result = runner.invoke(
+            app,
+            ["run", "--config", str(config_path), "--db-path", str(db_path)],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+        assert "Skipping initial structure generation" in result.output
+        assert "Successfully generated" not in result.output
+
+        # Verify that only the pre-existing structure was labeled
+        assert mock_process_runner.run.call_count == 1

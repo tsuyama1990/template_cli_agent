@@ -193,10 +193,10 @@ class GitManager:
         try:
             if is_pr:
                 # PR Checkout (using gh)
-                # We remove --force because we are now clean (stashed), and we want to preserve safety
-                # But gh pr checkout might fail if branch exists locally?
-                # Using --force with gh usually creates/resets the branch to the PR head.
-                # Since we stashed, --force is safer now for code files we want to overwrite with PR.
+                # We remove --force as we're now clean (stashed), preserving safety.
+                # However, gh pr checkout might fail if the branch exists locally.
+                # Using --force creates/resets the branch to the PR head.
+                # Since we stashed, --force is safer for overwriting code files.
                 await self.runner.run_command(
                     [self.gh_cmd, "pr", "checkout", target, "--force"],
                     check=True,
@@ -224,10 +224,9 @@ class GitManager:
                 logger.warning("Conflict detected during stash restoration.")
 
                 # Check for .ac_cdd_session.json conflict specifically
-                # Logic: We want the STASHED version (which was local "theirs" in merge context? or "ours"?)
-                # When popping, the stash is applied to the working tree.
-                # A conflict means the branch content differs from stash content.
-                # We want the STASH content for session.json.
+                # Logic: We want the STASHED version. When popping, a conflict means
+                # the branch content differs from stash content. We prefer the
+                # stashed (local) version for the session file.
 
                 # We can checkout the file from the stash explicitly.
                 # 'stash@{0}' is the one we just tried to pop (it stays if failed)
@@ -449,27 +448,27 @@ class GitManager:
         await self._run_git(["push"])
 
         # Create PR
-        stdout, _, code = await self.runner.run_command(
-            [
-                self.gh_cmd,
-                "pr",
-                "create",
-                "--base",
-                "main",
-                "--head",
-                integration_branch,
-                "--title",
-                title,
-                "--body",
-                body,
-                body,
-            ],
-            check=True,
-        )
-
-        if code != 0:
-            # Try to get error message from stdout or infer
-            raise RuntimeError(f"Failed to create PR: {stdout if stdout else 'Unknown error'}")
+        try:
+            stdout, _, _ = await self.runner.run_command(
+                [
+                    self.gh_cmd,
+                    "pr",
+                    "create",
+                    "--base",
+                    "main",
+                    "--head",
+                    integration_branch,
+                    "--title",
+                    title,
+                    "--body",
+                    body,
+                ],
+                check=True,
+            )
+        except Exception as e:
+            # The runner might return stdout/stderr in the exception
+            stderr = getattr(e, "stderr", str(e))
+            raise RuntimeError(f"Failed to create PR: {stderr}") from e
 
         pr_url = stdout.strip()
         logger.info(f"Final PR created: {pr_url}")

@@ -37,10 +37,6 @@ class ITrainingEngine(ABC):
         pass
 
 
-
-from ase import Atoms
-
-
 class IStructureGenerator(ABC):
     """Interface for a structure generator."""
 

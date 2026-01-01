@@ -66,7 +66,8 @@ class AlloyGenerator(BaseStructureGenerator):
         np.random.shuffle(atomic_numbers)
         supercell.set_atomic_numbers(atomic_numbers)
 
-        logger.info(f"Created a randomized supercell with formula: {supercell.get_chemical_formula()}")
+        formula = supercell.get_chemical_formula()
+        logger.info(f"Created a randomized supercell with formula: {formula}")
         return supercell
 
     def _get_atomic_numbers_from_composition(

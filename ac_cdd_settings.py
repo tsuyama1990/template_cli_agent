@@ -1,10 +1,10 @@
-from typing import Literal
-
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from pydantic import BaseModel, Field, model_validator
+from typing import Literal
+
+from pydantic import BaseModel, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from dev_src.ac_cdd_core.utils import detect_package_dir, read_prompt
@@ -101,8 +101,8 @@ class ReviewerConfig(BaseSettings):
 
 
 class ACCDDSettings(BaseSettings):
-    JULES_API_KEY: str | None = None
-    OPENROUTER_API_KEY: str | None = None
+    JULES_API_KEY: SecretStr | None = None
+    OPENROUTER_API_KEY: SecretStr | None = None
     MAX_RETRIES: int = 10
     DUMMY_CYCLE_ID: str = "00"
     E2B_API_KEY: str | None = None

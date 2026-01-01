@@ -33,12 +33,12 @@ def create_structure_generator(config: FullConfig) -> IStructureGenerator:
         An object that implements the `IStructureGenerator` interface.
     """
     structure_type = config.system.structure_type
-    if structure_type == "alloy":
+    if structure_type == "alloy" or structure_type == "covalent":
         return AlloyGenerator(config)
     elif structure_type == "molecule":
         return MoleculeGenerator(config)
     else:
-        # As more generators are added (e.g., for ionic, covalent), they will be added here.
+        # As more generators are added (e.g., for ionic), they will be added here.
         raise ValueError(f"Unsupported structure type: {structure_type}")
 
 
