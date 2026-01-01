@@ -1,0 +1,8 @@
+
+!    total energy              =     -15.85217439 Ry
+Forces acting on atoms (cartesian axes, Ry/au):
+     atom    1   force =     -0.00000014    -0.00000014    -0.00000014
+total   stress  (Ry/bohr**3)                (kbar)     P=      -0.34
+      -0.00000215    -0.00000000     0.00000000
+      -0.00000000    -0.00000215     0.00000000
+       0.00000000     0.00000000    -0.00000215

@@ -1,8 +1,9 @@
 import json
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
-from pathlib import Path
 from ac_cdd_core.session_manager import SessionManager, SessionValidationError
+
 
 @pytest.fixture
 def mock_session_file(tmp_path):

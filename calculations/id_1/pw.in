@@ -1,0 +1,36 @@
+&CONTROL
+   calculation      = 'vc-relax'
+/
+&SYSTEM
+   ecutwfc          = 60.0
+   ecutrho          = 240.0
+   occupations      = 'smearing'
+   degauss          = 0.01
+   smearing         = 'mv'
+   ntyp             = 1
+   nat              = 1
+   ibrav            = 0
+/
+&ELECTRONS
+/
+&IONS
+/
+&CELL
+/
+&FCP
+/
+&RISM
+/
+ATOMIC_SPECIES
+Si 28.085
+
+K_POINTS automatic
+1 1 1  0 0 0
+
+CELL_PARAMETERS angstrom
+1.00000000000000 0.00000000000000 0.00000000000000
+0.00000000000000 1.00000000000000 0.00000000000000
+0.00000000000000 0.00000000000000 1.00000000000000
+
+ATOMIC_POSITIONS angstrom
+Si 0.0000000000 0.0000000000 0.0000000000
