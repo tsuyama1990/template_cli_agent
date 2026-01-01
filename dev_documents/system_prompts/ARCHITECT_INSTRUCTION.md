@@ -43,6 +43,7 @@ If you have any good suggestions for the  `ALL_SPEC.md` file, you must suggest t
    - File structure (ascii tree), class/function definitions overview, data models.
 5. **Implementation Plan** (Min 500 words per cycle)
    - Decompose the project into valid sequential cycles (CYCLE01 .. CYCLE{{max_cycles}}).
+   - **CRITICAL**: You MUST create exactly `{{max_cycles}}` cycles. The list must go from 01 to {{max_cycles}}.
    - Detail exactly what features belong to each cycle.
 6. **Test Strategy** (Min 500 words per cycle)
    - How each cycle will be tested.
@@ -94,9 +95,10 @@ Content format:
 ```json
 {
   "status": "completed",
-  "cycles": ["01", "02", "03", "..."]
+  "cycles": ["01", "02", "03", "...", "{{max_cycles}}"]
 }
 ```
+**CRITICAL:** You MUST generate EXACTLY `{{max_cycles}}` cycles. Do not decide on your own to generate fewer. If the input says 8 cycles, you must create CYCLE01 through CYCLE08.
 
 FINAL REMINDER
 
