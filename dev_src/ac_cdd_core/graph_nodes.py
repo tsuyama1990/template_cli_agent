@@ -85,6 +85,12 @@ class CycleNodes:
         )
 
         instruction = settings.get_template("CODER_INSTRUCTION.md").read_text()
+
+        # Inject audit feedback if this is a retry
+        last_audit = state.get("audit_result")
+        if state.get("status") == "retry_fix" and last_audit and last_audit.feedback:
+            console.print("[bold yellow]Injecting Audit Feedback into Coder Prompt...[/bold yellow]")
+            instruction += f"\n\n# PREVIOUS AUDIT FEEDBACK (MUST FIX)\nThe following issues were identified in the previous iteration. You must address them:\n\n{last_audit.feedback}"
         target_files = settings.get_target_files()
         context_files = settings.get_context_files()
 

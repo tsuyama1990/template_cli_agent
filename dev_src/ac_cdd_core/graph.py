@@ -65,7 +65,7 @@ class GraphBuilder:
             "committee_manager",
             self.nodes.route_committee,
             {
-                "approved": "uat_evaluate",
+                "uat_evaluate": "uat_evaluate",
                 "auditor": "auditor",  # Loop back for next auditor
                 "coder_session": "coder_session",  # Loop back for fix
                 "failed": END,
