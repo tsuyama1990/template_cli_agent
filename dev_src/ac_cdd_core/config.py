@@ -103,7 +103,7 @@ class AgentsConfig(BaseModel):
 
 class ReviewerConfig(BaseModel):
     smart_model: str = Field(
-        default="claude-3-5-sonnet",
+        default="openrouter/anthropic/claude-3-5-sonnet",
         description="Model for editing code (Fixer)",
         validation_alias="SMART_MODEL",
     )

@@ -113,7 +113,11 @@ class GitManager:
             raise RuntimeError(error_msg) from e
 
     async def get_current_branch(self) -> str:
-        return await self._run_git(["rev-parse", "--abbrev-ref", "HEAD"])
+        try:
+            return await self._run_git(["rev-parse", "--abbrev-ref", "HEAD"])
+        except RuntimeError:
+            # Likely empty repo with no commits yet. Default to 'main'
+            return "main"
 
     async def get_remote_url(self) -> str:
         """Returns the URL of the 'origin' remote."""

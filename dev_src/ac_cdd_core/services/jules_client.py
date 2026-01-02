@@ -174,9 +174,12 @@ class JulesClient:
         self.manager_agent = manager_agent
 
         # Instantiate internal API client for delegation
-        self.api_client = JulesApiClient(
-            api_key=self.credentials.token if self.credentials else settings.JULES_API_KEY
-        )
+        # LOGIC FIX: Always prioritize JULES_API_KEY if set, otherwise use ADC token
+        api_key_to_use = settings.JULES_API_KEY
+        if not api_key_to_use and self.credentials:
+             api_key_to_use = self.credentials.token
+
+        self.api_client = JulesApiClient(api_key=api_key_to_use)
 
     async def _sleep(self, seconds: float) -> None:
         """Async sleep wrapper for easier mocking in tests."""
@@ -248,7 +251,9 @@ class JulesClient:
                 "cycles": ["01", "02"],  # For architect session
             }
 
-        if not settings.JULES_API_KEY and not self.credentials:
+        # FIX: Check api_client.api_key which includes fallback detection (os.getenv)
+        # instead of strict settings.JULES_API_KEY which requires prefix
+        if not self.api_client.api_key:
             if "PYTEST_CURRENT_TEST" not in os.environ:
                 raise JulesSessionError("Missing JULES_API_KEY or ADC credentials.")
             # For tests, allow proceeding if mocked later, or fail later if real call attempted.
@@ -275,7 +280,10 @@ class JulesClient:
 
             # Ensure the branch exists on the remote so Jules can access it
             if "PYTEST_CURRENT_TEST" not in os.environ:
-                await self.git.push_branch(branch)
+                try:
+                    await self.git.push_branch(branch)
+                except Exception as e:
+                    logger.warning(f"Could not push branch (likely empty repo): {e}")
 
         except Exception as e:
             if "PYTEST_CURRENT_TEST" in os.environ:

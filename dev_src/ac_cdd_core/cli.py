@@ -213,7 +213,9 @@ def gen_cycles(
         # Run the graph
         try:
             # We use aconfig={"recursion_limit": 50} for safety if needed
-            final_state = await graph.ainvoke(initial_state)
+            thread_id = session_id or "architect-session"
+            config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 50}
+            final_state = await graph.ainvoke(initial_state, config)
 
             if final_state.get("error"):
                 console.print(f"[red]Architect Phase Failed:[/red] {final_state['error']}")
@@ -380,7 +382,11 @@ def run_cycle(
             try:
                 # We iterate through events to show progress if needed, or just invoke
                 # invoke returns the final state
-                final_state = await graph.ainvoke(initial_state, {"recursion_limit": 50})
+                config = {
+                    "configurable": {"thread_id": session_id_to_use},
+                    "recursion_limit": 50,
+                }
+                final_state = await graph.ainvoke(initial_state, config)
 
                 if final_state.get("error"):
                     console.print(f"[red]Cycle {target_cycle} Failed:[/red] {final_state['error']}")
