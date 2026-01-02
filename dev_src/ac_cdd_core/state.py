@@ -59,9 +59,14 @@ class CycleState(BaseModel):
     session_id: str | None = None
     integration_branch: str | None = None
     is_session_finalized: bool = False
+    final_fix: bool = Field(
+        default=False, 
+        description="Flag indicating final fix before merge (bypass further audits)"
+    )
 
     # Architect Config
     planned_cycle_count: int | None = 5
+    requested_cycle_count: int | None = None  # User-requested cycle count from CLI
 
     # Validators
     @field_validator("current_auditor_index")

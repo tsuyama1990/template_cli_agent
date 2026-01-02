@@ -176,6 +176,9 @@ def gen_cycles(
     session_id: Annotated[
         str, typer.Option(help="Session ID (auto-generated if not provided)")
     ] = None,
+    count: Annotated[
+        int, typer.Option("--count", "-c", help="Target number of development cycles")
+    ] = None,
 ) -> None:
     """
     Run the Architect Phase and start a new development session.
@@ -201,7 +204,10 @@ def gen_cycles(
 
         # Initialize state with session
         initial_state = CycleState(
-            cycle_id=settings.DUMMY_CYCLE_ID, session_id=session_id, planned_cycle_count=cycles
+            cycle_id=settings.DUMMY_CYCLE_ID, 
+            session_id=session_id, 
+            planned_cycle_count=cycles,
+            requested_cycle_count=count
         )
 
         # Run the graph
@@ -244,6 +250,9 @@ def run_cycle(
     cycle_id: Annotated[str, typer.Option("--id", help="Cycle ID (e.g., '01') or 'all'")] = "01",
     session_id: Annotated[str, typer.Option("--session", help="Session ID")] = None,
     auto: Annotated[bool, typer.Option(help="Run without manual confirmation")] = False,
+    auto_merge: Annotated[
+        bool, typer.Option("--auto-merge/--no-auto-merge", help="Auto-merge PR to integration branch")
+    ] = True,
     start_iter: Annotated[
         int,
         typer.Option(
@@ -380,6 +389,31 @@ def run_cycle(
                     console.print(f"Failed at phase: [bold]{phase}[/bold]")
                     sys.exit(1)
                 else:
+                    # Auto-merge PR to integration branch if enabled
+                    if auto_merge and final_state.get("pr_url"):
+                        console.print(
+                            "[bold yellow]Auto-Merging PR into Integration Branch...[/bold yellow]"
+                        )
+                        from .services.git_ops import GitManager
+
+                        git = GitManager()
+
+                        try:
+                            # Merge PR to integration branch and sync local
+                            await git.merge_to_integration(
+                                final_state["pr_url"], integration_branch
+                            )
+                            console.print("[green]✓ PR Merged Successfully.[/green]")
+                            console.print(
+                                "[dim]Local branch updated with latest changes.[/dim]"
+                            )
+                        except Exception as e:
+                            console.print(f"[red]Auto-Merge Failed:[/red] {e}")
+                            console.print(
+                                "[yellow]Please merge the PR manually before running the next cycle.[/yellow]"
+                            )
+                            # Don't exit - cycle succeeded, just merge failed
+
                     if auto and cycle_id.lower() == "all":
                         console.print(
                             f"[bold green]Cycle {target_cycle} Completed Successfully![/bold green]"
