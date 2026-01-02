@@ -40,7 +40,6 @@ AC-CDD is designed as a **containerized CLI tool**. You do not clone the tool's 
  ├── 📂 src/              <- Your source code
  ├── 📂 dev_documents/    <- Specifications (ALL_SPEC.md, etc.)
  ├── .env                 <- API Keys
- ├── ac_cdd_config.py     <- Project Configuration
  └── docker-compose.yml   <- Runner configuration
 ```
 
@@ -78,7 +77,7 @@ AC-CDD is designed as a **containerized CLI tool**. You do not clone the tool's 
 
 ### Configuration
 
-The system is configured via `.env` and `ac_cdd_config.py`.
+The system is configured via `.env`.
 
 #### API Keys
 
@@ -120,7 +119,7 @@ Navigate to your empty project folder and run:
 ac-cdd init
 ```
 
-This creates the `dev_documents/` structure and a default `ac_cdd_config.py` in your current directory.
+This creates the `dev_documents/` structure and `pyproject.toml` (if missing) in your current directory.
 
 **Next Step:** Edit `dev_documents/ALL_SPEC.md` with your raw project requirements.
 

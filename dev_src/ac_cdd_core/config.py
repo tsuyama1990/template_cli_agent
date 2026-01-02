@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import Literal
 
@@ -69,10 +68,12 @@ class ToolsConfig(BaseModel):
     mypy_cmd: str = "mypy"
     ruff_cmd: str = "ruff"
     gemini_cmd: str = "gemini"
+    required_executables: list[str] = ["uv", "git"]
 
 
 class SandboxConfig(BaseModel):
     """Configuration for E2B Sandbox execution"""
+
     template: str | None = None
     timeout: int = 7200
     cwd: str = "/home/user/project"
@@ -82,7 +83,6 @@ class SandboxConfig(BaseModel):
         "uv.lock",
         ".auditignore",
         "README.md",
-        "ac_cdd_config.py",  # Should likely be removed, but keeping for now if user has it
     ]
     install_cmd: str = "pip install --no-cache-dir ruff"
     test_cmd: list[str] = ["uv", "run", "pytest"]
@@ -120,6 +120,7 @@ class ReviewerConfig(BaseModel):
 
 class SessionConfig(BaseModel):
     """Session-based development configuration."""
+
     session_id: str | None = None
     integration_branch_prefix: str = "dev"
     auto_merge_to_integration: bool = True
@@ -153,6 +154,14 @@ class Settings(BaseSettings):
     filename_spec: str = "ALL_SPEC.md"
     filename_arch: str = "SYSTEM_ARCHITECTURE.md"
     max_audit_retries: int = 2
+    required_env_vars: list[str] = ["JULES_API_KEY", "E2B_API_KEY"]
+    default_cycles: list[str] = ["01", "02", "03", "04", "05"]
+    architect_context_files: list[str] = [
+        "ALL_SPEC.md",
+        "SPEC.md",
+        "UAT.md",
+        "ARCHITECT_INSTRUCTION.md",
+    ]
 
     # Nested Configurations
     session: SessionConfig = Field(default_factory=SessionConfig)
@@ -164,11 +173,11 @@ class Settings(BaseSettings):
     reviewer: ReviewerConfig = Field(default_factory=ReviewerConfig)
 
     model_config = SettingsConfigDict(
-        env_prefix='AC_CDD_',
-        env_nested_delimiter='__',
+        env_prefix="AC_CDD_",
+        env_nested_delimiter="__",
         extra="ignore",
         env_file=".env",
-        env_file_encoding="utf-8"
+        env_file_encoding="utf-8",
     )
 
     @property
@@ -177,6 +186,7 @@ class Settings(BaseSettings):
         if self.session.session_id:
             return self.session.session_id
         from datetime import datetime
+
         now = datetime.now()
         return f"session-{now.strftime('%Y%m%d-%H%M%S-%f')[:20]}"
 
@@ -232,7 +242,7 @@ class Settings(BaseSettings):
         # This was in ac_cdd_config.py as dev_src/ac_cdd_core/prompts
         fallback_path = Path(self.paths.prompts_dir) / filename
         if fallback_path.exists():
-             return fallback_path.read_text(encoding="utf-8").strip()
+            return fallback_path.read_text(encoding="utf-8").strip()
 
         return default
 
@@ -240,8 +250,8 @@ class Settings(BaseSettings):
         """Auditor/Coderにとっての参照専用ファイル(仕様書)のパスリスト"""
         p = self.paths.documents_dir
         if not p.exists():
-             # Fallback for local testing
-             p = Path.cwd() / "dev_documents"
+            # Fallback for local testing
+            p = Path.cwd() / "dev_documents"
 
         if p.exists():
             return [str(f) for f in p.glob("*.md")]
@@ -266,6 +276,7 @@ class Settings(BaseSettings):
             targets.extend([str(p) for p in tests.rglob("*.py")])
 
         return targets
+
 
 # Global settings object
 settings = Settings()

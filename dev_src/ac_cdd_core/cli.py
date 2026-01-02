@@ -1,6 +1,7 @@
 import os
-import sys
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Annotated
 
@@ -37,7 +38,7 @@ def check_environment() -> None:
     missing_tools = []
 
     # 1. Executables
-    required_tools = ["uv", "git"]
+    required_tools = settings.tools.required_executables
     for tool in required_tools:
         if not shutil.which(tool):
             missing_tools.append(tool)
@@ -58,7 +59,7 @@ def check_environment() -> None:
         api_key_valid = False
 
     missing_vars = []
-    required_vars = ["JULES_API_KEY", "E2B_API_KEY"]
+    required_vars = settings.required_env_vars
     for var in required_vars:
         if not os.environ.get(var):
             missing_vars.append(var)
@@ -121,19 +122,24 @@ def init() -> None:
 
     # Initialize uv project if pyproject.toml is missing
     # We check in the root of the workspace (/app)
-    pyproject_path = settings.paths.workspace_root / "pyproject.toml" if hasattr(settings.paths, "workspace_root") else Path("/app/pyproject.toml")
+    workspace_root = getattr(settings.paths, "workspace_root", Path("/app"))
+    pyproject_path = workspace_root / "pyproject.toml"
 
     if not pyproject_path.exists():
         console.print("[yellow]pyproject.toml not found. Initializing uv project...[/yellow]")
+        uv_path = shutil.which("uv")
+        if not uv_path:
+            console.print("[red]uv executable not found.[/red]")
+            raise typer.Exit(code=1)
+
         try:
-             # Run uv init in the workspace root
-             subprocess.run(["uv", "init"], cwd=str(pyproject_path.parent), check=True)
+            # Run uv init in the workspace root
+            subprocess.run(  # noqa: S603
+                [uv_path, "init"], cwd=str(pyproject_path.parent), check=True
+            )
         except subprocess.CalledProcessError as e:
-             console.print(f"[red]Failed to run uv init:[/red] {e}")
-             raise typer.Exit(code=1) from e
-        except FileNotFoundError:
-             console.print("[red]uv executable not found.[/red]")
-             raise typer.Exit(code=1)
+            console.print(f"[red]Failed to run uv init:[/red] {e}")
+            raise typer.Exit(code=1) from e
     else:
         console.print("[dim]pyproject.toml already exists. Skipping initialization.[/dim]")
 
@@ -445,7 +451,7 @@ def run_cycle(
 
         # 3. Last Resort Fallback
         if not raw_list:
-            raw_list = ["01", "02", "03", "04", "05"]
+            raw_list = settings.default_cycles
 
         cycles_to_run = raw_list if cycle_id.lower() == "all" else [cycle_id]
 
@@ -460,7 +466,7 @@ def run_cycle(
                 active = data["active_cycle_id"]
                 if active in raw_list:
                     start_index = raw_list.index(active)
-                    skipped = raw_list[start_index - 1] if start_index > 0 else 'None'
+                    skipped = raw_list[start_index - 1] if start_index > 0 else "None"
                     console.print(
                         f"[yellow]Taking up from saved active cycle: {active} "
                         f"(Skipping 01-{skipped})[/yellow]"
@@ -592,7 +598,7 @@ def start_session(
         docs_dir = Path(settings.paths.documents_dir)
         # Using full paths as keys to ensure JulesClient can locate them for upload
         spec_files = {}
-        for filename in ["ALL_SPEC.md", "SPEC.md", "UAT.md", "ARCHITECT_INSTRUCTION.md"]:
+        for filename in settings.architect_context_files:
             p = docs_dir / filename
             if p.exists():
                 # Store full path string as key, content as value
