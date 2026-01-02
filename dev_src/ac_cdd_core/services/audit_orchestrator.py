@@ -17,9 +17,12 @@ class AuditOrchestrator:
     the PlanAuditor (Reviewer).
     """
 
-    def __init__(self):
-        self.jules = JulesClient()
+    def __init__(
+        self, jules_client: JulesClient | None = None, sandbox_runner: Any | None = None
+    ):
+        self.jules = jules_client or JulesClient()
         self.auditor = PlanAuditor()
+        self.sandbox = sandbox_runner
 
     async def run_interactive_session(
         self, prompt: str, source_name: str, spec_files: dict[str, str], max_retries: int = 3
@@ -138,9 +141,19 @@ class AuditOrchestrator:
         """Helper to poll until a plan with a different ID appears."""
         console.print("[dim]Waiting for revised plan...[/dim]")
         start_time = asyncio.get_event_loop().time()
+
+        # Exponential backoff parameters
+        base_delay = 10
+        max_delay = 60
+        current_delay = base_delay
+
         while asyncio.get_event_loop().time() - start_time < timeout:
             latest = await self.jules.get_latest_plan(session_name)
             if latest and latest.get("planId") != current_plan_id:
                 return latest
-            await asyncio.sleep(10)
+
+            # Wait with exponential backoff
+            await asyncio.sleep(current_delay)
+            current_delay = min(current_delay * 2, max_delay)
+
         raise TimeoutError("Timed out waiting for revised plan.")
