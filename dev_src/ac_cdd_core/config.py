@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import Literal
 
@@ -69,6 +68,7 @@ class ToolsConfig(BaseModel):
     mypy_cmd: str = "mypy"
     ruff_cmd: str = "ruff"
     gemini_cmd: str = "gemini"
+    required_executables: list[str] = ["uv", "git"]
 
 
 class SandboxConfig(BaseModel):
@@ -82,7 +82,6 @@ class SandboxConfig(BaseModel):
         "uv.lock",
         ".auditignore",
         "README.md",
-        "ac_cdd_config.py",  # Should likely be removed, but keeping for now if user has it
     ]
     install_cmd: str = "pip install --no-cache-dir ruff"
     test_cmd: list[str] = ["uv", "run", "pytest"]
@@ -153,6 +152,14 @@ class Settings(BaseSettings):
     filename_spec: str = "ALL_SPEC.md"
     filename_arch: str = "SYSTEM_ARCHITECTURE.md"
     max_audit_retries: int = 2
+    required_env_vars: list[str] = ["JULES_API_KEY", "E2B_API_KEY"]
+    default_cycles: list[str] = ["01", "02", "03", "04", "05"]
+    architect_context_files: list[str] = [
+        "ALL_SPEC.md",
+        "SPEC.md",
+        "UAT.md",
+        "ARCHITECT_INSTRUCTION.md",
+    ]
 
     # Nested Configurations
     session: SessionConfig = Field(default_factory=SessionConfig)
