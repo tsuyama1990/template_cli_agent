@@ -72,7 +72,7 @@ async def test_architect_graph_execution(graph_builder, mock_jules):
 async def test_coder_graph_execution(services, mock_jules):
     """Test coder graph execution flow."""
     initial_state = CycleState(cycle_id="01", iteration_count=0)
-    
+
     with patch("ac_cdd_core.graph_nodes.AuditOrchestrator") as MockAuditClass, \
          patch("ac_cdd_core.graph_nodes.LLMReviewer") as MockReviewerClass:
 
@@ -83,7 +83,7 @@ async def test_coder_graph_execution(services, mock_jules):
         # Mock Reviewer (for new flow: auditor_node)
         mock_reviewer_instance = MockReviewerClass.return_value
         mock_reviewer_instance.review_code = AsyncMock(return_value="NO ISSUES FOUND")
-        
+
         builder = GraphBuilder(services)
         graph = builder.build_coder_graph()
 

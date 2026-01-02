@@ -115,6 +115,8 @@ def init() -> None:
     Initialize the AC-CDD environment (Docker Optimized).
     Creates /app/src, /app/dev_documents and runs 'uv init' if needed.
     """
+    check_environment()
+
     # Create directories
     settings.paths.src.mkdir(parents=True, exist_ok=True)
     settings.paths.documents_dir.mkdir(parents=True, exist_ok=True)

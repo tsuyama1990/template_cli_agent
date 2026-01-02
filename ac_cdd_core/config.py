@@ -19,21 +19,19 @@ PROMPT_FILENAME_MAP = {
 
 def _detect_package_dir() -> str:
     """
-    Detects the main package directory under /opt/ac_cdd/ac_cdd_core or dev_src/
+    Detects the main package directory under /opt/ac_cdd/ac_cdd_core or ac_cdd_core/
     """
     # 1. Check Docker installed location
     docker_path = Path("/opt/ac_cdd/ac_cdd_core")
     if docker_path.exists():
         return str(docker_path)
 
-    # 2. Check local dev location
-    src_path = Path("dev_src")
-    if src_path.exists():
-        for p in src_path.iterdir():
-            if p.is_dir() and (p / "__init__.py").exists():
-                return str(p)
+    # 2. Check local dev location (Now at root)
+    src_path = Path("ac_cdd_core")
+    if src_path.exists() and (src_path / "__init__.py").exists():
+        return str(src_path)
 
-    return "dev_src/ac_cdd_core"
+    return "ac_cdd_core"
 
 
 class PathsConfig(BaseModel):
@@ -45,7 +43,7 @@ class PathsConfig(BaseModel):
     tests: Path = Path("/app/tests")
     templates: Path = Path("/opt/ac_cdd/templates")
     # For local testing fallback
-    prompts_dir: str = "dev_src/ac_cdd_core/prompts"
+    prompts_dir: str = "ac_cdd_core/prompts"
 
     @model_validator(mode="after")
     def _set_dependent_paths(self) -> "PathsConfig":
@@ -76,13 +74,12 @@ class SandboxConfig(BaseModel):
     template: str | None = None
     timeout: int = 7200
     cwd: str = "/home/user/project"
-    dirs_to_sync: list[str] = ["src", "tests", "contracts", "dev_documents", "dev_src"]
+    dirs_to_sync: list[str] = ["src", "tests", "contracts", "dev_documents", "ac_cdd_core"]
     files_to_sync: list[str] = [
         "pyproject.toml",
         "uv.lock",
         ".auditignore",
         "README.md",
-        "ac_cdd_config.py",  # Should likely be removed, but keeping for now if user has it
     ]
     install_cmd: str = "pip install --no-cache-dir ruff"
     test_cmd: list[str] = ["uv", "run", "pytest"]
@@ -203,9 +200,9 @@ class Settings(BaseSettings):
             return system_path
 
         # 3. Local Dev Fallback
-        # dev_src/ac_cdd_core/config.py -> .../dev_documents/system_prompts
+        # ac_cdd_core/config.py -> ../dev_documents/system_prompts
         local_dev_path = (
-            Path(__file__).parent.parent.parent / "dev_documents" / "system_prompts" / name
+            Path(__file__).parent.parent / "dev_documents" / "system_prompts" / name
         )
         if local_dev_path.exists():
             return local_dev_path
@@ -229,7 +226,6 @@ class Settings(BaseSettings):
             return path.read_text(encoding="utf-8").strip()
 
         # Fallback: Check System Defaults (Fallback in source code)
-        # This was in ac_cdd_config.py as dev_src/ac_cdd_core/prompts
         fallback_path = Path(self.paths.prompts_dir) / filename
         if fallback_path.exists():
              return fallback_path.read_text(encoding="utf-8").strip()

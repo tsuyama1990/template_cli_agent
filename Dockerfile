@@ -19,13 +19,19 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 # Set working directory for the tool installation
 # We install the tool into /opt/ac_cdd/ac_cdd_core
-WORKDIR /opt/ac_cdd/ac_cdd_core
+# Although previously we copied to /opt/ac_cdd/ac_cdd_core and installed .,
+# now the package root is ac_cdd_core (and src for user).
+# The build context root has pyproject.toml and ac_cdd_core/.
+
+WORKDIR /opt/ac_cdd
 
 # Copy project files for the tool
 COPY pyproject.toml .
-COPY dev_src/ ./dev_src/
+# Copy the core package directory
+COPY ac_cdd_core/ ./ac_cdd_core/
 
 # Install the tool and its dependencies into the system python environment
+# Note: we are installing from . which contains pyproject.toml
 RUN uv pip install --system .
 
 # Copy system prompts to internal template directory
@@ -42,7 +48,6 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 # Environment variables
 ENV PYTHONUNBUFFERED=1
 ENV AC_CDD_TEMPLATE_PATH=/opt/ac_cdd/templates
-# AC_CDD_CONFIG_PATH is no longer needed
 
 ENTRYPOINT ["ac-cdd"]
 CMD ["--help"]

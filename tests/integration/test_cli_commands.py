@@ -54,10 +54,16 @@ def test_init_command_creates_structure(runner):
         patch("ac_cdd_core.cli.check_environment") as mock_check,
         patch("ac_cdd_core.services.project.ProjectManager.initialize_project") as mock_init,
         patch("rich.console.Console.print"),
+        patch("subprocess.run") # Patch subprocess.run used in init
     ):
         from ac_cdd_core.cli import app
 
         result = runner.invoke(app, ["init"])
+
+        # Debug output if failed
+        if result.exit_code != 0:
+            print(result.stdout)
+            print(result.exception)
 
         assert result.exit_code == 0
         mock_check.assert_called_once()
@@ -96,7 +102,8 @@ def test_check_environment_all_present():
 
 def test_init_command(runner, mock_project_manager):
     """Test init command execution."""
-    with patch("ac_cdd_core.cli.check_environment"):
+    with patch("ac_cdd_core.cli.check_environment"), \
+         patch("subprocess.run"): # Patch subprocess for uv init check
         from ac_cdd_core.cli import app
 
         # Patch ProjectManager inside cli scope or where it's instantiated
@@ -129,8 +136,15 @@ def test_gen_cycles_command(runner, mock_graph_builder, mock_session_manager):
         mock_state.session_id = "test-session"
         mock_state.integration_branch = "dev/test"
         mock_state.get.return_value = None  # for .get("error")
+        # Ensure result behaves like subscriptable state if needed by caller (though CLI uses keys)
+        # CycleState is now subscriptable, mocks might need to emulate __getitem__ if accessed that way.
+        # But CLI typically accesses attrs if it gets a dict back from ainvoke.
+        # Actually ainvoke returns state.
 
-        mock_graph.ainvoke = AsyncMock(return_value=mock_state)
+        # We mock __getitem__ on the mock_state
+        mock_state.__getitem__ = lambda self, key: getattr(self, key, None)
+
+        mock_graph.ainvoke = AsyncMock(return_value={"session_id": "test", "integration_branch": "dev"})
         mock_graph_builder.build_architect_graph.return_value = mock_graph
 
         # Invoke with explicit cycles count
