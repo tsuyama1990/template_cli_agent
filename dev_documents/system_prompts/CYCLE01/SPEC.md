@@ -1,0 +1,129 @@
+# Specification: Cycle 1 - Core Pipeline and CLI
+
+## 1. Summary
+
+This document provides the detailed technical specification for the first development cycle of the MLIP-AutoPipe project. The primary objective of Cycle 1 is to build the foundational infrastructure of the application, delivering a robust, command-line-driven workflow for the initial stages of dataset generation. This cycle will focus on implementing the core components for configuration management, initial structure generation, and data persistence. The key deliverable will be a functional Command-Line Interface (CLI) that allows a user to define a simple physical system (e.g., a binary alloy) in a configuration file and execute a pipeline that generates a set of physically valid seed structures and saves them into a structured ASE/SQLite database. This cycle is fundamentally about building a solid, reliable "chassis" for the application before we install the high-performance "engine" in Cycle 2.
+
+The scope of this cycle is intentionally constrained to ensure the creation of a stable and well-tested core. Advanced functionalities, such as the molecular dynamics exploration engine and the web-based user interface, are explicitly deferred to Cycle 2. Instead, this cycle will implement the essential data models using Pydantic, which will serve as the "single source of truth" for all configuration. We will establish the database interaction layer, encapsulating all data storage logic within a dedicated module to ensure a clean separation of concerns. We will also build the initial set of structure generators, starting with a versatile `AlloyGenerator`, and define the abstract interfaces that will govern how these components interact. The pipeline orchestrator will be implemented in a way that connects these components, but the exploration and sampling stages will be represented by simple placeholder ("pass-through") implementations. This architectural choice is deliberate; it allows us to validate the end-to-end data flow, configuration handling, error reporting, and database writing without introducing the complexity of scientific computations. The successful completion of this cycle will yield a command-line tool that is immediately useful for generating initial structural datasets—a common and often tedious task in computational materials science—and provides a solid, extensible foundation for the advanced features planned in the subsequent cycle. A heavy emphasis will be placed on comprehensive unit and integration testing to ensure the reliability and correctness of this foundational codebase, giving us high confidence before moving on to more complex features.
+
+## 2. System Architecture
+
+The architecture for Cycle 1 is focused on establishing the core project structure and implementing the essential components for the initial data generation workflow. The file structure is designed to be modular and scalable, following standard Python best practices to ensure maintainability.
+
+**File Structure for Cycle 1:**
+
+```
+src/mlip_autopipec/
+├── __init__.py
+├── cli.py                 # To be created. Will use Typer and Rich for a modern CLI experience.
+├── config.py              # To be created. Will contain all Pydantic configuration models.
+├── database.py            # To be created. The data access layer, abstracting database operations.
+├── factories.py           # To be created. Centralised object creation logic.
+├── interfaces.py          # To be created. Defines the contracts (ABCs) for pipeline components.
+└── pipeline/
+    ├── __init__.py
+    ├── orchestrator.py    # To be created. The central pipeline coordinator.
+    ├── generation.py      # To be created. Home for structure generator implementations.
+    ├── exploration.py     # To be created (stub implementation). A simple pass-through explorer.
+    └── sampling.py        # To be created (stub implementation). A simple pass-through sampler.
+tests/
+├── __init__.py
+├── conftest.py
+├── test_config.py         # To be created. Unit tests for Pydantic models.
+├── test_database.py       # To be created. Unit tests for the database wrapper.
+└── test_generation.py     # To be created. Unit tests for the AlloyGenerator.
+```
+
+**Key Component Blueprints:**
+
+*   **`cli.py`**: This module will be the main user entry point, built using the `Typer` library for its excellent support for type hints and automatic help generation. It will define a main `run` command that takes a single argument: the path to a Hydra configuration file or directory. The function will be wrapped in robust error handling to catch exceptions from the pipeline and present them to the user as clean, informative messages using the `rich` library. It will not contain any business logic itself; its sole responsibilities are to parse command-line arguments, initialize the configuration using Hydra, use a factory to build the main `WorkflowOrchestrator` object, and then trigger the pipeline execution. This keeps the user interface layer cleanly separated from the core application logic.
+
+*   **`config.py`**: This is a critical module containing all Pydantic models that define the application's configuration schema. We will define a top-level `FullConfig` model that acts as a container for other, more specialised models like `SystemConfig`, `GenerationConfig`, and `DatabaseConfig`. `SystemConfig` will include fields for defining the chemical system (e.g., `elements: List[str]`, `composition: Dict[str, float]`, `lattice: str`, `lattice_constant: float`). It will contain a `@model_validator` to ensure that the provided `composition` values sum to 1.0. `GenerationConfig` will specify parameters for the structure generation process (e.g., `num_structures: int = Field(gt=0)`, `supercell_size: List[int]`). `DatabaseConfig` will specify the output path. This schema-first approach is vital for ensuring that any configuration passed to the application is valid before any processing begins.
+
+*   **`database.py`**: This module will introduce the `AseDBWrapper` class, which will encapsulate all interactions with the ASE/SQLite database. This class will provide a clean, high-level API abstracting the underlying `ase.db` calls. The API will include methods like `connect(path)`, `write_atoms(atoms_list)`, `get_atoms_by_id(id)`, and `count()`. By centralising all database logic in this single class, we adhere to the Data Access Layer pattern, decoupling the rest of the application from the specific details of the database implementation. This makes the code cleaner, easier to test (we can mock the wrapper), and makes it possible to switch to a different database backend in the future by only changing this one module.
+
+*   **`interfaces.py`**: This module will define the abstract "contracts" for the core components of the pipeline using Python's `abc` module and `abstractmethod`. Key interfaces will include `IStructureGenerator`, which will define a `generate(config: GenerationConfig) -> List[ase.Atoms]` method, and `IWorkflowOrchestrator`, which will define a `run()` method. These interfaces are fundamental to the project's modularity. They allow the orchestrator to be coded against a stable interface, without needing to know the details of the concrete classes that implement it, enabling the dependency injection and factory patterns.
+
+*   **`factories.py`**: This module will contain factory functions responsible for creating concrete instances of the objects defined by the interfaces. For example, `create_generator(config: GenerationConfig) -> IStructureGenerator` will contain the logic to inspect the configuration and decide which generator class (e.g., `AlloyGenerator`) to instantiate and return. This centralises the object creation logic, preventing it from being scattered across the codebase and making the system easier to configure and extend.
+
+*   **`pipeline/orchestrator.py`**: This will contain the `WorkflowOrchestrator` class, the central coordinator of the pipeline. In Cycle 1, its `run` method will execute the sequence: Generation -> Exploration -> Sampling -> Storage. It will be constructed with injected dependencies (a generator, an explorer, a sampler, and a database wrapper). The `run` method will be responsible for calling each component in turn, passing the output of one stage as the input to the next, and providing informative logging at each step.
+
+*   **`pipeline/generation.py`**: This module will contain the `AlloyGenerator` class, a concrete implementation of the `IStructureGenerator` interface. It will be responsible for creating random alloy structures. This involves using ASE functions (`ase.build.bulk`) to create a pristine crystal primitive cell, expanding it into a larger supercell, and then iterating through the atoms and randomly assigning their chemical symbols according to the target composition defined in the `SystemConfig`. A crucial part of this implementation is the inclusion of physical validation logic, such as ensuring that the final supercell is large enough to contain the MLIP's cutoff radius and checking for minimum inter-atomic distances to reject physically nonsensical structures.
+
+*   **`pipeline/exploration.py` & `pipeline/sampling.py`**: For Cycle 1, these modules will contain simple "stub" implementations. The `PassThroughExplorer` will implement the `IExplorer` interface, but its `explore` method will simply take the input structures and return them immediately without modification. The `PassThroughSampler` will do the same. This is a crucial design choice that allows us to build and test the entire pipeline's data flow and orchestration logic without needing to implement the full complexity of MD or FPS in this cycle.
+
+This architecture ensures a solid, decoupled foundation, where each component has a single, well-defined responsibility, making the system testable, maintainable, and ready for future expansion.
+
+## 3. Design Architecture
+
+The design of MLIP-AutoPipe is centered on robust, type-safe data models, leveraging Pydantic to enforce contracts throughout the application. This schema-first approach ensures data integrity from configuration intake to database storage, preventing a wide class of common bugs related to invalid or unexpected data types.
+
+**Pydantic Schema Design:**
+
+*   **`config.py`**: This file is the single source of truth for all configurable parameters. The models will be designed for clarity and will include detailed docstrings explaining each parameter.
+    *   **`DatabaseConfig(BaseModel)`**: Will hold the path for the output database file (e.g., `path: str`). It will also contain parameters for how the database should be handled, such as `overwrite: bool = False`. This ensures that the application always has a valid and clearly defined destination for its results.
+    *   **`SystemConfig(BaseModel)`**: This is a critical model defining the physical system to be generated. It will contain fields like `elements: List[str]`, `composition: Dict[str, float]`, and `lattice_constant: float`. It will be decorated with a `model_validator` that performs cross-field validation, for example, to ensure that the keys in the `composition` dictionary are a subset of the `elements` list and that the composition percentages sum to 1.0 within a small tolerance.
+    *   **`GenerationConfig(BaseModel)`**: Will define parameters for the initial structure generation. This includes `num_structures: int = Field(..., gt=0)` to ensure a positive number of structures are requested, and `supercell_size: List[int]` which will have a validator to ensure it's a list of exactly 3 positive integers. It will also contain parameters for physical validation, like `min_atomic_distance_factor: float = 0.8`, which controls the check for atomic overlaps.
+    *   **`FullConfig(BaseModel)`**: The top-level container model that aggregates the other configuration models: `database: DatabaseConfig`, `system: SystemConfig`, `generation: GenerationConfig`. This model is the single, unified object that represents the entire configuration for a pipeline run. It will be instantiated and validated by Hydra at startup, providing a single, reliable source of parameters for the rest of the application.
+
+**Data Flow and Consumers/Producers:**
+
+The data flow in Cycle 1 is a simple, linear sequence.
+
+1.  **User/Hydra (Producer)** -> **`FullConfig` (Data)**: The process begins with the user creating a `config.yaml` file. The `cli.py` module invokes Hydra, which reads this file, validates it against the `FullConfig` Pydantic model, and instantiates a `FullConfig` object. This object, which is a validated and type-safe representation of the user's request, is the primary data artifact that drives the entire pipeline. The `cli.py` module is the initial consumer of this object.
+
+2.  **`WorkflowOrchestrator` (Producer/Consumer)** -> **`List[ase.Atoms]` (Data)**:
+    *   The orchestrator is the primary consumer of the `FullConfig` object, using it to configure its dependent components via the factories.
+    *   It then calls the `.generate()` method of the `IStructureGenerator` (e.g., `AlloyGenerator`), which acts as a producer of the core scientific data: a list of `ase.Atoms` objects. These objects are rich, containing the positions, chemical symbols, and cell parameters for each generated structure.
+    *   These `Atoms` objects are then consumed by the stub `PassThroughExplorer` and `PassThroughSampler`. In this cycle, these components act as simple identity functions, producing an identical list of `ase.Atoms` objects as their output.
+
+3.  **`WorkflowOrchestrator` (Producer)** -> **`AseDBWrapper` (Consumer)**: The orchestrator takes the final list of `ase.Atoms` objects produced by the sampling stage and passes them as an argument to the `AseDBWrapper`'s `write_atoms` method. The `AseDBWrapper` is the final consumer in the pipeline. It consumes these objects and is responsible for the I/O operations of serializing them into the SQLite database, including all associated metadata.
+
+**Versioning and Extensibility:**
+
+The design explicitly prioritises extensibility through its adherence to the Open/Closed Principle. By defining clear interfaces in `interfaces.py`, we establish stable "contracts" for components. In future cycles, a developer can introduce a new structure generator (e.g., a `CrystalGenerator` for covalent systems) by creating a new class that inherits from `IStructureGenerator`. As long as this new class correctly implements the `generate` method, it can be integrated into the system without requiring *any* changes to the core `WorkflowOrchestrator`'s code. The only other change required would be a minor update to the `create_generator` factory in `factories.py` to recognise a new configuration option and instantiate the new class. This makes the system "open for extension" (we can add new generators) but "closed for modification" (the core, tested orchestrator logic remains unchanged). This is a powerful design pattern that significantly enhances long-term maintainability and reduces the risk of introducing regressions when adding new features.
+
+## 4. Implementation Approach
+
+The implementation will be executed in a logical, step-by-step manner, starting with the foundational components and progressively building up to the full CLI application. The approach is test-driven, with unit tests being written alongside each component to ensure correctness at every step.
+
+1.  **Setup Project Structure**: The first step is to create the directory and file layout as defined in the System Architecture section. This includes creating empty `__init__.py` files to define the Python packages, and setting up the `pyproject.toml` file with initial dependencies like `typer`, `rich`, `pydantic`, `hydra-core`, `ase`, and `pytest`.
+
+2.  **Implement `config.py`**: Define all Pydantic models (`DatabaseConfig`, `SystemConfig`, `GenerationConfig`, `FullConfig`). This is the most critical first step as it defines the data contracts for the entire application. Write corresponding unit tests in `tests/test_config.py`. These tests will be thorough, verifying not only that valid data passes but also that invalid data raises `pydantic.ValidationError` with helpful error messages. For example, test that a composition dict with values summing to 1.1 is rejected.
+
+3.  **Implement `interfaces.py`**: Define the abstract base classes `IStructureGenerator`, `IExplorer`, `ISampler`, and `IWorkflowOrchestrator`. This step requires no testing itself but is a prerequisite for all other components, as it allows us to code against abstractions rather than concrete implementations.
+
+4.  **Implement `database.py`**: Create the `AseDBWrapper` class. It will use the `ase.db` module internally. Implement methods for connecting to the database, writing a list of `ase.Atoms` objects, and a simple `count` method. Write unit tests in `tests/test_database.py`. These tests will use a `pytest` fixture to create a temporary database file for each test function and ensure its cleanup, making the tests self-contained and idempotent.
+
+5.  **Implement `pipeline/generation.py`**: Create the `AlloyGenerator` class, ensuring it inherits from `IStructureGenerator`. Its `generate` method will use ASE functions (`ase.build.bulk`) to create a primitive cell, use `ase.build.make_supercell` to expand it, and then loop through the `ase.Atoms` object to randomly replace atomic symbols according to the composition defined in the `SystemConfig`. A crucial part of this implementation is adding the physical validation logic as a separate, testable helper method within the class. Tests in `tests/test_generation.py` will verify that the generator produces the correct number of atoms of each species and that the validation checks are triggered appropriately by asserting that `pytest.raises` specific exceptions for invalid inputs.
+
+6.  **Implement Stub Components**: Create the `pipeline/exploration.py` and `pipeline/sampling.py` files. Inside them, define the `PassThroughExplorer` and `PassThroughSampler` classes. These will be very simple classes that inherit from their respective interfaces and whose main methods simply return the list of atoms they received as input. This allows the orchestrator to be built and tested without the complexity of the real exploration logic.
+
+7.  **Implement `factories.py`**: Write the `create_generator`, `create_explorer`, `create_sampler`, and `create_orchestrator` factory functions. These will take the `FullConfig` object as input, inspect it, and instantiate the necessary concrete classes with their dependencies (for example, `create_orchestrator` will itself call the other factories to create the objects it needs to inject into the `WorkflowOrchestrator`'s constructor).
+
+8.  **Implement `pipeline/orchestrator.py`**: Build the `WorkflowOrchestrator`. Its `__init__` method will accept its dependencies via dependency injection. Its `run` method will call the `.generate()`, `.explore()`, `.sample()`, and `.write_atoms()` methods in the correct sequence, passing the data between them and using Python's `logging` module to report progress.
+
+9.  **Implement `cli.py`**: Finally, build the CLI using `Typer`. It will define the main `run` command, which will contain the logic for loading the configuration with Hydra, using the factories to create the top-level orchestrator object, and then calling its `run()` method inside a `try...except` block to handle potential errors gracefully.
+
+10. **Integration Testing**: With all components in place, write an integration test that uses `click.testing.CliRunner`. This test will simulate a user running the application from the command line. It will create a temporary directory, write a sample `config.yaml` file into it, invoke the CLI, and then assert that the output ASE database file is created and contains the correct number of generated structures. This final test verifies that all the individual components are wired together correctly.
+
+## 5. Test Strategy
+
+The test strategy for Cycle 1 is focused on ensuring the correctness and robustness of the foundational components through a combination of exhaustive unit testing and targeted integration testing. We will use `pytest` as the testing framework and aim for high test coverage on all new code.
+
+**Unit Testing Approach (Min 300 words):**
+
+Unit tests are the cornerstone of our quality assurance strategy, designed to be fast, deterministic, and comprehensive. Each module in the `src` directory will have a corresponding test file in the `tests` directory (e.g., `generation.py` is tested by `test_generation.py`). Our core principle is to test each class in complete isolation from its dependencies. To achieve this, we will use the `pytest-mock` library to replace external dependencies with mock objects. For instance, when testing the `WorkflowOrchestrator`, the generator, explorer, sampler, and database wrapper dependencies that are passed into its constructor will all be `MagicMock` objects. This allows us to make assertions about how the orchestrator interacts with its dependencies—for example, we can `assert_called_once_with()` on the mock database wrapper's `write_atoms` method to verify that the orchestrator is correctly passing the data it received from the (mocked) sampler. This approach allows us to test the orchestrator's coordination logic without needing to run a real simulation or write to a real database, making the test extremely fast and focused.
+
+For the `AlloyGenerator`, unit tests will be particularly detailed. We will test a variety of scenarios: a simple 50/50 binary alloy, a multi-component alloy with non-equal compositions, and edge cases like a single-element system (which should be a no-op). For each case, we will call the `generate` method and then perform detailed assertions on the returned list of `ase.Atoms` objects. We will check that the total number of atoms is correct (`len(atoms) == expected_size`), and we will use `collections.Counter` on the atomic symbols to assert that the chemical composition is correct within the statistical variance of random assignment. We will also write specific tests to verify the physical validation logic. For instance, we will programmatically create an `ase.Atoms` object with an intentionally small inter-atomic distance and pass it to the generator's validation helper method, asserting that it correctly raises a custom `PhysicsViolationError` exception using `pytest.raises`.
+
+For the `config.py` module, our tests will rigorously exercise the Pydantic validators. We won't just test that valid data is accepted; we will spend more time testing that invalid data is correctly rejected. We will construct dictionaries with incorrect data types (e.g., a string for `num_structures`), out-of-range values (e.g., a composition value of 1.5), and cross-field inconsistencies (e.g., compositions that don't sum to 1.0). For each invalid case, we will use `with pytest.raises(ValidationError): FullConfig.model_validate(invalid_data)` to assert that our custom validators are being triggered as expected, ensuring a robust and user-friendly configuration experience.
+
+**Integration Testing Approach (Min 300 words):**
+
+While unit tests verify our components in isolation, integration tests verify that they are "wired together" correctly and can function as a cohesive system. For Cycle 1, our primary integration test will focus on the main user-facing workflow: running the application from the command line. We will use the `click.testing.CliRunner` utility, which is designed specifically for testing `click`-based (and by extension, `Typer`-based) CLI applications. This allows us to invoke our CLI programmatically and make assertions about its output and side effects.
+
+The main integration test will be structured using the "Arrange, Act, Assert" pattern:
+1.  **Arrange**: The test function will use the `runner.isolated_filesystem()` context manager. This is a powerful feature that creates a temporary, empty directory and changes the current working directory into it for the duration of the test. This completely isolates the test from the host filesystem, ensuring it is repeatable and cannot be affected by or affect other tests or files. Inside this isolated environment, the test will programmatically create a sample `config.yaml` file. This YAML file will contain a complete, valid configuration for a simple binary alloy system, specifying a small number of structures to be generated.
+2.  **Act**: The test will then call `runner.invoke(cli.main, ["--config-path", "config.yaml"])`. This executes the main function of our CLI application, passing in the path to the configuration file we just created. The runner captures all console output, the exit code, and any exceptions.
+3.  **Assert**: After the command has finished, the test will perform a series of assertions to verify the outcome. First, it will check `assert result.exit_code == 0` to confirm the command executed successfully. It will also check the captured output (`result.output`) to ensure key log messages, such as "Generation complete" and "Data stored successfully," were printed. The most important assertions, however, relate to the side effects. The test will use `os.path.exists()` to assert that the output database file (e.g., `structures.db`) has been created in the temporary directory. It will then go a step further and use the *real* `AseDBWrapper` to connect to this newly created database. It will then call the `.count()` method and assert that the number of structures in the database is equal to the `num_structures` specified in the config file, providing definitive proof that the entire pipeline, from configuration parsing to final database write, has executed successfully.
