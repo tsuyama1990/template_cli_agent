@@ -96,6 +96,31 @@ class SessionManager:
         )
 
         if result.returncode != 0:
+            # Local missing? Check Remote explicitly before failing
+            remote_check = subprocess.run(  # noqa: S603
+                ["git", "ls-remote", "--heads", "origin", integration_branch],  # noqa: S607
+                capture_output=True,
+                check=False,
+            )
+
+            if remote_check.returncode == 0 and remote_check.stdout.strip():
+                # Found on remote! Fetch it.
+                logger.info(f"Branch {integration_branch} found on remote. Fetching...")
+                fetch_res = subprocess.run(  # noqa: S603
+                    [
+                        "git",
+                        "fetch",
+                        "origin",
+                        f"{integration_branch}:{integration_branch}",
+                    ],  # noqa: S607
+                    capture_output=True,
+                    check=False,
+                )
+                if fetch_res.returncode == 0:
+                    return True, None
+                else:
+                    logger.error(f"Failed to fetch branch: {fetch_res.stderr.decode()}")
+
             from ac_cdd_core.error_messages import RecoveryMessages
 
             error_msg = f"Session validation failed: {RecoveryMessages.branch_not_found(integration_branch, str(cls.SESSION_FILE))}"  # noqa: E501

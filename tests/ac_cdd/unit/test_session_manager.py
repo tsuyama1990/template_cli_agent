@@ -80,6 +80,33 @@ def test_validate_session_branch_mismatch():
         assert "not found locally" in error
 
 
+def test_validate_session_fetch_remote_success():
+    """Test session validation when local branch missing but remote exists."""
+    session_id = "session-20251230-120000"
+    integration_branch = "dev/session-20251230-120000/integration"
+
+    with patch("subprocess.run") as mock_run:
+        # Define side effects for sequential calls:
+        # 1. git rev-parse (local check) -> Fail (1)
+        # 2. git ls-remote (remote check) -> Success (0) with output
+        # 3. git fetch -> Success (0)
+        mock_run.side_effect = [
+            MagicMock(returncode=1),  # local check fails
+            MagicMock(stdout="refs/heads/" + integration_branch, returncode=0),  # remote exists
+            MagicMock(returncode=0),  # fetch succeeds
+        ]
+
+        is_valid, error = SessionManager.validate_session(session_id, integration_branch)
+        
+        assert is_valid
+        assert error is None
+        
+        # Verify fetch was called
+        args = mock_run.call_args_list[2][0][0]
+        assert "fetch" in args
+        assert f"{integration_branch}:{integration_branch}" in args[3]
+
+
 def test_reconcile_session_from_git():
     """Test reconciling session from Git branches."""
     with patch("subprocess.run") as mock_run:

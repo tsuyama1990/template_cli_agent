@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -58,7 +59,8 @@ class CycleNodes:
         
         context_files = settings.get_context_files()
 
-        session_id = f"architect-cycle-{state['cycle_id']}"
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M")
+        session_id = f"architect-cycle-{state['cycle_id']}-{timestamp}"
 
         result = await self.jules.run_session(
             session_id=session_id,

@@ -20,13 +20,14 @@ def mock_jules():
     client = MagicMock()
     # Mock methods used in graph nodes
     client.start_architect_session = AsyncMock(return_value={"status": "success"})
-    client.run_session = AsyncMock(
-        return_value={
+    async def mock_run_session(*args, **kwargs):
+        return {
             "status": "success",
             "pr_url": "http://pr",
-            "session_name": "sess-123",
+            "session_name": kwargs.get("session_id", "sess-123"),
         }
-    )
+
+    client.run_session = AsyncMock(side_effect=mock_run_session)
     client.continue_session = AsyncMock(return_value={"status": "success", "pr_url": "http://pr"})
     return client
 
@@ -74,6 +75,10 @@ async def test_architect_graph_execution(graph_builder, mock_jules):
     # In CycleNodes.architect_session_node, we return {"status": "architect_completed"}
     # This should merge into CycleState.
     assert result["status"] == "architect_completed"
+    
+    # Verify session ID has timestamp
+    assert result["session_id"].startswith("architect-cycle-00-")
+    assert len(result["session_id"]) > len("architect-cycle-00-")
 
 
 @pytest.mark.asyncio
