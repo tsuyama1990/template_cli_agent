@@ -36,13 +36,14 @@ def _detect_package_dir() -> str:
 
 
 class PathsConfig(BaseModel):
-    documents_dir: Path = Path("/app/dev_documents")
+    workspace_root: Path = Field(default_factory=Path.cwd)
+    documents_dir: Path = Field(default_factory=lambda: Path.cwd() / "dev_documents")
     package_dir: str = Field(default_factory=_detect_package_dir)
     contracts_dir: str = ""
     sessions_dir: str = ".jules/sessions"
-    src: Path = Path("/app/src")
-    tests: Path = Path("/app/tests")
-    templates: Path = Path("/opt/ac_cdd/templates")
+    src: Path = Field(default_factory=lambda: Path.cwd() / "src")
+    tests: Path = Field(default_factory=lambda: Path.cwd() / "tests")
+    templates: Path = Field(default_factory=lambda: Path.cwd() / "dev_documents" / "templates")
     # For local testing fallback
     prompts_dir: str = "dev_src/ac_cdd_core/prompts"
 
