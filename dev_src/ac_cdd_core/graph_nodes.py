@@ -66,7 +66,7 @@ class CycleNodes:
             target_files=context_files,  # Architect edits specs
             context_files=[],  # Input requirements (like ALL_SPEC) could go here if distinct
             completion_signal_file=Path("completion_signal"),
-            require_plan_approval=True,
+            require_plan_approval=False,
         )
 
         # Calculate Integration Branch properly
@@ -80,6 +80,7 @@ class CycleNodes:
                 "status": "architect_completed", 
                 "current_phase": "architect_done",
                 "integration_branch": integration_branch,
+                "session_id": result.get("session_name"),
             }
         else:
             return {"status": "architect_failed", "error": result.get("error")}
