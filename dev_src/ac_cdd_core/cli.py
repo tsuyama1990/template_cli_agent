@@ -231,6 +231,13 @@ def gen_cycles(
 
                 SessionManager.save_session(session_id_final, integration_branch)
 
+                # Explicitly create/push the integration branch from main
+                # to ensure it exists for the next cycle
+                from .services.git_ops import GitManager
+
+                git = GitManager()
+                await git.create_integration_branch(session_id_final)
+
                 # Show success message
                 SuccessMessages.show_panel(
                     SuccessMessages.architect_complete(session_id_final, integration_branch)
