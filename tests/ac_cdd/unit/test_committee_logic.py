@@ -1,8 +1,10 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+from ac_cdd_core.domain_models import AuditResult
 from ac_cdd_core.graph_nodes import CycleNodes
 from ac_cdd_core.state import CycleState
-from ac_cdd_core.domain_models import AuditResult
+
 
 @pytest.mark.asyncio
 async def test_committee_logic_flow():

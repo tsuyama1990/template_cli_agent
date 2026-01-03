@@ -205,7 +205,7 @@ def gen_cycles(
         # Initialize state with session
         initial_state = CycleState(
             cycle_id=settings.DUMMY_CYCLE_ID, 
-            session_id=session_id, 
+            project_session_id=session_id, 
             planned_cycle_count=cycles,
             requested_cycle_count=count
         )
@@ -221,12 +221,13 @@ def gen_cycles(
                 console.print(f"[red]Architect Phase Failed:[/red] {final_state['error']}")
                 sys.exit(1)
             else:
-                session_id_final = final_state["session_id"]
+                session_id_final = final_state["project_session_id"]
                 integration_branch = final_state["integration_branch"]
 
                 # Save session for future use
                 from ac_cdd_core.messages import SuccessMessages
 
+                from .services.git_ops import GitManager
                 from .session_manager import SessionManager
 
                 SessionManager.save_session(session_id_final, integration_branch)
@@ -384,7 +385,7 @@ def run_cycle(
             initial_state = CycleState(
                 cycle_id=target_cycle,
                 iteration_count=start_iter,
-                session_id=session_id_to_use,
+                project_session_id=session_id_to_use,
                 integration_branch=integration_branch,
             )
 
@@ -514,7 +515,7 @@ def run_cycle(
 
         # SMART RESUME for 'all' mode
         start_index = 0
-        if resume and cycle_id.lower() == "all":
+        if resume_id and cycle_id.lower() == "all":
             from .session_manager import SessionManager
 
             # Peek at saved session
@@ -533,8 +534,8 @@ def run_cycle(
         for i, c_id in enumerate(cycles_to_run):
             # Only resume the VERY FIRST cycle in the (potentially sliced) list
             # Subsequent cycles should start fresh.
-            do_resume = resume and (i == 0)
-            await execute_single_cycle(c_id, override_resume=do_resume)
+            # do_resume = resume_id and (i == 0) # Logic handled by execute_single_cycle reading resume_id scope
+            await execute_single_cycle(c_id)
 
         if cycle_id.lower() == "all":
             from ac_cdd_core.messages import SuccessMessages
@@ -554,7 +555,7 @@ def info() -> None:
 
 @app.command(name="finalize-session")
 def finalize_session(
-    session_id: Annotated[str, typer.Option("--session", help="Session ID")] = None,
+    project_session_id: Annotated[str, typer.Option("--session", help="Session ID")] = None,
 ) -> None:
     """
     Finalize a development session by creating a PR to main.
@@ -570,10 +571,10 @@ def finalize_session(
         try:
             # Sync call now
             session_data = SessionManager.load_or_reconcile_session(
-                session_id=session_id,
+                project_session_id=project_session_id,
                 auto_reconcile=False,  # Don't auto-reconcile for finalize
             )
-            session_id_to_use = session_data["session_id"]
+            session_id_to_use = session_data["project_session_id"]
             integration_branch = session_data["integration_branch"]
         except SessionValidationError as e:
             console.print(f"[red]{e}[/red]")

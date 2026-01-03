@@ -56,7 +56,7 @@ class CycleState(BaseModel):
     planned_cycles: list[str] = Field(default_factory=list)
 
     # Session tracking
-    session_id: str | None = None
+    project_session_id: str | None = None
     integration_branch: str | None = None
     is_session_finalized: bool = False
     final_fix: bool = Field(

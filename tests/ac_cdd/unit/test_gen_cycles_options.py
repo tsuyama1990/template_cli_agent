@@ -1,11 +1,10 @@
 """Unit tests for gen-cycles --count option functionality."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from pathlib import Path
 
-from ac_cdd_core.state import CycleState
+import pytest
 from ac_cdd_core.graph_nodes import CycleNodes
+from ac_cdd_core.state import CycleState
 
 
 class TestGenCyclesCountOption:

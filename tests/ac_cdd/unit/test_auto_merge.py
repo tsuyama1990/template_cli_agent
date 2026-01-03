@@ -1,7 +1,8 @@
 """Unit tests for auto-merge functionality in run-cycle command."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from ac_cdd_core.state import CycleState
 
 
