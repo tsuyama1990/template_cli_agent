@@ -12,7 +12,6 @@ from ac_cdd_core.utils import logger
 class SessionValidationError(Exception):
     """Raised when session validation fails."""
 
-    pass
 
 
 class SessionInfo(TypedDict):
@@ -112,18 +111,17 @@ class SessionManager:
                         "fetch",
                         "origin",
                         f"{integration_branch}:{integration_branch}",
-                    ],  # noqa: S607
+                    ],
                     capture_output=True,
                     check=False,
                 )
                 if fetch_res.returncode == 0:
                     return True, None
-                else:
-                    logger.error(f"Failed to fetch branch: {fetch_res.stderr.decode()}")
+                logger.error(f"Failed to fetch branch: {fetch_res.stderr.decode()}")
 
             from ac_cdd_core.error_messages import RecoveryMessages
 
-            error_msg = f"Session validation failed: {RecoveryMessages.branch_not_found(integration_branch, str(cls.SESSION_FILE))}"  # noqa: E501
+            error_msg = f"Session validation failed: {RecoveryMessages.branch_not_found(integration_branch, str(cls.SESSION_FILE))}"
             return False, error_msg
 
         # Check if branch exists on remote
@@ -155,7 +153,7 @@ class SessionManager:
 
         # List all dev/* branches
         # We target the specific integration branches pattern
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(
             ["git", "branch", "--list", "dev/session-*/integration"],  # noqa: S607
             capture_output=True,
             text=True,
@@ -251,10 +249,9 @@ class SessionManager:
                         "Resumed Jules session completed successfully (No PR URL potentially)."
                     )
                 return resume_info
-            else:
-                raise SessionValidationError(
-                    f"Cannot resume: Jules session ended with status: {result.get('status')}"
-                )
+            raise SessionValidationError(
+                f"Cannot resume: Jules session ended with status: {result.get('status')}"
+            )
         except Exception as e:
             if isinstance(e, SessionValidationError):
                 raise

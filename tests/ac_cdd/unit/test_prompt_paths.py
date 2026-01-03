@@ -25,4 +25,3 @@ def test_system_prompt_structure():
 
     # Actually, we should test get_template logic which we did in test_config.py
     # Here we might want to test if the fallback works?
-    pass

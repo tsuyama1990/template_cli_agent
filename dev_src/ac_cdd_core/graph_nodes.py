@@ -48,7 +48,7 @@ class CycleNodes:
         console.print("[bold blue]Starting Architect Session...[/bold blue]")
 
         instruction = settings.get_template("ARCHITECT_INSTRUCTION.md").read_text()
-        
+
         # Inject cycle count constraint if specified by user
         if state.get("requested_cycle_count"):
             n = state["requested_cycle_count"]
@@ -56,7 +56,7 @@ class CycleNodes:
                 f"\n\nIMPORTANT CONSTRAINT: The development plan MUST be divided into "
                 f"exactly {n} implementation cycles."
             )
-        
+
         context_files = settings.get_context_files()
 
         timestamp = datetime.now().strftime("%Y%m%d-%H%M")
@@ -79,14 +79,13 @@ class CycleNodes:
 
         if result.get("status") == "success" or result.get("status") == "running":
             return {
-                "status": "architect_completed", 
+                "status": "architect_completed",
                 "current_phase": "architect_done",
                 "integration_branch": integration_branch,
                 "project_session_id": result.get("session_name"),
                 "pr_url": result.get("pr_url"),
             }
-        else:
-            return {"status": "architect_failed", "error": result.get("error")}
+        return {"status": "architect_failed", "error": result.get("error")}
 
     async def coder_session_node(self, state: CycleState) -> dict[str, Any]:
         """Node for Coder Agent (Jules)."""
@@ -123,8 +122,7 @@ class CycleNodes:
 
             if result.get("status") == "success" or result.get("pr_url"):
                 return {"status": "ready_for_audit", "pr_url": result.get("pr_url")}
-            else:
-                return {"status": "failed", "error": "Jules failed to produce PR"}
+            return {"status": "failed", "error": "Jules failed to produce PR"}
 
         except Exception as e:
             console.print(f"[red]Coder Session Failed: {e}[/red]")
@@ -183,51 +181,47 @@ class CycleNodes:
                     "current_auditor_review_count": 1,
                     "status": "next_auditor",
                 }
-            else:
-                # All auditors approved
-                console.print("[bold green]All Auditors Approved![/bold green]")
-                return {"status": "cycle_approved"}
+            # All auditors approved
+            console.print("[bold green]All Auditors Approved![/bold green]")
+            return {"status": "cycle_approved"}
 
-        else:
-            # ❌ REJECTED
-            if j < settings.REVIEWS_PER_AUDITOR:
-                # Retry with same auditor
-                next_rev = j + 1
-                console.print(
-                    f"[bold yellow]Auditor #{i} Rejected. "
-                    f"Retry {next_rev}/{settings.REVIEWS_PER_AUDITOR}.[/bold yellow]"
-                )
-                return {
-                    "current_auditor_review_count": next_rev,
-                    "iteration_count": state["iteration_count"] + 1,
-                    "status": "retry_fix",
-                }
-            else:
-                # Review limit reached - Pipeline Handover
-                if i < settings.NUM_AUDITORS:
-                    # Move to next auditor after fix
-                    next_idx = i + 1
-                    console.print(
-                        f"[bold yellow]Auditor #{i} limit reached. "
-                        f"Fixing code then moving to Auditor #{next_idx}.[/bold yellow]"
-                    )
-                    return {
-                        "current_auditor_index": next_idx,
-                        "current_auditor_review_count": 1,
-                        "iteration_count": state["iteration_count"] + 1,
-                        "status": "retry_fix",
-                    }
-                else:
-                    # Last auditor, last review - Final fix then merge
-                    console.print(
-                        "[bold yellow]Final Auditor limit reached. "
-                        "Fixing code then Merging.[/bold yellow]"
-                    )
-                    return {
-                        "final_fix": True,
-                        "iteration_count": state["iteration_count"] + 1,
-                        "status": "retry_fix",
-                    }
+        # ❌ REJECTED
+        if j < settings.REVIEWS_PER_AUDITOR:
+            # Retry with same auditor
+            next_rev = j + 1
+            console.print(
+                f"[bold yellow]Auditor #{i} Rejected. "
+                f"Retry {next_rev}/{settings.REVIEWS_PER_AUDITOR}.[/bold yellow]"
+            )
+            return {
+                "current_auditor_review_count": next_rev,
+                "iteration_count": state["iteration_count"] + 1,
+                "status": "retry_fix",
+            }
+        # Review limit reached - Pipeline Handover
+        if i < settings.NUM_AUDITORS:
+            # Move to next auditor after fix
+            next_idx = i + 1
+            console.print(
+                f"[bold yellow]Auditor #{i} limit reached. "
+                f"Fixing code then moving to Auditor #{next_idx}.[/bold yellow]"
+            )
+            return {
+                "current_auditor_index": next_idx,
+                "current_auditor_review_count": 1,
+                "iteration_count": state["iteration_count"] + 1,
+                "status": "retry_fix",
+            }
+        # Last auditor, last review - Final fix then merge
+        console.print(
+            "[bold yellow]Final Auditor limit reached. "
+            "Fixing code then Merging.[/bold yellow]"
+        )
+        return {
+            "final_fix": True,
+            "iteration_count": state["iteration_count"] + 1,
+            "status": "retry_fix",
+        }
 
     async def uat_evaluate_node(self, state: CycleState) -> dict[str, Any]:
         """Node for UAT Evaluation."""
@@ -242,7 +236,7 @@ class CycleNodes:
         status = state.get("status")
         if status == "ready_for_audit":
             return "ready_for_audit"
-        elif status == "failed" or status == "architect_failed":
+        if status == "failed" or status == "architect_failed":
             return "failed"
         return "completed"
 
@@ -255,10 +249,10 @@ class CycleNodes:
         status = state.get("status")
         if status == "next_auditor":
             return "auditor"
-        elif status == "cycle_approved":
+        if status == "cycle_approved":
             return "uat_evaluate"
-        elif status == "retry_fix":
+        if status == "retry_fix":
             return "coder_session"
-        elif status == "failed":
+        if status == "failed":
             return "failed"
         return "failed"  # Default fallback

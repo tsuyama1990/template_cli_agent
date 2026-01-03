@@ -155,7 +155,7 @@ async def test_error_recovery_workflow():
         mock_sandbox_instance.run_command = AsyncMock(side_effect=[("", "Error", 1), ("", "", 0)])
 
         # First attempt fails
-        with pytest.raises(Exception, match=".*"):  # noqa: B017
+        with pytest.raises(Exception, match=".*"):
             await mock_jules_instance.run_session("session", "prompt", [], MagicMock())
 
         # Retry succeeds

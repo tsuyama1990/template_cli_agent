@@ -335,7 +335,7 @@ class GitManager:
                         f"Branch '{branch}' is behind remote.\n"
                         f"Pull latest changes: git pull origin {branch}"
                     )
-                elif merge_base == remote_hash:
+                if merge_base == remote_hash:
                     logger.warning(f"Branch '{branch}' is ahead of remote (unpushed commits)")
                 else:
                     return False, (

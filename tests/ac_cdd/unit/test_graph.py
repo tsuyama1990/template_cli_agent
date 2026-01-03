@@ -75,7 +75,7 @@ async def test_architect_graph_execution(graph_builder, mock_jules):
     # In CycleNodes.architect_session_node, we return {"status": "architect_completed"}
     # This should merge into CycleState.
     assert result["status"] == "architect_completed"
-    
+
     # Verify session ID has timestamp
     assert result["session_id"].startswith("architect-cycle-00-")
     assert len(result["session_id"]) > len("architect-cycle-00-")
@@ -106,4 +106,3 @@ async def test_coder_graph_execution(services, mock_jules):
         _ = await graph.ainvoke(initial_state, config)
 
         # Ideally we should assert something about the result, but preserving existing behavior
-        pass

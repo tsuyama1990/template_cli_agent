@@ -9,7 +9,6 @@ from ac_cdd_core.utils import logger
 class ValidationError(Exception):
     """Base exception for validation failures."""
 
-    pass
 
 
 class BaseValidator(ABC):
@@ -22,7 +21,6 @@ class BaseValidator(ABC):
         Returns:
             (is_valid, error_message)
         """
-        pass
 
     async def raise_if_invalid(self) -> None:
         """Validate and raise if invalid."""

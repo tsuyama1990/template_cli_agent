@@ -117,23 +117,22 @@ class AuditOrchestrator:
                 # reuse wait_for_completion from JulesClient
                 return await self.jules.wait_for_completion(session_name)
 
-            else:
-                # REJECTED
-                retry_count += 1
-                if retry_count > max_retries:
-                    console.print("[bold red]Max retries exceeded. Aborting session.[/bold red]")
-                    raise RuntimeError("Max audit retries exceeded.")
+            # REJECTED
+            retry_count += 1
+            if retry_count > max_retries:
+                console.print("[bold red]Max retries exceeded. Aborting session.[/bold red]")
+                raise RuntimeError("Max audit retries exceeded.")
 
-                feedback = audit_result.feedback or audit_result.reason
-                feedback_prompt = (
-                    f"Your plan was REJECTED by the Lead Architect.\n"
-                    f"Reason: {audit_result.reason}\n"
-                    f"Instruction: {feedback}\n"
-                    f"Please revise the plan accordingly."
-                )
+            feedback = audit_result.feedback or audit_result.reason
+            feedback_prompt = (
+                f"Your plan was REJECTED by the Lead Architect.\n"
+                f"Reason: {audit_result.reason}\n"
+                f"Instruction: {feedback}\n"
+                f"Please revise the plan accordingly."
+            )
 
-                console.print(f"[magenta]Sending Feedback to Jules:[/magenta] {feedback}")
-                await self.jules.send_message(session_name, feedback_prompt)
+            console.print(f"[magenta]Sending Feedback to Jules:[/magenta] {feedback}")
+            await self.jules.send_message(session_name, feedback_prompt)
 
     async def _wait_for_new_plan(self, session_name: str, current_plan_id: str, timeout: int = 300):
         """Helper to poll until a plan with a different ID appears."""

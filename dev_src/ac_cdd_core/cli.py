@@ -23,7 +23,6 @@ console = Console()
 @app.callback()
 def main() -> None:
     """AC-CDD CLI Entry Point"""
-    pass
 
 
 def check_environment() -> None:
@@ -204,8 +203,8 @@ def gen_cycles(
 
         # Initialize state with session
         initial_state = CycleState(
-            cycle_id=settings.DUMMY_CYCLE_ID, 
-            project_session_id=session_id, 
+            cycle_id=settings.DUMMY_CYCLE_ID,
+            project_session_id=session_id,
             planned_cycle_count=cycles,
             requested_cycle_count=count
         )
@@ -358,7 +357,7 @@ def run_cycle(
 
                 if branch:
                     console.print(f"[yellow]Override: Using integration branch '{branch}'[/yellow]")
-                
+
                 if not resume_id and not project_session_id and not branch:
                     if session_data.get("reconciled"):
                         console.print(f"[green]✓ Reconciled session: {session_id_to_use}[/green]")

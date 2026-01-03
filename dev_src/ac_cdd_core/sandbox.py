@@ -123,17 +123,16 @@ class SandboxRunner:
 
                     # 次のループで _get_sandbox() が呼ばれ、新規作成＆install_cmdが実行される
                     continue
-                else:
-                    # コマンド自体の失敗(exit_code)は例外にならない場合もあるが、
-                    # e2bのエラーオブジェクトの場合は中身を取り出してbreak
-                    if hasattr(e, "exit_code") and hasattr(e, "stdout") and hasattr(e, "stderr"):
-                        stdout = e.stdout
-                        stderr = e.stderr
-                        exit_code = e.exit_code
-                        break
+                # コマンド自体の失敗(exit_code)は例外にならない場合もあるが、
+                # e2bのエラーオブジェクトの場合は中身を取り出してbreak
+                if hasattr(e, "exit_code") and hasattr(e, "stdout") and hasattr(e, "stderr"):
+                    stdout = e.stdout
+                    stderr = e.stderr
+                    exit_code = e.exit_code
+                    break
 
-                    # 解決不能なエラーはそのまま投げる
-                    raise e
+                # 解決不能なエラーはそのまま投げる
+                raise e
         # ----------------------------------
 
         if check and exit_code != 0:

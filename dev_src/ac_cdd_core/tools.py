@@ -62,4 +62,4 @@ def semantic_code_search(query: str) -> str:
             )
         return "\n".join(output)
     except Exception as e:
-        return f"Search failed: {str(e)}"
+        return f"Search failed: {e!s}"

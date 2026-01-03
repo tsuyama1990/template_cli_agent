@@ -60,7 +60,7 @@ class CycleState(BaseModel):
     integration_branch: str | None = None
     is_session_finalized: bool = False
     final_fix: bool = Field(
-        default=False, 
+        default=False,
         description="Flag indicating final fix before merge (bypass further audits)"
     )
 

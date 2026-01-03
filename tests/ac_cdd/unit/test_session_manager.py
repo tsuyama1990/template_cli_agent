@@ -97,10 +97,10 @@ def test_validate_session_fetch_remote_success():
         ]
 
         is_valid, error = SessionManager.validate_session(project_session_id, integration_branch)
-        
+
         assert is_valid
         assert error is None
-        
+
         # Verify fetch was called
         args = mock_run.call_args_list[2][0][0]
         assert "fetch" in args

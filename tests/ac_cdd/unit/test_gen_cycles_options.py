@@ -36,36 +36,36 @@ class TestGenCyclesCountOption:
         mock_sandbox = MagicMock()
         mock_jules = AsyncMock()
         mock_jules.run_session = AsyncMock(return_value={"status": "success"})
-        
+
         # Create a temporary instruction file
         instruction_content = "Original architect instruction."
-        
+
         # Mock settings.get_template to return our test content
         with patch("ac_cdd_core.graph_nodes.settings") as mock_settings:
             mock_template = MagicMock()
             mock_template.read_text.return_value = instruction_content
             mock_settings.get_template.return_value = mock_template
             mock_settings.get_context_files.return_value = []
-            
+
             # Create CycleNodes instance
             nodes = CycleNodes(sandbox_runner=mock_sandbox, jules_client=mock_jules)
-            
+
             # Create state with requested_cycle_count
             state = CycleState(
                 cycle_id="00",
                 requested_cycle_count=5
             )
-            
+
             # Execute the node
             result = await nodes.architect_session_node(state)
-            
+
             # Verify run_session was called
             assert mock_jules.run_session.called
-            
+
             # Get the actual prompt argument passed to run_session
             call_args = mock_jules.run_session.call_args
             actual_prompt = call_args.kwargs["prompt"]
-            
+
             # Verify the constraint was injected
             assert "IMPORTANT CONSTRAINT" in actual_prompt
             assert "exactly 5 implementation cycles" in actual_prompt
@@ -78,35 +78,35 @@ class TestGenCyclesCountOption:
         mock_sandbox = MagicMock()
         mock_jules = AsyncMock()
         mock_jules.run_session = AsyncMock(return_value={"status": "success"})
-        
+
         # Create a temporary instruction file
         instruction_content = "Original architect instruction."
-        
+
         # Mock settings.get_template to return our test content
         with patch("ac_cdd_core.graph_nodes.settings") as mock_settings:
             mock_template = MagicMock()
             mock_template.read_text.return_value = instruction_content
             mock_settings.get_template.return_value = mock_template
             mock_settings.get_context_files.return_value = []
-            
+
             # Create CycleNodes instance
             nodes = CycleNodes(sandbox_runner=mock_sandbox, jules_client=mock_jules)
-            
+
             # Create state WITHOUT requested_cycle_count
             state = CycleState(
                 cycle_id="00"
             )
-            
+
             # Execute the node
             result = await nodes.architect_session_node(state)
-            
+
             # Verify run_session was called
             assert mock_jules.run_session.called
-            
+
             # Get the actual prompt argument passed to run_session
             call_args = mock_jules.run_session.call_args
             actual_prompt = call_args.kwargs["prompt"]
-            
+
             # Verify the constraint was NOT injected
             assert "IMPORTANT CONSTRAINT" not in actual_prompt
             assert "implementation cycles" not in actual_prompt
@@ -120,26 +120,26 @@ class TestGenCyclesCountOption:
         mock_sandbox = MagicMock()
         mock_jules = AsyncMock()
         mock_jules.run_session = AsyncMock(return_value={"status": "success"})
-        
+
         instruction_content = "Test instruction."
-        
+
         with patch("ac_cdd_core.graph_nodes.settings") as mock_settings:
             mock_template = MagicMock()
             mock_template.read_text.return_value = instruction_content
             mock_settings.get_template.return_value = mock_template
             mock_settings.get_context_files.return_value = []
-            
+
             nodes = CycleNodes(sandbox_runner=mock_sandbox, jules_client=mock_jules)
-            
+
             state = CycleState(
                 cycle_id="00",
                 requested_cycle_count=count_value
             )
-            
+
             await nodes.architect_session_node(state)
-            
+
             call_args = mock_jules.run_session.call_args
             actual_prompt = call_args.kwargs["prompt"]
-            
+
             # Verify the specific count is in the prompt
             assert f"exactly {count_value} implementation cycles" in actual_prompt

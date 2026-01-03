@@ -181,7 +181,7 @@ class Settings(BaseSettings):
             # Check for legacy/global env vars and inject if missing from structured data
             smart = os.getenv("SMART_MODEL")
             fast = os.getenv("FAST_MODEL")
-            
+
             # Load API Keys from unprefixed env vars
             for key in ["JULES_API_KEY", "OPENROUTER_API_KEY", "E2B_API_KEY"]:
                 if key not in data or data[key] is None:
@@ -193,7 +193,7 @@ class Settings(BaseSettings):
                 # Update Agents Config (default construct if missing)
                 agents = data.get("agents", {})
                 if not isinstance(agents, dict): agents = {}
-                
+
                 if smart and "auditor_model" not in agents:
                     agents["auditor_model"] = smart
                 if fast and "qa_analyst_model" not in agents:
@@ -209,7 +209,7 @@ class Settings(BaseSettings):
                 if fast and "fast_model" not in reviewer:
                     reviewer["fast_model"] = fast
                 data["reviewer"] = reviewer
-            
+
         return data
 
     @property

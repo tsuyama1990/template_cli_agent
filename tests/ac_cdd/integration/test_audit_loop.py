@@ -79,4 +79,3 @@ async def test_audit_rejection_loop():
 @pytest.mark.asyncio
 async def test_audit_loop_early_exit_scenario():
     """Hypothetical future test."""
-    pass

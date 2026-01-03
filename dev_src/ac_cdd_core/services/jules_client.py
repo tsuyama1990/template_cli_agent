@@ -278,15 +278,14 @@ class JulesClient:
                 parts = repo_url.replace(".git", "").split("/")
                 repo_name = parts[-1]
                 owner = parts[-2].split(":")[-1]  # Handle git@github.com:owner
+            # If testing with no remote, allow dummy
+            elif "PYTEST_CURRENT_TEST" in os.environ:
+                repo_name = "test-repo"
+                owner = "test-owner"
             else:
-                # If testing with no remote, allow dummy
-                if "PYTEST_CURRENT_TEST" in os.environ:
-                    repo_name = "test-repo"
-                    owner = "test-owner"
-                else:
-                    raise JulesSessionError(
-                        f"Unsupported repository URL format: {repo_url}. Only GitHub is supported."
-                    )
+                raise JulesSessionError(
+                    f"Unsupported repository URL format: {repo_url}. Only GitHub is supported."
+                )
 
             branch = await self.git.get_current_branch()
 
