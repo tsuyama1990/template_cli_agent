@@ -233,10 +233,18 @@ def gen_cycles(
 
                 # Explicitly create/push the integration branch from main
                 # to ensure it exists for the next cycle
-                from .services.git_ops import GitManager
-
                 git = GitManager()
                 await git.create_integration_branch(session_id_final, branch_name=integration_branch)
+
+                # Auto-merge the Architect's PR into this new branch
+                if final_state.get("pr_url"):
+                    console.print(f"[bold yellow]Merging Architect PR {final_state['pr_url']} to Integration Branch...[/bold yellow]")
+                    try:
+                        await git.merge_to_integration(final_state["pr_url"], integration_branch)
+                        console.print("[green]✓ Architect PR Merged.[/green]")
+                    except Exception as e:
+                        console.print(f"[red]Failed to merge Architect PR:[/red] {e}")
+
 
                 # Show success message
                 SuccessMessages.show_panel(
@@ -257,7 +265,7 @@ def gen_cycles(
 @app.command(name="run-cycle")
 def run_cycle(
     cycle_id: Annotated[str, typer.Option("--id", help="Cycle ID (e.g., '01') or 'all'")] = "01",
-    session_id: Annotated[str, typer.Option("--session", help="Session ID")] = None,
+    project_session_id: Annotated[str, typer.Option("--session", help="Session ID")] = None,
     auto: Annotated[bool, typer.Option(help="Run without manual confirmation")] = False,
     auto_merge: Annotated[
         bool, typer.Option("--auto-merge/--no-auto-merge", help="Auto-merge PR to integration branch")
@@ -268,11 +276,11 @@ def run_cycle(
             "--start-iter", help="Force start at specific iteration (0=Creator, 1=Refiner)"
         ),
     ] = 0,
-    resume: Annotated[
-        bool, typer.Option("--resume", help="Resume from saved Jules Session")
-    ] = False,
     resume_id: Annotated[
-        str, typer.Option("--resume-id", help="Resume from specific Jules Session ID")
+        str, typer.Option("--resume-id", help="Resume from specific Agent Session ID")
+    ] = None,
+    branch: Annotated[
+        str, typer.Option("--branch", help="Override integration branch (Restart from specific git state)")
     ] = None,
 ) -> None:
     """
@@ -281,11 +289,7 @@ def run_cycle(
     """
     import asyncio
 
-    async def execute_single_cycle(target_cycle: str, override_resume: bool | None = None) -> None:
-        # Determine strict resume mode for this specific cycle execution
-        # If override is provided (from _run_all), use it. Else use CLI flag.
-        should_resume = override_resume if override_resume is not None else resume
-
+    async def execute_single_cycle(target_cycle: str) -> None:
         with KeepAwake(reason=f"Running Cycle {target_cycle}"):
             console.rule(
                 f"[bold green]Running Cycle {target_cycle} (Start Iter: {start_iter})[/bold green]"
@@ -310,10 +314,8 @@ def run_cycle(
             try:
                 # Resume session first if requested (Async)
                 resume_info = None
-                if should_resume or resume_id:
-                    # Priority to explicit ID if provided, else None (auto-load)
-                    target_resume_id = resume_id if resume_id else None
-                    resume_info = await SessionManager.resume_jules_session(target_resume_id)
+                if resume_id:
+                    resume_info = await SessionManager.resume_jules_session(resume_id)
                     console.print(
                         f"[green]✓ Resumed Jules session with PR: "
                         f"{resume_info.get('pr_url', 'None')}[/green]"
@@ -321,11 +323,12 @@ def run_cycle(
 
                 # Load session (Sync)
                 session_data = SessionManager.load_or_reconcile_session(
-                    session_id=session_id,
+                    project_session_id=project_session_id,
                     auto_reconcile=True,
                     resume_info=resume_info,
+                    override_branch=branch,
                 )
-                session_id_to_use = session_data["session_id"]
+                session_id_to_use = session_data["project_session_id"]
                 integration_branch = session_data["integration_branch"]
                 saved_active_cycle = session_data.get("active_cycle_id")
 
@@ -335,7 +338,7 @@ def run_cycle(
                 # actually execute_single_cycle arg matches.
                 # If we are in 'all' mode, we handled switch in _run_all.
                 if (
-                    (should_resume or resume_id)
+                    resume_id
                     and target_cycle == "01"
                     and saved_active_cycle
                     and cycle_id.lower() != "all"
@@ -348,9 +351,14 @@ def run_cycle(
                         target_cycle = saved_active_cycle
 
                 # Update Active Cycle in Session File
+                # If branch override was used, we should have already persisted it in load_or_reconcile_session logic
+                # But we ensure active cycle is current
                 SessionManager.update_session(active_cycle_id=target_cycle)
 
-                if not should_resume and not resume_id and not session_id:
+                if branch:
+                    console.print(f"[yellow]Override: Using integration branch '{branch}'[/yellow]")
+                
+                if not resume_id and not project_session_id and not branch:
                     if session_data.get("reconciled"):
                         console.print(f"[green]✓ Reconciled session: {session_id_to_use}[/green]")
                     else:

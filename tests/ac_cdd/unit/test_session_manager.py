@@ -19,11 +19,11 @@ def temp_session_file(tmp_path):
 
 def test_save_and_load_session(temp_session_file):
     """Test saving and loading session data."""
-    session_id = "session-20251230-120000"
+    project_session_id = "session-20251230-120000"
     integration_branch = "dev/session-20251230-120000/integration"
 
     # Save session
-    SessionManager.save_session(session_id, integration_branch)
+    SessionManager.save_session(project_session_id, integration_branch)
 
     # Verify file exists
     assert temp_session_file.exists()
@@ -31,7 +31,7 @@ def test_save_and_load_session(temp_session_file):
     # Load session
     loaded = SessionManager.load_session()
     assert loaded is not None
-    assert loaded["session_id"] == session_id
+    assert loaded["project_session_id"] == project_session_id
     assert loaded["integration_branch"] == integration_branch
 
 
@@ -54,35 +54,35 @@ def test_clear_session(temp_session_file):
 
 def test_validate_session_success():
     """Test session validation with valid state."""
-    session_id = "session-20251230-120000"
+    project_session_id = "session-20251230-120000"
     integration_branch = "dev/session-20251230-120000/integration"
 
     with patch("subprocess.run") as mock_run:
         # Mock git branch --list to return the integration branch
         mock_run.return_value = MagicMock(stdout=integration_branch, returncode=0)
 
-        is_valid, error = SessionManager.validate_session(session_id, integration_branch)
+        is_valid, error = SessionManager.validate_session(project_session_id, integration_branch)
         assert is_valid
         assert error is None
 
 
 def test_validate_session_branch_mismatch():
     """Test session validation when branch doesn't exist."""
-    session_id = "session-20251230-120000"
+    project_session_id = "session-20251230-120000"
     integration_branch = "dev/session-20251230-120000/integration"
 
     with patch("subprocess.run") as mock_run:
         # Mock git branch --list to return empty (branch doesn't exist)
         mock_run.return_value = MagicMock(stdout="", returncode=1)
 
-        is_valid, error = SessionManager.validate_session(session_id, integration_branch)
+        is_valid, error = SessionManager.validate_session(project_session_id, integration_branch)
         assert not is_valid
         assert "not found locally" in error
 
 
 def test_validate_session_fetch_remote_success():
     """Test session validation when local branch missing but remote exists."""
-    session_id = "session-20251230-120000"
+    project_session_id = "session-20251230-120000"
     integration_branch = "dev/session-20251230-120000/integration"
 
     with patch("subprocess.run") as mock_run:
@@ -96,7 +96,7 @@ def test_validate_session_fetch_remote_success():
             MagicMock(returncode=0),  # fetch succeeds
         ]
 
-        is_valid, error = SessionManager.validate_session(session_id, integration_branch)
+        is_valid, error = SessionManager.validate_session(project_session_id, integration_branch)
         
         assert is_valid
         assert error is None
@@ -121,7 +121,7 @@ def test_reconcile_session_from_git():
 
         result = SessionManager.reconcile_session()
         assert result is not None
-        assert result["session_id"] == "session-20251230-120001"
+        assert result["project_session_id"] == "session-20251230-120001"
         assert result["integration_branch"] == "dev/session-20251230-120001/integration"
 
 
@@ -137,18 +137,18 @@ def test_reconcile_session_no_branches():
 
 def test_get_integration_branch_format():
     """Test integration branch name format."""
-    session_id = "session-20251230-120000"
-    branch = SessionManager.get_integration_branch(session_id)
+    project_session_id = "session-20251230-120000"
+    branch = SessionManager.get_integration_branch(project_session_id)
     assert branch == "dev/session-20251230-120000/integration"
 
 
 def test_load_or_reconcile_with_explicit_id(temp_session_file):
     """Test loading session with explicit session ID."""
-    session_id = "session-explicit"
+    project_session_id = "session-explicit"
 
     with patch.object(SessionManager, "validate_session", return_value=(True, None)):
-        result = SessionManager.load_or_reconcile_session(session_id=session_id)
-        assert result["session_id"] == session_id
+        result = SessionManager.load_or_reconcile_session(project_session_id=project_session_id)
+        assert result["project_session_id"] == project_session_id
 
 
 def test_load_or_reconcile_from_file(temp_session_file):
@@ -158,4 +158,4 @@ def test_load_or_reconcile_from_file(temp_session_file):
 
     with patch.object(SessionManager, "validate_session", return_value=(True, None)):
         result = SessionManager.load_or_reconcile_session()
-        assert result["session_id"] == "session-from-file"
+        assert result["project_session_id"] == "session-from-file"

@@ -385,7 +385,7 @@ class JulesClient:
         try:
             from ac_cdd_core.session_manager import SessionManager
 
-            SessionManager.update_session(jules_session_id=session_name)
+            SessionManager.update_session(agent_session_id=session_name)
         except Exception as e:
             logger.warning(f"Failed to persist Jules Session ID: {e}")
 

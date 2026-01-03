@@ -30,16 +30,16 @@ class SessionManager:
     SESSION_FILE = Path(".ac_cdd_session.json")
 
     @classmethod
-    def save_session(cls, session_id: str, integration_branch: str) -> None:
+    def save_session(cls, project_session_id: str, integration_branch: str) -> None:
         """Save session information to file."""
         session_data = {
-            "session_id": session_id,
+            "project_session_id": project_session_id,
             "integration_branch": integration_branch,
             "created_at": datetime.now().isoformat(),
             "last_updated": datetime.now().isoformat(),
         }
         cls.SESSION_FILE.write_text(json.dumps(session_data, indent=2))
-        logger.info(f"Session saved: {session_id}")
+        logger.info(f"Session saved: {project_session_id}")
 
     @classmethod
     def update_session(cls, **kwargs) -> None:
@@ -66,7 +66,7 @@ class SessionManager:
         if cls.SESSION_FILE.exists():
             try:
                 data = json.loads(cls.SESSION_FILE.read_text())
-                logger.info(f"Session loaded: {data.get('session_id')}")
+                logger.info(f"Session loaded: {data.get('project_session_id')}")
                 return data
             except Exception as e:
                 logger.warning(f"Failed to load session file: {e}")
@@ -81,7 +81,7 @@ class SessionManager:
             logger.info("Session file cleared")
 
     @classmethod
-    def validate_session(cls, session_id: str, integration_branch: str) -> tuple[bool, str | None]:
+    def validate_session(cls, project_session_id: str, integration_branch: str) -> tuple[bool, str | None]:
         """
         Validate that session state is consistent with Git state.
 
@@ -181,7 +181,7 @@ class SessionManager:
         logger.info(f"Reconciled session from branch: {latest_branch}")
 
         session_data = {
-            "session_id": session_id,
+            "project_session_id": session_id,
             "integration_branch": latest_branch,
             "created_at": datetime.now().isoformat(),
             "last_updated": datetime.now().isoformat(),
@@ -194,18 +194,18 @@ class SessionManager:
         return session_data
 
     @classmethod
-    def get_integration_branch(cls, session_id: str) -> str:
+    def get_integration_branch(cls, project_session_id: str) -> str:
         """Get integration branch name for session.
 
         Args:
-            session_id: Session identifier
+            project_session_id: Session identifier
 
         Returns:
             Integration branch name (e.g., 'dev/session-20251230-120000')
         """
         from ac_cdd_core.config import settings
 
-        return f"{settings.session.integration_branch_prefix}/{session_id}/integration"
+        return f"{settings.session.integration_branch_prefix}/{project_session_id}/integration"
 
     @classmethod
     async def resume_jules_session(cls, session_name: str | None = None) -> dict:
@@ -220,7 +220,7 @@ class SessionManager:
             # Try to load from persisted session
             session_data = cls.load_session()
             if session_data:
-                session_name = session_data.get("jules_session_id")
+                session_name = session_data.get("agent_session_id")
 
         if not session_name:
             raise SessionValidationError(
@@ -263,16 +263,18 @@ class SessionManager:
     @classmethod
     def load_or_reconcile_session(
         cls,
-        session_id: str | None = None,
+        project_session_id: str | None = None,
         auto_reconcile: bool = True,
         resume_info: dict | None = None,
+        override_branch: str | None = None,
     ) -> SessionInfo:
         """Load session from parameter, file, config, or Git reconciliation.
 
         Args:
-            session_id: Optional explicit session ID
+            project_session_id: Optional explicit session ID
             auto_reconcile: If True, attempt Git reconciliation if session not found
             resume_info: Optional resume info from Jules session (passed from CLI)
+            override_branch: Optional branch name to force usage of
 
         Returns:
             Dict containing session_id, integration_branch, and optional resume_info
@@ -282,13 +284,18 @@ class SessionManager:
         """
         from ac_cdd_core.config import settings
 
+        # Handle Branch Override FIRST
+        # If provided, it updates persistent state if session exists
+        if override_branch:
+             cls.update_session(integration_branch=override_branch)
+
         # If resuming, we might infer session ID from saved context if not provided
-        if resume_info and not session_id:
+        if resume_info and not project_session_id:
             saved_session = cls.load_session()
             if saved_session:
-                session_id = saved_session["session_id"]
+                project_session_id = saved_session["project_session_id"]
             elif settings.session.session_id:
-                session_id = settings.session.session_id
+                project_session_id = settings.session.session_id
             else:
                 # If we are resuming but can't find local context, we might fail
                 # or create a new one? Assuming fail based on previous logic.
@@ -297,10 +304,14 @@ class SessionManager:
                 )
 
         # 1. Use explicit session ID if provided
-        if session_id:
-            integration_branch = cls.get_integration_branch(session_id)
+        if project_session_id:
+            if override_branch:
+                integration_branch = override_branch
+            else:
+                integration_branch = cls.get_integration_branch(project_session_id)
+
             return {
-                "session_id": session_id,
+                "project_session_id": project_session_id,
                 "integration_branch": integration_branch,
                 "resume_info": resume_info,
             }
@@ -309,9 +320,9 @@ class SessionManager:
         saved_session = cls.load_session()
         if saved_session:
             return {
-                "session_id": saved_session["session_id"],
-                "integration_branch": saved_session["integration_branch"],
-                "jules_session_id": saved_session.get("jules_session_id"),
+                "project_session_id": saved_session["project_session_id"],
+                "integration_branch": override_branch or saved_session["integration_branch"],
+                "agent_session_id": saved_session.get("agent_session_id"),
                 "active_cycle_id": saved_session.get("active_cycle_id"),
                 "resume_info": resume_info,
             }
@@ -321,7 +332,7 @@ class SessionManager:
             session_id_from_config = settings.session.session_id
             integration_branch = cls.get_integration_branch(session_id_from_config)
             return {
-                "session_id": session_id_from_config,
+                "project_session_id": session_id_from_config,
                 "integration_branch": integration_branch,
                 "resume_info": resume_info,
             }
@@ -331,7 +342,7 @@ class SessionManager:
             reconciled = cls.reconcile_session()
             if reconciled:
                 return {
-                    "session_id": reconciled["session_id"],
+                    "project_session_id": reconciled["project_session_id"],
                     "integration_branch": reconciled["integration_branch"],
                     "resume_info": resume_info,
                 }
