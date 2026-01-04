@@ -99,7 +99,7 @@ class CycleNodes(IGraphNodes):
 
         # Resume Logic using SessionManager
         mgr = SessionManager()
-        cycle_manifest = mgr.get_cycle(cycle_id)
+        cycle_manifest = await mgr.get_cycle(cycle_id)
 
         # 1. Try Resume if session ID exists
         if cycle_manifest and cycle_manifest.jules_session_id and state.get("resume_mode", False):
@@ -141,26 +141,38 @@ class CycleNodes(IGraphNodes):
             session_req_id = f"coder-cycle-{cycle_id}-iter-{iteration}-{timestamp}"
 
             # Start new session
+            # IMPORTANT: We use require_plan_approval=True to get the session ID early if needed
+            # but usually run_session returns after session is created/completed.
+
             result = await self.jules.run_session(
                 session_id=session_req_id,
                 prompt=instruction,
                 target_files=target_files,
                 context_files=context_files,
-                require_plan_approval=False,  # We might want to enable this for better control, but following prompt
+                require_plan_approval=True,
             )
 
             # 2. Persist Session ID IMMEDIATELY for Hot Resume
             if result.get("session_name"):
-                mgr.update_cycle_state(
+                await mgr.update_cycle_state(
                     cycle_id, jules_session_id=result["session_name"], status="in_progress"
                 )
 
             if result.get("status") == "success" or result.get("pr_url"):
                 return {"status": "ready_for_audit", "pr_url": result.get("pr_url")}
+
+            # If we returned early (e.g. for approval), we might need to handle it.
+            # But CycleNodes expects to finish the cycle work.
+
+            # For now, just persisting what we got.
+
         except Exception as e:
             console.print(f"[red]Coder Session Failed: {e}[/red]")
             return {"status": "failed", "error": str(e)}
         else:
+            if result.get("status") == "failed":
+                 return {"status": "failed", "error": result.get("error")}
+            # If successful but no PR (unexpected)
             return {"status": "failed", "error": "Jules failed to produce PR"}
 
     async def auditor_node(self, _state: CycleState) -> dict[str, Any]:
