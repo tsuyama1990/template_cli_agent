@@ -1,152 +1,144 @@
-# Specification: Cycle 2 - Advanced Features and Web UI
+# SPECIFICATION: Cycle 2 - Advanced Features and Web UI
 
 ## 1. Summary
 
-This specification details the second development cycle for the MLIP-AutoPipe project. Building upon the foundational command-line tool established in Cycle 1, this cycle focuses on implementing the advanced, high-value features that distinguish this framework as a state-of-the-art solution for MLIP dataset generation. The primary goals are to significantly enhance the diversity and quality of the generated datasets and to improve the overall usability of the tool by introducing a graphical user interface. This cycle moves beyond simple automation and injects sophisticated scientific algorithms and user-centric design into the core product. The features developed in this cycle are what will provide the key competitive advantages and drive adoption within the research community.
+This document provides the detailed technical specification for the second development cycle of the MLIP-AutoPipe project. Cycle 2 represents a significant leap forward in both scientific sophistication and user accessibility, building upon the solid foundation of the core CLI pipeline established in Cycle 1. The primary objectives of this cycle are twofold. First, it aims to substantially upgrade the exploration engine with more advanced, physically-motivated simulation techniques, transforming it from a simple MD runner into an intelligent phase space explorer. Second, it will deliver a rich, interactive web-based user interface (Web UI), making the full power of the pipeline accessible to a broader audience without requiring command-line expertise. This cycle is about moving beyond a functional MVP to create a truly powerful, intelligent, and user-friendly scientific tool.
 
-The key technical advancements in this cycle are twofold, targeting both the scientific rigor of the exploration phase and the intelligence of the data selection process. First, the **Exploration** engine, which was a basic MD simulator in Cycle 1, will be upgraded to a sophisticated hybrid Molecular Dynamics/Monte Carlo (MD/MC) engine. This is a critical enhancement that allows the simulation to explore the material's configuration space more effectively than with plain MD. By introducing Monte Carlo moves like atomic swaps at regular intervals, the engine can overcome energy barriers that would typically trap a standard MD simulation, leading to a much broader and more comprehensive exploration of possible atomic arrangements. This is especially crucial for modelling alloys and disordered systems where chemical ordering is a key variable. This upgraded engine will also incorporate "auto ensemble switching," a feature that intelligently applies the correct thermodynamic conditions (NPT vs. NVT) for different system types, such as bulk materials versus surfaces, preventing common simulation artifacts and improving physical accuracy.
+The key technical enhancements are centered on the `MDMCExplorer` service. A headline feature is the implementation of a **hybrid MD/MC (Molecular Dynamics / Monte Carlo)** algorithm. While MD is excellent at exploring the local potential energy surface, it can struggle to overcome high energy barriers. The introduction of MC "moves," such as atomic swaps and vacancy hops, allows the simulation to make non-physical but chemically plausible jumps, which is a highly effective technique for efficiently exploring the vast configurational and compositional space of complex materials like multi-component alloys. A second major innovation is the development of an **automatic thermodynamic ensemble switching** mechanism. This intelligent feature will analyze the geometry of the simulation cell to detect the presence of a vacuum layer (a characteristic of surface or slab simulations). Based on this detection, it will automatically switch the simulation from the NPT (constant pressure) to the NVT (constant volume) ensemble, a critical step to prevent the unphysical collapse of the vacuum layer, thereby ensuring the physical realism of surface simulations. Furthermore, a **mixed potential model combining the MLIP with the classical ZBL potential** will be integrated. This addresses a common failure mode in high-temperature simulations where atoms can get too close, leading to extremely high repulsive forces that MLIPs often struggle to model. The ZBL potential provides a robust, physically-correct repulsive wall at short distances, dramatically improving the stability of the simulations. Finally, this cycle re-introduces the **Farthest Point Sampling (FPS)** algorithm, a more intelligent method for curating the final dataset to maximize structural diversity.
 
-Second, the **Sampling** module will be upgraded from a simplistic random selection algorithm to an intelligent, diversity-driven approach using Farthest Point Sampling (FPS). This represents a major leap in the quality of the final dataset. Instead of picking structures at random, FPS uses mathematical fingerprints called structural descriptors to select a set of atomic configurations that are maximally different from one another. This ensures the final training dataset is not redundant and covers the widest possible range of atomic environments, which is essential for training robust and generalizable MLIPs. Finally, to make all these powerful new features accessible to a broader audience, this cycle includes the development of a **Web User Interface (UI)**. This graphical interface will provide users with an intuitive, interactive way to configure and launch pipeline runs, monitor their progress in real-time, and visualise the atomic structures being generated. This will significantly lower the barrier to entry for new users and provide a more powerful and engaging experience for experts.
+On the user-facing side, Cycle 2 will deliver a complete, browser-based graphical user interface (Web UI). This UI will serve as an alternative, interactive front-end to the entire pipeline. It will guide users through the process of building and validating simulation configurations via an intuitive web form, eliminating the need to manually edit YAML files. Users will be able to launch runs, monitor their progress in real-time through a live log viewer, and, once a run is complete, browse and visualize the results. The results page will feature an integrated 3D structure viewer, allowing users to inspect the generated atomic configurations interactively. This will dramatically lower the barrier to entry for new or less technical users and provide a powerful tool for visual analysis and interactive exploration for experts.
 
 ## 2. System Architecture
 
-The architecture in Cycle 2 expands significantly upon the existing structure from Cycle 1. It involves modifying and upgrading key components to add advanced functionality and introducing an entirely new package for the web-based user interface. The focus is on seamless integration of these new features while maintaining the modular and testable design established previously.
+The architecture in Cycle 2 expands significantly to accommodate the new Web UI and the enhanced backend services. A new presentation layer entry point, `web_ui.py`, is introduced, which will run a web server and interact with the existing core pipeline. The `MDMCExplorer` service and the `domain/models.py` file will undergo substantial modifications to incorporate the new, advanced features. However, a key architectural principle is to reuse the existing `PipelineOrchestrator` from Cycle 1 without modification. The Web UI will simply be another client that prepares a `FullConfig` object and passes it to the orchestrator, demonstrating the power of the modular design. This ensures that the core logic remains consistent and that all the robustness and testing from Cycle 1 are carried forward.
 
-**File Structure (ASCII Tree):**
+**File Structure (Cycle 2 Focus):**
 
-The files and directories to be created or significantly modified in this cycle are marked in **bold**. The core structure from Cycle 1 is retained, but several files will be heavily modified, and a new `web_ui` directory will be added.
+Bold entries indicate new or significantly modified files for this cycle. The structure now includes top-level directories for static assets and HTML templates, standard for a web application.
 
 ```
-src/
-└── mlip_autopipec/
+src/mlip_autopipec/
+├── __init__.py
+├── cli.py                        # (Existing)
+├── **web_ui.py**                 # **NEW**: Main Web UI application, likely using FastAPI for its performance and Pydantic integration.
+│
+├── core/                         # (Existing)
+│   ├── __init__.py
+│   ├── pipeline_orchestrator.py
+│   └── factories.py
+│
+├── domain/                       # (Modified)
+│   ├── __init__.py
+│   ├── **models.py**             # **MODIFIED**: Pydantic models will be extended to include configuration options for all new features.
+│   └── interfaces.py
+│
+├── infrastructure/               # (Existing)
+│   ├── __init__.py
+│   ├── ase_db_wrapper.py
+│   └── process_runner.py
+│
+└── services/                     # (Modified)
     ├── __init__.py
-    ├── __main__.py
-    ├── cli/
+    ├── generation/
+    │   ├── ... (existing generators)
+    │   └── **specialized_generators.py** # **NEW**: Home for new generators like InterfaceGenerator and AdsorptionGenerator.
+    ├── exploration/
     │   ├── __init__.py
-    │   └── main.py
-    ├── common/
-    │   ├── __init__.py
-    │   └── **pydantic_models.py**   # Will be extended with new configuration options for MC and FPS.
-    ├── generators/
-    │   ├── __init__.py
-    │   ├── base.py
-    │   └── alloy.py
-    ├── explorers/
-    │   ├── __init__.py
-    │   └── **md_engine.py**         # Will be significantly upgraded with hybrid MD/MC and auto-ensemble logic.
-    ├── samplers/
-    │   ├── __init__.py
-    │   ├── base.py
-    │   ├── random_sampler.py
-    │   └── **fps.py**               # A new file implementing the Farthest Point Sampling algorithm.
-    ├── storage/
-    │   ├── __init__.py
-    │   └── database_manager.py
-    ├── pipeline/
-    │   ├── __init__.py
-    │   └── orchestrator.py
-    ├── **factories.py**             # Will be updated to recognize and construct the new FPS sampler.
-    ├── interfaces.py
-    └── **web_ui/**                  # A new package for the web application.
-        ├── **__init__.py**
-        ├── **app.py**               # The main application file (e.g., using Streamlit or FastAPI).
-        └── **components.py**        # Reusable UI components (e.g., configuration forms, visualizers).
+    │   └── **md_mc_explorer.py**     # **MODIFIED**: Will receive major enhancements for hybrid MD/MC, auto-ensemble switching, and ZBL mixing.
+    └── sampling/
+        ├── ... (existing samplers)
+        └── **fps_sampler.py**          # **NEW**: The intelligent Farthest Point Sampler will be implemented here.
+
+**static/**                  # **NEW**: Directory to serve static files like CSS and JavaScript for the Web UI.
+**templates/**               # **NEW**: Directory to store HTML templates (e.g., using Jinja2) for the Web UI.
 ```
 
-**Code Blueprints:**
+**Component Blueprint:**
 
-*   `explorers/md_engine.py`: This file will undergo a major refactoring. The `MDEngine` class will be upgraded to support a hybrid MD/MC loop. This will involve modifying the main `run` method to include a check at a specified frequency (e.g., every 100 MD steps) to decide whether to perform an MC move. New private methods, such as `_perform_swap_move`, will be added to implement the Monte Carlo logic. This method will randomly select two atoms of different species and attempt to swap their positions, accepting or rejecting the move based on a standard Metropolis criterion. Furthermore, the engine will gain the logic for auto ensemble switching. A new method, `_detect_vacuum`, will be implemented. This method will likely work by creating a 3D grid over the simulation cell and checking for large contiguous regions of grid points that are far from any atom, which would indicate a vacuum slab. The `run` method will call this at the beginning of a simulation to automatically select the appropriate ASE dynamics ensemble (NVT for slab systems, NPT for bulk systems) to prevent unphysical simulation artifacts.
+This blueprint details the responsibilities of the new and modified components for Cycle 2.
 
-*   `samplers/fps.py`: This new file will house the `FarthestPointSampler` class, which will be a concrete implementation of the `ISampler` interface. This class will have a dependency on an external library capable of calculating structural descriptors, such as `dscribe` for the SOAP (Smooth Overlap of Atomic Positions) method. Its `sample` method will be algorithmically complex. It will first need to read the entire trajectory from the explorer and compute the descriptor vector for each and every frame, storing these vectors in a large NumPy array. It will then implement the iterative FPS algorithm. This involves first picking a random structure to initialize the sampled set. Then, in a loop, it will calculate the distance of all remaining structures to the current set and select the one that is "farthest away" (i.e., has the maximum minimum distance to any point already in the set). This structure is added to the set, and the process repeats until the desired number of samples is reached.
+*   **`web_ui.py`**: This new file will contain a complete web application built using a modern Python framework like FastAPI, chosen for its excellent performance and native integration with Pydantic, which will simplify API validation. It will define several API endpoints:
+    *   A main `/` endpoint that serves the HTML front-end, a single-page application that allows users to construct a `FullConfig` object through an interactive web form.
+    *   An API endpoint `/api/run` that accepts the configuration as a JSON object. This endpoint will validate the incoming data against the Pydantic models and then launch the `PipelineOrchestrator` in a background process (e.g., using `multiprocessing` or a task queue) to avoid blocking the web server. It will return a unique `run_id` to the client.
+    *   An API endpoint `/api/status/<run_id>` that the frontend can poll to get real-time progress updates on a specific pipeline run.
+    *   API endpoints for the results page, allowing it to fetch a list of structures from a completed run's database and retrieve the specific coordinates for visualization.
 
-*   `common/pydantic_models.py`: The Pydantic configuration schemas will be extended to control the new features. The `ExplorationConfig` model will be updated to include new fields such as `mc_enabled: bool`, `swap_frequency: int`, and `mc_move_types: List[str]`. These will have default values to ensure backward compatibility with Cycle 1 configs. Similarly, the `SamplingConfig` model will have its `method` enum updated to include a new member, `'fps'`. A new `FPSConfig` model will be added to hold parameters specific to the FPS algorithm, such as the type of descriptor to use (`descriptor_type: str`) and any parameters for the descriptor itself (e.g., `soap_nmax`, `soap_lmax`). This new model will be an optional field within the main `SamplingConfig`.
+*   **`services/exploration/md_mc_explorer.py`**: This existing file will be heavily modified to incorporate the advanced scientific logic.
+    *   The core simulation method will be refactored to support a hybrid MD/MC loop. It will be configurable to perform MC moves (like atom swaps) at a specified frequency, interspersed with standard MD integration steps.
+    *   A new private method, `_detect_vacuum()`, will be implemented. This function will be a key piece of new IP. It will analyze the geometry of an `ase.Atoms` object by creating a 3D grid over the cell and checking for large, contiguous regions with no atoms, which robustly identifies a vacuum slab.
+    *   The main simulation logic will be updated to call `_detect_vacuum()` at the beginning of a run. If a vacuum is detected, it will force the simulation to use the NVT ensemble, overriding any user setting to prevent simulation artifacts.
+    *   The calculator setup logic will be enhanced to create a mixed potential using `ase.calculators.mixing.MixedCalculator`. This will combine the forces from the primary MLIP with the forces from an `ase.calculators.zbl.ZBL` potential for short-range repulsion.
 
-*   `web_ui/app.py`: This will be the main entry point for the new web application. We will use Streamlit for its rapid development capabilities. This file will contain the Python code that lays out the UI components: various widgets for setting all the pipeline configuration parameters (e.g., sliders for temperature, dropdowns for elements, checkboxes for boolean flags like `mc_enabled`), a main "Run Pipeline" button to start the process, and a display area for showing progress updates and visualizing the final atomic structures (e.g., using a component that integrates the `py3Dmol` library). The application will be designed to construct the exact same Pydantic `FullConfig` object that the CLI uses. It will then call the `PipelineOrchestrator` in a separate background process or thread to run the simulation without blocking the UI's event loop.
+*   **`domain/models.py`**: The Pydantic models will be updated to expose the new features to the user.
+    *   The `ExplorationConfig` model will be extended with new, well-documented fields: `enable_hybrid_mc: bool`, `mc_swap_frequency: int`, `auto_ensemble_switching: bool` (defaulting to `True`), and `use_zbl_repulsion: bool` (defaulting to `True`).
+    *   The `SamplingConfig` model will be updated to allow the `method` field to be `Literal['random', 'fps']` and will include a new optional field `fps_soap_params: dict | None` for configuring the SOAP descriptors. A validator will be added to ensure that if `method` is 'fps', then `fps_soap_params` is not `None`.
 
-*   `web_ui/components.py`: To keep the main `app.py` file clean and organized, reusable UI elements will be encapsulated into functions within this file. For example, a function like `create_system_config_form(defaults)` could be responsible for rendering all the Streamlit widgets for the `SystemConfig` section of the form and returning the corresponding Pydantic object. This modular approach will make the UI code much easier to manage and debug.
+*   **`services/sampling/fps_sampler.py`**: This new file will contain the implementation of the `FPSSampler`. It will depend on an external library (like `dscribe`) to compute the SOAP (Smooth Overlap of Atomic Positions) descriptors for each structure in the input trajectories. It will then implement the iterative Farthest Point Sampling algorithm to select a subset of structures that are maximally diverse in this high-dimensional descriptor space, providing a much more efficient sampling of the configurational landscape than the random approach.
 
 ## 3. Design Architecture
 
-The design for Cycle 2 is focused on two primary goals: integrating more complex scientific algorithms in a robust way, and providing a user-friendly graphical interface that abstracts away the underlying complexity. All this must be done while maintaining the modularity and testability of the architecture established in Cycle 1.
+The design for Cycle 2 is an extension of the clean, modular architecture established in Cycle 1. The introduction of the Web UI is handled by adding a new component to the presentation layer, which communicates with the existing backend through a well-defined API. This maintains the strict separation of concerns and demonstrates the extensibility of the initial design. The core pipeline logic within the `PipelineOrchestrator` remains unchanged, acting as a stable foundation upon which these new features are built.
 
-**Pydantic-Based Schema Design:**
+*   **Pydantic Model Enhancements and Backward Compatibility**: The new configuration fields added to `ExplorationConfig` and `SamplingConfig` in `domain/models.py` will be designed with default values (e.g., `enable_hybrid_mc: bool = False`). This is a crucial design choice that ensures **backward compatibility**. Configuration files written for Cycle 1, which do not contain these new keys, will still be valid and will run with the default (Cycle 1) behavior. Custom validators will be added for the new fields to ensure logical consistency. For instance, a validator will check that if `enable_hybrid_mc` is `True`, then the `mc_swap_frequency` must be a positive integer greater than zero.
 
-The existing Pydantic schema is the foundation for this cycle's new features. The design principle is to extend the schema by adding new, optional configuration sections, which is a non-breaking change that ensures backward compatibility with configurations from Cycle 1.
+*   **Web UI and Backend Interaction (Stateless API Design)**: The interaction between the frontend and backend will be designed around a stateless RESTful API. The Web UI will be a modern, single-page application (SPA) built with HTML, CSS, and JavaScript. All dynamic behavior will be handled by the frontend, which will make asynchronous API calls to the Python backend. The backend (`web_ui.py`) will be designed to be stateless. When it receives a request on the `/api/run` endpoint, it will validate the input, start the long-running `PipelineOrchestrator` in a separate background process, and immediately return a `run_id`. The state of the run (e.g., "running", "completed", "failed") will be tracked via simple status files on the disk, not in the memory of the web server. The `/api/status/<run_id>` endpoint will simply read these files to provide updates. This decoupled, stateless design is highly robust and scalable; it ensures that the web server remains responsive and is not tied up by the long-running scientific computations.
 
-*   **`ExplorationConfig` Extension**:
-    *   New Fields: The model will be extended with `enable_mc` (a `bool` that defaults to `False`), `mc_swap_probability` (a `float` between 0.0 and 1.0), and `mc_auto_ensemble` (a `bool` that defaults to `True`).
-    *   Producers: These values will be set either by a user in their YAML file or through new widgets (e.g., checkboxes, sliders) in the Web UI form.
-    *   Consumers: The primary consumer is the `MDEngine`, which will use these values to conditionally enable and control the hybrid MD/MC simulation logic.
-    *   Design: The use of default values is critical here. If a user provides a Cycle 1 configuration file that lacks these new keys, the model will still validate successfully and the new features will simply be disabled, ensuring a smooth upgrade path.
-
-*   **`SamplingConfig` Extension**:
-    *   `method` Enum: The `method` field, which was an enum in Cycle 1, will be updated to `Enum('random', 'fps')`.
-    *   `fps_settings` (Optional[`FPSConfig`]): A new field will be added to hold FPS-specific settings. This field will be optional.
-    *   `FPSConfig` Model: A completely new Pydantic model will be created. It will contain fields like `descriptor_type` (e.g., an `Enum` with values 'soap', 'acsf')), and `descriptor_params` (a `Dict` to hold arbitrary parameters for the chosen descriptor, like `nmax` and `lmax` for SOAP).
-    *   Design: This nested, optional structure is a key design choice. It ensures that FPS-specific parameters are only provided and validated when FPS is the selected sampling method. The factory function in `factories.py` will be updated to inspect the `config.sampling.method` field and, if it is 'fps', it will instantiate and return a `FarthestPointSampler`, passing the `fps_settings` to its constructor.
-
-*   **Web UI and Configuration**:
-    *   The Web UI will become a primary producer of the `FullConfig` object during interactive sessions. The UI components (sliders, text boxes, etc.) will be directly and explicitly mapped to the fields in the Pydantic models.
-    *   When a user clicks the "Run" button in the UI, the application will gather the current state of all its input widgets into a dictionary. This dictionary will then be parsed by the `FullConfig.model_validate()` method. This is a critical design choice that reuses the exact same validation logic as the CLI, ensuring consistency and preventing logic duplication. The core pipeline logic is completely agnostic to whether its configuration originated from a human-written YAML file or a graphical user interface.
-
-**Component Interaction and Extensibility:**
-
-*   `MDEngine`: The refactored engine will have a main simulation loop. Inside this loop, after a configurable number of MD steps, it will check the `enable_mc` flag. If true, it will attempt an MC move by calling a private helper method like `_attempt_swap`. This design keeps the MD and MC logic cleanly separated but allows them to work together within the same simulation run.
-*   `FarthestPointSampler`: This new component will be designed to be as decoupled as possible. Its public `sample` method will require only a path to a trajectory file and the relevant sampling parameters. This high degree of encapsulation makes it highly reusable and much easier to write focused unit tests for its complex algorithm.
-*   `Web UI and PipelineOrchestrator`: The UI, defined in `web_ui/app.py`, will import and use the `PipelineOrchestrator` from the core `mlip_autopipec` package, treating the core application as a library. To avoid freezing the UI during a potentially long-running simulation, the call to `orchestrator.run()` must be executed asynchronously. The recommended approach for this is to use Python's `multiprocessing` module to launch the entire run in a completely separate process. The UI can then monitor the progress of this background process by periodically checking for the existence of output files or by reading a status from a simple log file that the orchestrator updates.
+*   **Robust Vacuum Detection Algorithm**: The `_detect_vacuum` function will be a critical piece of new scientific logic. Its design will be more sophisticated than a simple check of the cell's aspect ratio. The proposed algorithm is as follows:
+    1.  Input: An `ase.Atoms` object.
+    2.  Grid Creation: Define a 3D grid of points (e.g., with a spacing of 1 Å) that spans the entire simulation cell.
+    3.  Distance Calculation: For each point on the grid, calculate the distance to the nearest atom in the `Atoms` object.
+    4.  Vacuum Identification: A grid point is considered to be "in a vacuum" if its distance to the nearest atom is greater than a specified threshold (e.g., a value slightly larger than a typical covalent bond length, ~3-4 Å).
+    5.  Slab Detection: The algorithm will then check if there is a contiguous *plane* of these vacuum points along any of the three Cartesian axes (x, y, or z). The presence of such a plane is a robust indicator of a vacuum slab.
+    6.  Output: The function will return `True` if a vacuum slab is detected, and `False` otherwise.
+    This grid-based approach is highly robust and can correctly identify vacuum layers in complex geometries, such as those with tilted slabs or internal pores, where simpler methods would fail.
 
 ## 4. Implementation Approach
 
-The implementation of Cycle 2 will be more complex than Cycle 1 and will be tackled in three parallel streams: upgrading the explorer, building the new sampler, and developing the web UI from scratch.
+The implementation of Cycle 2 will be strategically divided into two parallel development tracks to allow for concurrent progress on the backend scientific features and the frontend user interface. This requires clear API definitions from the start to ensure smooth integration.
 
-1.  **Extend Configuration**: As in Cycle 1, the first step is to update the source of truth: the Pydantic models in `common/pydantic_models.py`. The new fields and models required for the advanced features will be added first. This includes adding the `mc_enabled` flag to `ExplorationConfig` and adding the `fps` option to the `SamplingConfig` method enum, along with the new `FPSConfig` model. This "contract-first" approach ensures that the requirements for the new functionality are clearly and programmatically defined before implementation begins.
+1.  **Track 1: Backend Scientific Enhancements**: This track focuses on upgrading the `MDMCExplorer` and adding the `FPSSampler`.
+    *   **Step 1.1 (Models)**: The first step is to modify the Pydantic models in `domain/models.py`. The new configuration parameters for hybrid MC, ZBL repulsion, auto-ensemble switching, and FPS will be added, complete with default values and validators.
+    *   **Step 1.2 (Services)**: Implement the new scientific logic within the services. This includes the `_detect_vacuum` function, the logic for creating a mixed ZBL/MLIP potential in the `MDMCExplorer`, and the implementation of the hybrid MD/MC loop. Simultaneously, the `FPSSampler` will be developed, including the integration of a third-party library for SOAP descriptor calculations.
+    *   **Step 1.3 (Unit Testing)**: Each new piece of functionality will be accompanied by rigorous unit tests. For instance, the `_detect_vacuum` function will be tested with a variety of pre-defined bulk and slab structures to ensure its accuracy. The potential mixing logic will be tested to verify that the resulting forces are correct.
 
-2.  **Upgrade the Exploration Engine**:
-    *   The `MDEngine`'s main `run` method will be refactored. The existing loop over MD steps will be preserved, but a conditional block will be added inside it (`if step % swap_frequency == 0:`).
-    *   Inside this block, the logic for performing MC moves will be called. A new private method, `_perform_swap_move`, will be implemented. This method will need to select two atoms of different species, calculate the potential energy change of the proposed swap, and accept or reject the move based on the Metropolis criterion.
-    *   Separately, the `_detect_vacuum` function will be implemented. A robust approach would be to create a 3D voxel grid over the simulation cell and check for large, contiguous regions of empty voxels.
-    *   This detection logic will be integrated at the start of the `run` method to automatically select the appropriate ASE dynamics ensemble (`NVT` or `NPT`) for the simulation.
+2.  **Track 2: Web UI Development**: This track focuses on creating the new user-facing application.
+    *   **Step 2.1 (Web Server Setup)**: Set up the basic web server application in `web_ui.py` using FastAPI. Define the necessary HTML templates and create the basic API endpoints (`/api/run`, `/api/status`, `/api/results`). Initially, these endpoints can return mock data.
+    *   **Step 2.2 (Frontend Development)**: Develop the frontend as a single-page application. This involves writing the HTML for the main configuration form, the run status page, and the results browser. JavaScript code will be written to handle user interactions, perform client-side validation, make AJAX calls to the backend API, and dynamically update the UI based on the responses.
+    *   **Step 2.3 (3D Viewer Integration)**: Integrate a lightweight, browser-based 3D structure viewer (such as `nglview` or a similar JavaScript library) into the results page. The JavaScript will be responsible for fetching structure data from a backend API endpoint and rendering it in the viewer.
 
-3.  **Implement the Farthest Point Sampler**:
-    *   A new file, `samplers/fps.py`, will be created, containing the `FarthestPointSampler` class.
-    *   A new dependency on a descriptor calculation library, such as `dscribe`, will be added to the project's `pyproject.toml`.
-    *   The `sample` method will be the core of this component. It will first need a loop to read the entire trajectory and compute the descriptor vector (e.g., SOAP vector) for each frame, storing these high-dimensional vectors in a large NumPy array.
-    *   The core FPS algorithm will then be implemented. This is an iterative process that maintains a set of selected indices. At each step, it must efficiently calculate the distance of all remaining points to the currently selected set and find the point with the maximum "minimum distance." This point is then added to the set, and the process repeats.
-
-4.  **Develop the Web UI**:
-    *   The basic application structure will be set up in `web_ui/app.py` using Streamlit. The file will start with a title and a description.
-    *   The UI components will be created in `web_ui/components.py` as reusable functions. These functions will generate the Streamlit widgets (sliders, number inputs, dropdowns) needed to configure the pipeline, directly mirroring the structure of the Pydantic config models.
-    *   The "Run Pipeline" button will be implemented in `app.py`. The on-click handler for this button will be the most complex part of the UI. It will need to gather the state from all the UI widgets, construct the `FullConfig` Pydantic object, and then use the `multiprocessing` library to launch the `PipelineOrchestrator.run()` method in a completely separate process to prevent blocking.
-    *   A progress display will be added to the UI. A simple but effective method is to have the orchestrator write log messages to a file, and the Streamlit app can periodically read and display the contents of this file in a text area.
-    *   Finally, a 3D molecule viewer component will be integrated using a library like `py3Dmol` to display a sample result after the pipeline completes.
-
-5.  **Update Factories and CLI**: The `create_sampler` function in `factories.py` will be updated to handle the new `'fps'` method. This will involve adding a new condition that checks for this value in the config and, if found, returns an instance of the `FarthestPointSampler`. This ensures that both the CLI and the Web UI can seamlessly make use of the new, advanced sampler.
+3.  **Track 3: Integration and End-to-End Testing**: Once significant progress has been made on both tracks, the final phase is to integrate them and perform comprehensive end-to-end testing.
+    *   The mock API endpoints in the web server will be replaced with calls to the actual `PipelineOrchestrator`, connecting the UI to the backend engine.
+    *   A suite of end-to-end tests will be developed using a browser automation tool like Playwright. These automated tests will script the entire user workflow: opening the web page, filling out the form to enable the new advanced features, launching a run, polling for its completion, and verifying that the results are displayed correctly. These tests are the ultimate guarantee that the full stack is working seamlessly.
 
 ## 5. Test Strategy
 
-The testing for Cycle 2 must cover the new complex algorithms and the interactive web UI.
+The testing strategy for Cycle 2 must expand significantly to cover the increased complexity of the backend and the entirely new Web UI stack. It will build upon the foundation of tests from Cycle 1.
 
 **Unit Testing Approach (Min 300 words):**
 
-The unit tests for Cycle 2 will focus on the new, algorithmically complex components and the backend logic of the web UI.
+The unit tests for Cycle 2 will be highly targeted, focusing on the new, complex pieces of logic to ensure they are correct in isolation.
 
-*   **`FarthestPointSampler`**: This component requires rigorous testing. We will create a deterministic test case with a small, known set of 2D vectors. We will run the FPS algorithm on this set and assert that it returns the expected indices in the correct order. This validates the core logic of the sampler independently of any real atomic data. We will also test edge cases, such as requesting more samples than there are data points.
+*   **`MDMCExplorer` Advanced Features**: This service will receive the most extensive new set of unit tests.
+    *   **Vacuum Detection**: A dedicated test suite will be created for the `_detect_vacuum` function. We will construct several static `ase.Atoms` objects in the test code that represent clear-cut physical cases: a perfect bulk FCC crystal, a surface slab with a large vacuum gap along the z-axis, a molecule placed in the center of a large, empty box, and perhaps a porous material. We will then write a separate test for each case, asserting that the function returns the expected boolean value (`False` for bulk, `True` for the slab and molecule).
+    *   **Ensemble Switching Logic**: We will test the logic that *uses* the vacuum detection. This test will use `pytest-mock` to mock the `_detect_vacuum` method, forcing it to return `True` or `False`. We will then inspect the `ase.md` dynamics object that gets created and assert that it is of the correct type (`NVTBerendsen` when the mock returns `True`, and `NPTBerendsen` when it returns `False`).
+    *   **Hybrid MC Logic**: The MC move proposal functions (e.g., `_propose_swap`) will be tested in isolation. A test will create a simple `Atoms` object with two different element types, call the swap function, and then assert that the atomic numbers of two specific atoms have been correctly interchanged.
+    *   **ZBL Mixing**: The potential mixing logic will be tested by creating a simple two-atom system. We will calculate the forces using only the MLIP and only the ZBL potential. We will then calculate the forces using the mixed potential and assert that the result is the correct vector sum of the two individual force calculations.
 
-*   **`MDEngine`**: The new logic in the `MDEngine` will be unit tested using mocks. To test the hybrid MD/MC functionality, we will mock the underlying ASE dynamics and assert that the `_perform_swap_move` method is called the correct number of times based on the configuration. To test the `_detect_vacuum` method, we will create several `Atoms` objects manually—some representing bulk crystals and others representing slabs with vacuum layers—and assert that the method correctly classifies each one.
+*   **`FPSSampler`**: The `FPSSampler` will be tested with a carefully constructed dummy trajectory that contains clusters of nearly identical structures and a few unique, distinct structures. The test will mock the SOAP descriptor calculation to return deterministic, pre-computed fingerprints. The core assertion will be that the sampler correctly identifies and selects the set of unique structures, demonstrating that the diversity maximization logic is working.
 
-*   **Web UI Backend**: We can write unit tests for the logic that connects the UI to the pipeline. For example, we can test the function that gathers data from the UI widgets and creates the `FullConfig` object. We will simulate widget states (e.g., a dictionary of values) and assert that the function produces a correctly structured and validated Pydantic object. This ensures the UI is correctly communicating with the core application logic.
+*   **Web UI Backend (`web_ui.py`)**: We will use FastAPI's `TestClient` to perform in-memory unit testing of our API endpoints without needing to run a live web server. We will send POST requests with valid and invalid JSON payloads to the `/api/run` endpoint and assert that the server responds with the correct HTTP status codes (200 for valid, 422 for invalid). We will mock the `PipelineOrchestrator` to verify that it is called with the correct configuration when the API receives a valid request.
 
-**Integration Testing Approach (Min 300 words):**
+**End-to-End (E2E) Testing Approach (Min 300 words):**
 
-Integration tests will ensure that the new features work correctly within the full pipeline and that the Web UI functions as a complete application.
+With the introduction of a browser-based UI, E2E testing becomes absolutely critical. It is the only way to verify that the entire application stack, from the user's clicks in the browser down to the scientific calculations in the backend, is working together seamlessly. We will use the `pytest-playwright` framework for this purpose, which allows us to write our browser automation tests in Python.
 
-*   **Advanced CLI End-to-End Test**: A new end-to-end test for the CLI will be created. This test will use a configuration file that specifically enables the hybrid MD/MC engine and the Farthest Point Sampler. The test will run the full pipeline. While it is difficult to assert the "correctness" of the stochastic output, we can perform important checks. The test will verify that the pipeline runs to completion without errors. It will also inspect the output database to confirm that the number of samples is correct. We can also add logging within the `MDEngine` and check the logs to verify that the MC swap code paths were actually executed during the run.
+*   **The "Golden Path" E2E Test**: The most important E2E test will be a "golden path" scenario that simulates a complete, successful user workflow through the Web UI. The automated test script will perform the following actions:
+    1.  **Setup**: The test will start the `web_ui.py` application as a background process.
+    2.  **Navigation**: Playwright will launch a real browser (e.g., Chromium), navigate to the application's local URL (e.g., `http://127.0.0.1:8000`).
+    3.  **Form Interaction**: The script will programmatically interact with the web form's HTML elements. It will fill in the input fields for a simple Si-Ge alloy system and will be sure to click the checkboxes to enable the new advanced features like "Hybrid MC" and "ZBL Repulsion," and select "FPS" as the sampling method.
+    4.  **Submission**: It will simulate a user click on the "Launch Run" button.
+    5.  **Status Verification**: The script will then assert that the UI correctly transitions to the "Run in Progress" page and that a `run_id` is displayed. To avoid brittle tests that rely on UI timings, the script will then switch to polling the `/api/status/<run_id>` API endpoint directly in a loop, waiting for the JSON response to indicate that the status has changed from "Running" to "Completed".
+    6.  **Results Verification**: Once the run is complete, the script will navigate the browser to the results page for that `run_id`. It will then assert that the page correctly displays the results, for example, by checking that the results table is present and contains the expected number of structures.
+    7.  **Visualization Check**: As a final check, the script will simulate a click on one of the structures in the results table and assert that the 3D viewer element is successfully loaded into the page.
 
-*   **Web UI End-to-End Test**: This is the most critical integration test for Cycle 2. We will use a browser automation framework like Playwright. The test script will perform the following actions:
-    1.  Launch the Streamlit web application as a separate process.
-    2.  Use Playwright to open a browser and navigate to the application's URL.
-    3.  Programmatically interact with the UI widgets: select elements from a dropdown, move a temperature slider, type into a text box for the number of steps.
-    4.  Click the "Run Pipeline" button.
-    5.  The script will then wait and poll the UI for an indicator that the run is complete (e.g., the appearance of a "Done!" message or a rendered molecule).
-    6.  Finally, the test will check the file system to assert that the expected output database was created.
-    This comprehensive test validates the entire user workflow, from graphical interaction in the browser to the final output of the scientific pipeline.
+This single, comprehensive E2E test provides a very high degree of confidence that the integration between the frontend JavaScript, the web backend API, the pipeline orchestration logic, and the new advanced simulation features is correct and robust.
