@@ -82,8 +82,7 @@ def test_validate_session_branch_mismatch() -> None:
 
         is_valid, error = SessionManager.validate_session(project_session_id, integration_branch)
         assert not is_valid
-        assert error
-        assert "not found locally" in error
+        assert error and "not found locally" in error
 
 
 def test_validate_session_fetch_remote_success() -> None:

@@ -35,7 +35,7 @@ def orchestrator(mock_jules, mock_auditor):
 
 
 @pytest.mark.asyncio
-async def test_run_session_approved_first_try(orchestrator, mock_jules, mock_auditor) -> None:
+async def test_run_session_approved_first_try(orchestrator, mock_jules, mock_auditor):
     # Setup happy path
     mock_jules.wait_for_activity_type.return_value = {
         "planGenerated": {"planId": "plan-1", "steps": []}
@@ -52,7 +52,7 @@ async def test_run_session_approved_first_try(orchestrator, mock_jules, mock_aud
 
 
 @pytest.mark.asyncio
-async def test_run_session_rejected_then_approved(orchestrator, mock_jules, mock_auditor) -> None:
+async def test_run_session_rejected_then_approved(orchestrator, mock_jules, mock_auditor):
     # First plan: Rejected
     # Second plan: Approved
 
@@ -92,7 +92,7 @@ async def test_run_session_rejected_then_approved(orchestrator, mock_jules, mock
 
 
 @pytest.mark.asyncio
-async def test_max_retries_exceeded(orchestrator, mock_jules, mock_auditor) -> None:
+async def test_max_retries_exceeded(orchestrator, mock_jules, mock_auditor):
     mock_jules.wait_for_activity_type.return_value = {
         "planGenerated": {"planId": "plan-1", "steps": []}
     }
