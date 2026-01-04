@@ -4,14 +4,14 @@
   "cycles": [
     {
       "id": "01",
-      "status": "planned",
+      "status": "in_progress",
       "branch_name": null,
-      "jules_session_id": null,
+      "jules_session_id": "sessions/11353900041086643113",
       "current_iteration": 1,
       "pr_url": null,
       "last_error": null,
       "created_at": "2026-01-04T15:53:08.105413Z",
-      "updated_at": "2026-01-04T15:53:08.105418Z"
+      "updated_at": "2026-01-04T15:54:20.578178Z"
     },
     {
       "id": "02",
@@ -25,5 +25,5 @@
       "updated_at": "2026-01-04T15:53:08.105432Z"
     }
   ],
-  "last_updated": "2026-01-04T15:53:08.105464Z"
+  "last_updated": "2026-01-04T15:54:20.578186Z"
 }
