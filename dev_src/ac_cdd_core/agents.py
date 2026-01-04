@@ -77,6 +77,15 @@ def get_model(model_name: str) -> Model | str:
     Parses the model name and returns an OpenAIModel with appropriate settings
     if it is an OpenRouter model.
     """
+    # Infer that "claude" models, if not otherwise prefixed, should use OpenRouter.
+    if "claude" in model_name and not model_name.startswith("openrouter/"):
+        # Prepend the full openrouter prefix if it's missing the vendor part.
+        if "anthropic/" not in model_name:
+            model_name = f"openrouter/anthropic/{model_name}"
+        else:
+            # It already has the vendor, just add the provider.
+            model_name = f"openrouter/{model_name}"
+
     if model_name.startswith("openrouter/"):
         real_model_name = model_name.replace("openrouter/", "", 1)
         api_key = _get_openrouter_api_key()
