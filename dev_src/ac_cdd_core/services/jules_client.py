@@ -579,7 +579,7 @@ class JulesClient:
         """Handles automated plan review and approval."""
         session_name = "sessions/" + session_url.split("/sessions/")[-1]
         plan = await self.get_latest_plan(session_name)
-        
+
         if not plan:
             return
 
@@ -592,24 +592,25 @@ class JulesClient:
         # Build context for Auditor
         mgr = SessionManager()
         manifest = await mgr.load_manifest()
-        
+
         current_cycle_id = None
         if manifest:
-             for cycle in manifest.cycles:
+            for cycle in manifest.cycles:
                 if cycle.status == "in_progress":
                     current_cycle_id = cycle.id
                     break
 
         context_parts = []
         if current_cycle_id:
-             self._load_cycle_docs(current_cycle_id, context_parts)
-        
+            self._load_cycle_docs(current_cycle_id, context_parts)
+
         # Add Plan Content
         import json
+
         plan_steps = plan.get("steps", [])
-        plan_text = json.dumps(plan_steps, indent=2) 
+        plan_text = json.dumps(plan_steps, indent=2)
         context_parts.append(f"# GENERATED PLAN TO REVIEW\n{plan_text}\n")
-        
+
         intro = (
             "Jules has generated an implementation plan. Please review it against the specifications.\n"
             "If the plan is acceptable, reply with just 'APPROVE' (single word).\n"
@@ -624,12 +625,12 @@ class JulesClient:
             reply = mgr_response.output.strip()
 
             if "APPROVE" in reply.upper() and len(reply) < 50:
-                 self.console.print(f"[bold green]Plan Approved by Auditor.[/bold green]")
-                 await self.approve_plan(session_name, plan_id)
+                self.console.print("[bold green]Plan Approved by Auditor.[/bold green]")
+                await self.approve_plan(session_name, plan_id)
             else:
-                 self.console.print(f"[bold yellow]Plan Rejected. Sending Feedback...[/bold yellow]")
-                 await self._send_message(session_url, reply)
-                 
+                self.console.print("[bold yellow]Plan Rejected. Sending Feedback...[/bold yellow]")
+                await self._send_message(session_url, reply)
+
             processed_ids.add(plan_id)
         except Exception as e:
             logger.error(f"Plan audit failed: {e}")
@@ -647,7 +648,7 @@ class JulesClient:
         ]
         if state not in active_states:
             return
-            
+
         if state == "AWAITING_USER_PLAN_APPROVAL":
             await self._handle_plan_approval(session_url, processed_ids)
             return
