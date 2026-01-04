@@ -1,3 +1,5 @@
+# Configuration file for the MLIP-AutoPipe project.
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
