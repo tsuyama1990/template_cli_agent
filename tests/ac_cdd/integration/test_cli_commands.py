@@ -1,23 +1,32 @@
 import os
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import typer
 from typer.testing import CliRunner
 
+# Helper for AsyncMock if not available in standard unittest.mock (py3.8+)
+try:
+    from unittest.mock import AsyncMock
+except ImportError:
+
+    class AsyncMock(MagicMock):
+        async def __call__(self, *args, **kwargs):
+            return super().__call__(*args, **kwargs)
+
 
 @pytest.fixture
-def runner() -> CliRunner:
+def runner():
     return CliRunner()
 
 
 @pytest.fixture
-def mock_project_manager() -> MagicMock:
+def mock_project_manager():
     return MagicMock()
 
 
 @pytest.fixture
-def mock_graph_builder() -> MagicMock:
+def mock_graph_builder():
     m = MagicMock()
     # Ensure cleanup is async-awaitable
     m.cleanup = AsyncMock()
@@ -25,24 +34,24 @@ def mock_graph_builder() -> MagicMock:
 
 
 @pytest.fixture
-def mock_session_manager() -> MagicMock:
+def mock_session_manager():
     return MagicMock()
 
 
 @pytest.fixture
-def mock_session_validator() -> MagicMock:
+def mock_session_validator():
     return MagicMock()
 
 
 @pytest.fixture
-def mock_git_manager() -> MagicMock:
+def mock_git_manager():
     return MagicMock()
 
 
-def test_init_command_creates_structure(runner: CliRunner) -> None:
+def test_init_command_creates_structure(runner):
     """Test init command creates project structure."""
     with (
-        patch("ac_cdd_core.cli.check_environment"),
+        patch("ac_cdd_core.cli.check_environment") as mock_check,
         patch("ac_cdd_core.services.project.ProjectManager.initialize_project") as mock_init,
         patch("rich.console.Console.print"),
     ):
@@ -51,10 +60,11 @@ def test_init_command_creates_structure(runner: CliRunner) -> None:
         result = runner.invoke(app, ["init"])
 
         assert result.exit_code == 0
+        mock_check.assert_called_once()
         mock_init.assert_called_once()
 
 
-def test_check_environment_missing_keys() -> None:
+def test_check_environment_missing_keys():
     """Test check_environment detects missing API keys."""
     # We use a context manager to patch check_api_key to return False (invalid)
     with (
@@ -68,7 +78,7 @@ def test_check_environment_missing_keys() -> None:
             check_environment()
 
 
-def test_check_environment_all_present() -> None:
+def test_check_environment_all_present():
     """Test check_environment passes when all keys present."""
     # We patch check_api_key to return True
     # AND we must ensure os.environ has the required vars to pass the second check
@@ -84,7 +94,7 @@ def test_check_environment_all_present() -> None:
         check_environment()
 
 
-def test_init_command(runner: CliRunner, mock_project_manager: MagicMock) -> None:
+def test_init_command(runner, mock_project_manager):
     """Test init command execution."""
     with patch("ac_cdd_core.cli.check_environment"):
         from ac_cdd_core.cli import app
@@ -101,9 +111,7 @@ def test_init_command(runner: CliRunner, mock_project_manager: MagicMock) -> Non
             assert "Initialization Complete" in result.stdout
 
 
-def test_gen_cycles_command(
-    runner: CliRunner, mock_graph_builder: MagicMock, mock_session_manager: MagicMock
-) -> None:
+def test_gen_cycles_command(runner, mock_graph_builder, mock_session_manager):
     """Test gen-cycles command."""
     from ac_cdd_core.cli import app
 
@@ -116,13 +124,12 @@ def test_gen_cycles_command(
         patch("ac_cdd_core.cli.CycleState") as MockCycleState,
     ):
         # Mock graph execution
-        mock_state = {
-            "project_session_id": "test-session",
-            "integration_branch": "dev/test",
-            "error": None,
-        }
-
         mock_graph = MagicMock()
+        mock_state = MagicMock()
+        mock_state.session_id = "test-session"
+        mock_state.integration_branch = "dev/test"
+        mock_state.get.return_value = None  # for .get("error")
+
         mock_graph.ainvoke = AsyncMock(return_value=mock_state)
         mock_graph_builder.build_architect_graph.return_value = mock_graph
 
@@ -139,11 +146,8 @@ def test_gen_cycles_command(
 
 
 def test_run_cycle_command(
-    runner: CliRunner,
-    mock_graph_builder: MagicMock,
-    mock_session_manager: MagicMock,
-    mock_session_validator: MagicMock,
-) -> None:
+    runner, mock_graph_builder, mock_session_manager, mock_session_validator
+):
     """Test run-cycle command."""
     from ac_cdd_core.cli import app
 
@@ -156,7 +160,7 @@ def test_run_cycle_command(
     ):
         # Setup mocks
         mock_session_manager.load_or_reconcile_session.return_value = {
-            "project_session_id": "test",
+            "session_id": "test",
             "integration_branch": "dev/test",
         }
         mock_session_validator.validate = AsyncMock(return_value=(True, ""))
@@ -170,9 +174,7 @@ def test_run_cycle_command(
         assert result.exit_code == 0
 
 
-def test_finalize_session_command(
-    runner: CliRunner, mock_session_manager: MagicMock, mock_git_manager: MagicMock
-) -> None:
+def test_finalize_session_command(runner, mock_session_manager, mock_git_manager):
     """Test finalize-session command."""
     from ac_cdd_core.cli import app
 
@@ -183,7 +185,7 @@ def test_finalize_session_command(
         patch("pathlib.Path.read_text", return_value='{"cycles": ["01"]}'),
     ):
         mock_session_manager.load_or_reconcile_session.return_value = {
-            "project_session_id": "test",
+            "session_id": "test",
             "integration_branch": "dev/test",
         }
         mock_session_manager.validate_session.return_value = (True, "")

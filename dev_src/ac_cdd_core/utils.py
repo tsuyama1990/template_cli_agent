@@ -1,10 +1,7 @@
 import logging
 import os
-import shutil
 import subprocess
-from types import TracebackType
 
-from dotenv import load_dotenv
 from rich.console import Console
 from rich.logging import RichHandler
 
@@ -21,9 +18,7 @@ logging.basicConfig(
 logger = logging.getLogger("AC-CDD")
 
 
-def run_command(
-    command: list[str], cwd: str | None = None, env: dict[str, str] | None = None
-) -> None:
+def run_command(command: list[str], cwd: str | None = None, env: dict[str, str] | None = None) -> None:
     """
     コマンドを実行し、出力をリアルタイムで表示する。
     エラー時は CalledProcessError を送出する。
@@ -43,17 +38,17 @@ def run_command(
         )
 
         if process.stdout:
-            for _line in process.stdout:
-                pass  # RichHandler経由でなく直接出力して生ログを見せる
+            for line in process.stdout:
+                print(line, end="")  # RichHandler経由でなく直接出力して生ログを見せる
 
         process.wait()
 
-    except Exception:
-        logger.exception("Command failed")
-        raise
+        if process.returncode != 0:
+            raise subprocess.CalledProcessError(process.returncode, command)
 
-    if process.returncode != 0:
-        raise subprocess.CalledProcessError(process.returncode, command)
+    except Exception as e:
+        logger.error(f"Command failed: {e}")
+        raise
 
 
 def check_api_key() -> None:
@@ -62,7 +57,9 @@ def check_api_key() -> None:
     Raises ValueError if neither GOOGLE_API_KEY nor OPENROUTER_API_KEY is found,
     unless AC_CDD_ALLOW_DUMMY_KEYS is set.
     """
+    from dotenv import load_dotenv
 
+    # Load .env explicitly
     load_dotenv()
 
     # Check for common API keys
@@ -94,6 +91,15 @@ def check_api_key() -> None:
         )
         return
 
+        # Original Strict Check:
+        # raise ValueError(
+        #     "API Key not found! Please set GOOGLE_API_KEY (or OPENROUTER_API_KEY) "
+        #     "in your .env file."
+        # )
+
+
+from typing import Any
+
 
 class KeepAwake:
     """
@@ -108,6 +114,8 @@ class KeepAwake:
     def __enter__(self) -> "KeepAwake":
         """Start the inhibitor process."""
         # Check if systemd-inhibit exists
+        import shutil
+
         if not shutil.which("systemd-inhibit"):
             logger.warning("systemd-inhibit not found. Sleep inhibition disabled.")
             return self
@@ -130,24 +138,18 @@ class KeepAwake:
                 cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
             )
             logger.info("💤 System sleep inhibited (AC-CDD is running).")
-        except Exception:
-            logger.exception("Failed to start sleep inhibitor")
+        except Exception as e:
+            logger.warning(f"Failed to start sleep inhibitor: {e}")
         return self
 
-    def __exit__(
-        self,
-        _exc_type: type[BaseException] | None,
-        _exc_val: BaseException | None,
-        _exc_tb: TracebackType | None,
-    ) -> None:
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Stop the inhibitor process."""
         if self.process:
             try:
                 self.process.terminate()
                 self.process.wait(timeout=1)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 # If it refuses to die, kill it
-                logger.debug("Force killing sleep inhibitor")
                 if self.process.poll() is None:
                     self.process.kill()
             logger.info("💤 System sleep inhibition released.")

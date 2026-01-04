@@ -6,7 +6,7 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_full_gen_cycles_workflow() -> None:
+async def test_full_gen_cycles_workflow():
     """Test complete gen-cycles workflow from start to finish."""
     with (
         patch("ac_cdd_core.services.git_ops.GitManager") as mock_git,
@@ -47,7 +47,7 @@ async def test_full_gen_cycles_workflow() -> None:
 
 
 @pytest.mark.asyncio
-async def test_full_run_cycle_workflow() -> None:
+async def test_full_run_cycle_workflow():
     """Test complete run-cycle workflow."""
     with (
         patch("ac_cdd_core.session_manager.SessionManager.load_or_reconcile_session") as mock_load,
@@ -109,7 +109,7 @@ async def test_full_run_cycle_workflow() -> None:
         assert "APPROVED" in audit_result
 
 
-def test_session_persistence_across_commands() -> None:
+def test_session_persistence_across_commands():
     """Test that session persists correctly across multiple commands."""
     with (
         patch("ac_cdd_core.session_manager.SessionManager.save_session") as mock_save,
@@ -136,7 +136,7 @@ def test_session_persistence_across_commands() -> None:
 
 
 @pytest.mark.asyncio
-async def test_error_recovery_workflow() -> None:
+async def test_error_recovery_workflow():
     """Test error recovery in workflow."""
     with (
         patch("ac_cdd_core.services.jules_client.JulesClient") as mock_jules,
@@ -167,5 +167,5 @@ async def test_error_recovery_workflow() -> None:
         assert code == 1
 
         # Retry succeeds
-        _stdout, _stderr, code = await mock_sandbox_instance.run_command(["test"])
+        stdout, stderr, code = await mock_sandbox_instance.run_command(["test"])
         assert code == 0

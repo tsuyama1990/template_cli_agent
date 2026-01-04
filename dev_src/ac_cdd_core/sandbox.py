@@ -1,6 +1,5 @@
 import io
 import os
-import shlex
 import tarfile
 from pathlib import Path
 
@@ -16,11 +15,12 @@ class SandboxRunner:
     Executes code and commands in an E2B Sandbox for safety and isolation.
     """
 
-    def __init__(self, sandbox_id: str | None = None, cwd: str | None = None) -> None:
+    def __init__(self, sandbox_id: str | None = None, cwd: str | None = None):
         self.api_key = os.getenv("E2B_API_KEY")
         if not self.api_key:
             logger.warning("E2B_API_KEY not found. Sandbox execution will fail.")
 
+        # Use settings for defaults if not provided
         self.cwd = cwd or settings.sandbox.cwd
         self.sandbox_id = sandbox_id
         self.sandbox: Sandbox | None = None
@@ -35,21 +35,25 @@ class SandboxRunner:
             try:
                 logger.info(f"Connecting to existing sandbox: {self.sandbox_id}")
                 self.sandbox = Sandbox.connect(self.sandbox_id, api_key=self.api_key)
-            except Exception as e:  # noqa: BLE001
+                return self.sandbox
+            except Exception as e:
                 logger.warning(
                     f"Failed to connect to sandbox {self.sandbox_id}: {e}. Creating new."
                 )
-            else:
-                return self.sandbox
 
         logger.info("Creating new E2B Sandbox...")
         self.sandbox = Sandbox.create(
             api_key=self.api_key,
             template=settings.sandbox.template,
-            timeout=settings.sandbox.timeout,
+            timeout=settings.sandbox.timeout,  # Pass explicit timeout for keep-alive
         )
 
+        # Ensure CWD exists
         self.sandbox.commands.run(f"mkdir -p {self.cwd}")
+
+        # Initial setup: Sync files FIRST, then install dependencies
+        # (Crucial for lightweight setup where we might rely on local configs,
+        # though here we just install ruff)
         await self._sync_to_sandbox(self.sandbox)
 
         if settings.sandbox.install_cmd:
@@ -63,17 +67,23 @@ class SandboxRunner:
         self, cmd: list[str], check: bool = False, env: dict[str, str] | None = None
     ) -> tuple[str, str, int]:
         """
-        Runs a shell command in the sandbox with retry logic.
+        Runs a shell command in the sandbox.
         """
+        # --- 修正: リトライロジックの追加 ---
         max_retries = 1
-        stdout = ""
-        stderr = ""
-        exit_code = 0
-
         for attempt in range(max_retries + 1):
             try:
+                # Sandboxを取得 (初回または再作成)
                 sandbox = await self._get_sandbox()
+
+                # ファイル同期 (最新コードを反映)
+                # Note: self._sync_to_sandbox needs to accept sandbox arg or use self.sandbox
+                # The provided code snippet uses 'sandbox' var which is correct.
                 await self._sync_to_sandbox(sandbox)
+
+                # Save join for logging, but use shlex for safety if we were passing string
+                # e2b runs string via /bin/bash -c "cmd" usually.
+                import shlex
 
                 command_str = shlex.join(cmd)
                 logger.info(f"[Sandbox] Running (Attempt {attempt + 1}): {command_str}")
@@ -84,9 +94,12 @@ class SandboxRunner:
                 stdout = exec_result.stdout
                 stderr = exec_result.stderr
                 exit_code = exec_result.exit_code or 0
+
+                # 成功したらループ終了
                 break
 
             except Exception as e:
+                # タイムアウトやSandbox消失のエラーか判定
                 err_msg = str(e).lower()
                 is_sandbox_error = (
                     "sandbox was not found" in err_msg
@@ -98,25 +111,34 @@ class SandboxRunner:
                     logger.warning(
                         f"Sandbox disconnection detected: {e}. Re-initializing sandbox..."
                     )
+
+                    # 既存のインスタンスを破棄
                     if self.sandbox:
                         try:
                             self.sandbox.kill()
-                        except Exception as sandbox_kill_err:  # noqa: BLE001
+                        except Exception as sandbox_kill_err:
                             logger.debug(f"Failed to kill sandbox: {sandbox_kill_err}")
                         self.sandbox = None
-                        self._last_sync_hash = None
-                    continue
+                        self._last_sync_hash = None  # Force re-sync on new sandbox definition
 
+                    # 次のループで _get_sandbox() が呼ばれ、新規作成＆install_cmdが実行される
+                    continue
+                # コマンド自体の失敗(exit_code)は例外にならない場合もあるが、
+                # e2bのエラーオブジェクトの場合は中身を取り出してbreak
                 if hasattr(e, "exit_code") and hasattr(e, "stdout") and hasattr(e, "stderr"):
                     stdout = e.stdout
                     stderr = e.stderr
                     exit_code = e.exit_code
                     break
-                raise
+
+                # 解決不能なエラーはそのまま投げる
+                raise e
+        # ----------------------------------
 
         if check and exit_code != 0:
-            msg = f"Command failed with code {exit_code}:\nSTDOUT: {stdout}\nSTDERR: {stderr}"
-            raise RuntimeError(msg)
+            raise RuntimeError(
+                f"Command failed with code {exit_code}:\nSTDOUT: {stdout}\nSTDERR: {stderr}"
+            )
 
         return stdout, stderr, exit_code
 
@@ -133,11 +155,13 @@ class SandboxRunner:
         tar_buffer = io.BytesIO()
 
         with tarfile.open(fileobj=tar_buffer, mode="w:gz") as tar:
+            # Sync individual files
             for filename in settings.sandbox.files_to_sync:
                 file_path = root / filename
                 if file_path.exists():
                     tar.add(file_path, arcname=filename)
 
+            # Sync directories
             for folder in settings.sandbox.dirs_to_sync:
                 local_folder = root / folder
                 if not local_folder.exists():
@@ -145,6 +169,7 @@ class SandboxRunner:
 
                 for file_path in local_folder.rglob("*"):
                     if file_path.is_file():
+                        # Filter generic ignored
                         if "__pycache__" in str(file_path) or ".git" in str(file_path):
                             continue
 
@@ -162,6 +187,12 @@ class SandboxRunner:
         if sandbox is None:
             sandbox = self.sandbox
             if sandbox is None:
+                # If we still don't have a sandbox, we can't sync.
+                # However, this method is usually called after _get_sandbox.
+                # Or it might be called in tests with mocked sandbox.
+                # If self.sandbox is also None, we should probably raise or return.
+                if settings.sandbox.template:  # Just a check to ensure settings loaded
+                    pass
                 return
 
         current_hash = self._compute_sync_hash()
@@ -172,9 +203,11 @@ class SandboxRunner:
 
         tar_buffer = self._create_sync_tarball()
 
+        # Upload the tarball
         remote_tar_path = f"{self.cwd}/bundle.tar.gz"
         sandbox.files.write(remote_tar_path, tar_buffer)
 
+        # Extract
         sandbox.commands.run(
             f"tar -xzf {remote_tar_path} -C {self.cwd}", timeout=settings.sandbox.timeout
         )
