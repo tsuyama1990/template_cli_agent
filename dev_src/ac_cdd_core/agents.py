@@ -74,9 +74,15 @@ def _get_openrouter_api_key() -> str:
 
 def get_model(model_name: str) -> Model | str:
     """
-    Parses the model name and returns an OpenAIModel with appropriate settings
-    if it is an OpenRouter model.
+    Parses the model name, infers the provider if missing (e.g., for Claude),
+    and returns a configured Pydantic-AI Model instance.
     """
+    # 1. Handle Claude models: default to OpenRouter if no provider is specified
+    if "claude" in model_name and "/" not in model_name:
+        logger.debug(f"Claude model '{model_name}' detected. Prepending 'openrouter/' provider.")
+        model_name = f"openrouter/{model_name}"
+
+    # 2. Handle OpenRouter models explicitly
     if model_name.startswith("openrouter/"):
         real_model_name = model_name.replace("openrouter/", "", 1)
         api_key = _get_openrouter_api_key()
@@ -89,10 +95,12 @@ def get_model(model_name: str) -> Model | str:
             provider="openrouter",
         )
 
-    # If gemini/ prefix exists, or just return the string (let PydanticAI handle it)
+    # 3. Handle Gemini models explicitly
     if model_name.startswith("gemini/"):
+        # Pydantic-AI's Gemini provider doesn't need the 'gemini/' prefix
         return model_name.replace("gemini/", "", 1)
 
+    # 4. Fallback for other models (e.g., 'gpt-4')
     return model_name
 
 
