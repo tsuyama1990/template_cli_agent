@@ -21,6 +21,11 @@ dependencies = [
     "litellm>=1.80.11",
     "typer",
     "rich",
+    "numpy>=2.4.0",
+    "ase>=3.27.0",
+    "pyyaml>=6.0.3",
+    "shellingham>=1.5.4",
+    "typer-cli>=0.20.0",
 ]
 
 [tool.uv]
@@ -28,6 +33,7 @@ environments = ["sys_platform == 'linux'"]
 
 [project.scripts]
 ac-cdd = "ac_cdd_core.cli:app"
+mlip-autopipec = "mlip_autopipec.cli:app"
 
 [dependency-groups]
 dev = [
