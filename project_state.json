@@ -6,12 +6,12 @@
       "id": "01",
       "status": "in_progress",
       "branch_name": null,
-      "jules_session_id": "sessions/4256325489715341625",
+      "jules_session_id": "sessions/10819123054278779432",
       "current_iteration": 1,
       "pr_url": null,
       "last_error": null,
       "created_at": "2026-01-05T14:14:11.239734Z",
-      "updated_at": "2026-01-05T14:51:06.611598Z"
+      "updated_at": "2026-01-05T15:07:48.321826Z"
     },
     {
       "id": "02",
@@ -58,5 +58,5 @@
       "updated_at": "2026-01-05T14:14:11.239796Z"
     }
   ],
-  "last_updated": "2026-01-05T14:51:06.611612Z"
+  "last_updated": "2026-01-05T15:07:48.321902Z"
 }
