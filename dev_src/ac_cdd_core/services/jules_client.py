@@ -668,6 +668,7 @@ class JulesClient:
         active_states = [
             "AWAITING_USER_FEEDBACK",
             "AWAITING_USER_INPUT",
+            "AWAITING_PLAN_APPROVAL",
             "AWAITING_USER_PLAN_APPROVAL",
             "COMPLETED",
             "SUCCEEDED",
