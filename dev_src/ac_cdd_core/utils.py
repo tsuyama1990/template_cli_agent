@@ -2,6 +2,7 @@ import logging
 import os
 import shutil
 import subprocess
+from pathlib import Path
 from types import TracebackType
 
 from dotenv import load_dotenv
@@ -76,6 +77,10 @@ def check_api_key() -> bool:
         )
         return False
     return True
+
+
+def root_path() -> Path:
+    return Path.cwd()
 
 
 class KeepAwake:
