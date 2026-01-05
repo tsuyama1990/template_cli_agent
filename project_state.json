@@ -1,6 +1,62 @@
 {
   "project_session_id": "sessions/16181096654309838999",
   "integration_branch": "dev/architect-cycle-00-20260105-1359/integration",
-  "cycles": [],
-  "last_updated": "2026-01-05T14:14:09.881273Z"
+  "cycles": [
+    {
+      "id": "01",
+      "status": "planned",
+      "branch_name": null,
+      "jules_session_id": null,
+      "current_iteration": 1,
+      "pr_url": null,
+      "last_error": null,
+      "created_at": "2026-01-05T14:14:11.239734Z",
+      "updated_at": "2026-01-05T14:14:11.239738Z"
+    },
+    {
+      "id": "02",
+      "status": "planned",
+      "branch_name": null,
+      "jules_session_id": null,
+      "current_iteration": 1,
+      "pr_url": null,
+      "last_error": null,
+      "created_at": "2026-01-05T14:14:11.239785Z",
+      "updated_at": "2026-01-05T14:14:11.239786Z"
+    },
+    {
+      "id": "03",
+      "status": "planned",
+      "branch_name": null,
+      "jules_session_id": null,
+      "current_iteration": 1,
+      "pr_url": null,
+      "last_error": null,
+      "created_at": "2026-01-05T14:14:11.239789Z",
+      "updated_at": "2026-01-05T14:14:11.239790Z"
+    },
+    {
+      "id": "04",
+      "status": "planned",
+      "branch_name": null,
+      "jules_session_id": null,
+      "current_iteration": 1,
+      "pr_url": null,
+      "last_error": null,
+      "created_at": "2026-01-05T14:14:11.239793Z",
+      "updated_at": "2026-01-05T14:14:11.239793Z"
+    },
+    {
+      "id": "05",
+      "status": "planned",
+      "branch_name": null,
+      "jules_session_id": null,
+      "current_iteration": 1,
+      "pr_url": null,
+      "last_error": null,
+      "created_at": "2026-01-05T14:14:11.239796Z",
+      "updated_at": "2026-01-05T14:14:11.239796Z"
+    }
+  ],
+  "last_updated": "2026-01-05T14:14:11.239830Z"
 }
