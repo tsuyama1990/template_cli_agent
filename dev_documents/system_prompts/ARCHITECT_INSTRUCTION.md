@@ -19,6 +19,7 @@ You must generate (create) the following files in the repository:
 - `dev_documents/system_prompts/SYSTEM_ARCHITECTURE.md`
 - `dev_documents/system_prompts/CYCLE{xx}/SPEC.md` (For EACH Cycle)
 - `dev_documents/system_prompts/CYCLE{xx}/UAT.md` (For EACH Cycle)
+- `dev_documents/system_prompts/plan_status.json`
 - `pyproject.toml`
 
 ### File Content Requirements
