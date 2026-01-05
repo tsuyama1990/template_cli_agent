@@ -389,7 +389,11 @@ class JulesClient:
 
     def _extract_activity_message(self, act: dict[str, Any]) -> str | None:
         msg = None
-        if "agentMessaged" in act:
+        if "inquiryAsked" in act:
+            # Jules is asking a question
+            inquiry = act["inquiryAsked"]
+            msg = inquiry.get("inquiry", inquiry.get("question"))
+        elif "agentMessaged" in act:
             msg = act["agentMessaged"].get("agentMessage")
         elif "userActionRequired" in act:
             details = act["userActionRequired"]
@@ -674,6 +678,8 @@ class JulesClient:
             "COMPLETED",
             "SUCCEEDED",
             "NEEDS_MORE_INFORMATION",
+            "PLANNING",
+            "IN_PROGRESS",
             "RUNNING",
         ]
         if state not in active_states:
