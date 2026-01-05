@@ -118,9 +118,9 @@ def qa_analyst_system_prompt(_ctx: RunContext[Any]) -> str:
     return _get_system_context()
 
 
-# Manager Agent (for handling clarifying questions)
+# Manager Agent (for handling clarifying questions and plan approval)
 manager_agent: Agent[Any, str] = Agent(
-    model=get_model(settings.agents.qa_analyst_model),
+    model=get_model(settings.agents.auditor_model),
     system_prompt=(
         "You are the Technical Project Manager. Answer clarifying questions "
         "from the developer concerning the project specifications and conventions "
