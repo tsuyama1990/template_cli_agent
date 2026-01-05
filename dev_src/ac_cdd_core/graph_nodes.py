@@ -159,7 +159,9 @@ class CycleNodes(IGraphNodes):
                 )
 
             if result.get("status") == "running" and result.get("session_name"):
-                console.print(f"[bold blue]Session {result['session_name']} created. Waiting for completion...[/bold blue]")
+                console.print(
+                    f"[bold blue]Session {result['session_name']} created. Waiting for completion...[/bold blue]"
+                )
                 result = await self.jules.wait_for_completion(result["session_name"])
 
             if result.get("status") == "success" or result.get("pr_url"):
