@@ -36,8 +36,7 @@ class TestJulesClientLogic(unittest.IsolatedAsyncioTestCase):
     async def test_prioritize_inquiry_over_completed_state(
         self, mock_httpx_cls: Any, _mock_sleep: Any
     ) -> None:
-        """
-        Verify that if state is COMPLETED but there is a NEW inquiry,
+        """Verify that if state is COMPLETED but there is a NEW inquiry,
         we prioritize answering the inquiry over returning "Success/No PR".
         """
         mock_client = AsyncMock()
@@ -100,9 +99,7 @@ class TestJulesClientLogic(unittest.IsolatedAsyncioTestCase):
     async def test_deduplication_of_existing_activities(
         self, mock_httpx_cls: Any, _mock_sleep: Any
     ) -> None:
-        """
-        Verify that existing activities are IGNORED and do not trigger a reply.
-        """
+        """Verify that existing activities are IGNORED and do not trigger a reply."""
         mock_client = AsyncMock()
         mock_httpx_cls.return_value.__aenter__.return_value = mock_client
 

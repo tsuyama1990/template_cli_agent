@@ -19,9 +19,7 @@ def _create_model(model_str: str) -> str | Any:
 
 
 class PlanAuditor:
-    """
-    Validates implementation plans against requirements using an AI agent.
-    """
+    """Validates implementation plans against requirements using an AI agent."""
 
     def __init__(self, agent: Agent[Any, PlanAuditResult] | None = None) -> None:
         self.agent = agent or Agent(
@@ -36,9 +34,7 @@ class PlanAuditor:
     async def audit_plan(
         self, plan_details: dict[str, Any], context_files: dict[str, str]
     ) -> PlanAuditResult:
-        """
-        Audits a plan against the requirements.
-        """
+        """Audits a plan against the requirements."""
         # Construct context
         context_str = "## Reference Requirements\n"
         for fname, content in context_files.items():

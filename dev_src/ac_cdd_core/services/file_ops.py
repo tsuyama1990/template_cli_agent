@@ -17,9 +17,7 @@ class PatchResult:
 
 
 class FilePatcher:
-    """
-    Handles file operations including reading, writing, and patching files.
-    """
+    """Handles file operations including reading, writing, and patching files."""
 
     def apply_changes(
         self, changes: list[FileOperation], dry_run: bool = False

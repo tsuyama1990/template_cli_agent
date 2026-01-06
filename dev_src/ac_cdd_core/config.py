@@ -116,9 +116,7 @@ class SessionConfig(BaseModel):
 
 
 class Settings(BaseSettings):
-    """
-    Application settings, loaded from environment variables.
-    """
+    """Application settings, loaded from environment variables."""
 
     JULES_API_KEY: str | None = None
     OPENROUTER_API_KEY: str | None = None

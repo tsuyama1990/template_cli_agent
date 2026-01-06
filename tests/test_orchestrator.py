@@ -1,4 +1,5 @@
 """Unit tests for the pipeline orchestrator."""
+
 from unittest.mock import MagicMock, patch
 
 from mlip_autopipec.config.models import FullConfig
@@ -11,10 +12,11 @@ from mlip_autopipec.core.orchestrator import PipelineRunner
 @patch("mlip_autopipec.core.orchestrator.AlloyGenerator")
 def test_pipeline_runner_orchestration(
     mock_alloy_generator, mock_md_explorer, mock_random_sampler, mock_ase_db_wrapper
-):
-    """
-    Test that the PipelineRunner calls each component in the correct sequence.
-    """
+) -> None:
+    # Corresponds to SPEC.md, Section 2: Component Blueprint (`core/orchestrator.py`)
+    # This test verifies that the `PipelineRunner` correctly instantiates and
+    # calls each of the four pipeline stages in the exact required sequence.
+    """Test that the PipelineRunner calls each component in the correct sequence."""
     # 1. Setup mock instances and return values
     mock_generator_instance = MagicMock()
     mock_generator_instance.generate.return_value = [MagicMock()]

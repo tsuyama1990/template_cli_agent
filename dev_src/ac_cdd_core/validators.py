@@ -20,6 +20,7 @@ class BaseValidator(ABC):
 
         Returns:
             (is_valid, error_message)
+
         """
 
     async def raise_if_invalid(self) -> None:

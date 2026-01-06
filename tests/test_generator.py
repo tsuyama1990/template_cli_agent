@@ -1,14 +1,19 @@
 """Unit tests for the structure generators."""
+
 import numpy as np
 
 from mlip_autopipec.config.models import SystemConfig
 from mlip_autopipec.generators.alloy import AlloyGenerator
 
 
-def test_alloy_generator_output():
-    """
-    Test the AlloyGenerator to ensure it produces valid structures with the correct
-    composition and count.
+def test_alloy_generator_output() -> None:
+    # Corresponds to SPEC.md, Section 2: Component Blueprint (`generators/alloy.py`)
+    # Verifies that the AlloyGenerator produces the correct number of structures,
+    # with the correct composition, and that they are physically valid.
+    # This also supports UAT-C1-005, which checks for non-overlapping atoms.
+    """Test the AlloyGenerator to ensure it produces valid structures.
+
+    This test checks for correct composition and count.
     """
     # 1. Define a configuration for a simple binary alloy
     config_dict = {

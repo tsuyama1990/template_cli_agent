@@ -88,8 +88,7 @@ def test_get_prompt_content() -> None:
 
 
 def test_path_separation() -> None:
-    """
-    Test that Context (Specs) and Target (Code) paths are strictly separated.
+    """Test that Context (Specs) and Target (Code) paths are strictly separated.
     Requirements:
     - get_context_files() returns ONLY files in dev_documents
     - get_target_files() returns ONLY files in src and tests

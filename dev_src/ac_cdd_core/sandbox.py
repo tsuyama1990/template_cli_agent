@@ -12,9 +12,7 @@ from .utils import logger
 
 
 class SandboxRunner:
-    """
-    Executes code and commands in an E2B Sandbox for safety and isolation.
-    """
+    """Executes code and commands in an E2B Sandbox for safety and isolation."""
 
     def __init__(self, sandbox_id: str | None = None, cwd: str | None = None) -> None:
         self.api_key = os.getenv("E2B_API_KEY")
@@ -62,9 +60,7 @@ class SandboxRunner:
     async def run_command(
         self, cmd: list[str], check: bool = False, env: dict[str, str] | None = None
     ) -> tuple[str, str, int]:
-        """
-        Runs a shell command in the sandbox with retry logic.
-        """
+        """Runs a shell command in the sandbox with retry logic."""
         max_retries = 1
         stdout = ""
         stderr = ""
@@ -155,8 +151,7 @@ class SandboxRunner:
         return tar_buffer
 
     async def _sync_to_sandbox(self, sandbox: Sandbox | None = None) -> None:
-        """
-        Uploads configured directories and files to the sandbox using a tarball for performance.
+        """Uploads configured directories and files to the sandbox using a tarball for performance.
         Skips if content hasn't changed.
         """
         if sandbox is None:
@@ -182,7 +177,7 @@ class SandboxRunner:
         self._last_sync_hash = current_hash
 
     async def cleanup(self) -> None:
-        """alias for close, matching test expectations"""
+        """Alias for close, matching test expectations"""
         await self.close()
 
     async def close(self) -> None:

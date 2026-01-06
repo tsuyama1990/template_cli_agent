@@ -73,8 +73,7 @@ def _get_openrouter_api_key() -> str:
 
 
 def get_model(model_name: str) -> Model | str:
-    """
-    Parses the model name and returns an OpenAIModel with appropriate settings
+    """Parses the model name and returns an OpenAIModel with appropriate settings
     if it is an OpenRouter model.
     """
     if model_name.startswith("openrouter/"):

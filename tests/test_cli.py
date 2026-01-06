@@ -1,4 +1,5 @@
 """Unit tests for the command-line interface."""
+
 from pathlib import Path
 from unittest.mock import patch
 
@@ -10,7 +11,9 @@ runner = CliRunner()
 
 
 @patch("mlip_autopipec.cli.PipelineRunner")
-def test_cli_successful_invocation(mock_pipeline_runner, tmp_path: Path):
+def test_cli_successful_invocation(mock_pipeline_runner, tmp_path: Path) -> None:
+    # Corresponds to UAT-C1-001: Successful End-to-End Run with a Valid Configuration
+    # This test simulates the primary "happy path" for the user.
     """Test a successful invocation of the CLI with a valid config."""
     # 1. Create a dummy valid config file
     config_content = """
@@ -39,7 +42,9 @@ def test_cli_successful_invocation(mock_pipeline_runner, tmp_path: Path):
     mock_pipeline_runner.return_value.run.assert_called_once()
 
 
-def test_cli_file_not_found():
+def test_cli_file_not_found() -> None:
+    # Corresponds to UAT-C1-002: Application Handles a Missing Configuration File Gracefully
+    # Verifies that the CLI provides a clear error for a common user mistake.
     """Test that the CLI handles a non-existent config file gracefully."""
     result = runner.invoke(app, ["run", "--config", "non_existent_file.yaml"])
 
@@ -49,7 +54,9 @@ def test_cli_file_not_found():
 
 
 @patch("mlip_autopipec.cli.PipelineRunner")
-def test_cli_invalid_config(mock_pipeline_runner, tmp_path: Path):
+def test_cli_invalid_config(mock_pipeline_runner, tmp_path: Path) -> None:
+    # Corresponds to UAT-C1-003: Application Rejects a Configuration with Invalid Schema
+    # Verifies that Pydantic validation errors are caught and reported to the user.
     """Test that the CLI handles a configuration with a validation error."""
     # 1. Create a config with a composition sum error
     config_content = """

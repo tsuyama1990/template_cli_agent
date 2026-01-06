@@ -5,14 +5,10 @@ from ac_cdd_core.config import settings
 
 
 class ContractManager:
-    """
-    Manages contract files (schemas) synchronization.
-    """
+    """Manages contract files (schemas) synchronization."""
 
     def align_contracts(self, cycle_id: str) -> None:
-        """
-        Syncs schema.py from the cycle document directory to the contracts directory.
-        """
+        """Syncs schema.py from the cycle document directory to the contracts directory."""
         contracts_dir = Path(settings.paths.contracts_dir)
         cycle_dir = Path(settings.paths.templates) / f"CYCLE{cycle_id}"
         source_schema = cycle_dir / "schema.py"

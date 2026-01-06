@@ -1,4 +1,12 @@
-"""Concrete implementation for creating alloy structures."""
+"""Provides a concrete implementation for generating alloy structures.
+
+This module contains the `AlloyGenerator`, which is responsible for creating
+a set of initial "seed" structures for multi-component alloy systems. It
+builds upon a specified crystal lattice (e.g., FCC, BCC) and populates it with
+atoms according to the desired chemical composition, resulting in random
+solid-solution configurations.
+"""
+
 from __future__ import annotations
 
 import random
@@ -11,11 +19,23 @@ from .base import BaseStructureGenerator
 
 if TYPE_CHECKING:
     from ase import Atoms
+
     from mlip_autopipec.config.models import SystemConfig
 
 
 class AlloyGenerator(BaseStructureGenerator):
-    """A generator for creating random solid-solution alloy structures."""
+    """Generates random solid-solution alloy structures.
+
+    This generator takes a system configuration specifying elements, composition,
+    and lattice type, and produces a requested number of atomic structures. It
+    first creates a large supercell of a single element and then randomly
+    replaces atoms with other elements to match the target composition.
+
+    Attributes:
+        supercell_matrix (np.ndarray): The transformation matrix used to create
+            the supercell from the primitive cell. Fixed at 4x4x4 for Cycle 1.
+
+    """
 
     def __init__(self, config: SystemConfig) -> None:
         """Initialise the AlloyGenerator."""
@@ -23,11 +43,19 @@ class AlloyGenerator(BaseStructureGenerator):
         self.supercell_matrix = np.diag([4, 4, 4])  # Fixed 4x4x4 supercell
 
     def generate(self) -> list[Atoms]:
-        """
-        Generate a list of random alloy structures.
+        """Generate a list of random alloy structures.
+
+        The process involves:
+        1. Creating a primitive unit cell of the primary element.
+        2. Expanding it into a larger supercell.
+        3. Calculating the number of atoms of each element for the target composition.
+        4. Randomly assigning elemental symbols to the atomic sites in the supercell.
+        5. Performing a basic physical validity check to ensure no atoms overlap.
 
         Returns:
-            A list of `ase.Atoms` objects representing the generated structures.
+            A list of `ase.Atoms` objects, each representing a unique random
+            alloy structure.
+
         """
         structures = []
         for _ in range(self.config.num_structures):

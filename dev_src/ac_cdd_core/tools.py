@@ -40,8 +40,7 @@ class ToolWrapper:
 
 
 def semantic_code_search(query: str) -> str:
-    """
-    Search the codebase for relevant functions or classes using semantic search.
+    """Search the codebase for relevant functions or classes using semantic search.
     Useful for finding definitions, understanding logic, or checking dependencies.
     """
     # NOTE: CodeRetriever is not yet implemented in the current structure.

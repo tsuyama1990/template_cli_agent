@@ -5,9 +5,7 @@ from .utils import logger
 
 
 class ProcessRunner:
-    """
-    Handles asynchronous process execution with logging and output capture.
-    """
+    """Handles asynchronous process execution with logging and output capture."""
 
     async def run_command(
         self,
@@ -16,9 +14,7 @@ class ProcessRunner:
         check: bool = True,
         env: dict[str, str] | None = None,
     ) -> tuple[str, str, int]:
-        """
-        Executes a command asynchronously.
-        """
+        """Executes a command asynchronously."""
         cmd_str = " ".join(cmd)
         logger.debug(f"Running command: {cmd_str}")
 

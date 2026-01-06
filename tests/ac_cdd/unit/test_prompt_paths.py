@@ -5,7 +5,6 @@ from ac_cdd_core.config import settings
 
 def test_system_prompt_structure() -> None:
     """Verify that system prompts are reachable via the new structure."""
-
     # 1. Verify Directory
     # Update: In Docker, it's /opt/ac_cdd/templates.
     # We should verify that settings.paths.templates points to a logical place.

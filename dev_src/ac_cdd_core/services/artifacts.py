@@ -6,14 +6,10 @@ from ac_cdd_core.utils import logger
 
 
 class ArtifactManager:
-    """
-    Manages cycle artifacts (SPEC, UAT, etc.).
-    """
+    """Manages cycle artifacts (SPEC, UAT, etc.)."""
 
     def save_plan_artifacts(self, cycle_id: str, plan: CyclePlan) -> None:
-        """
-        Saves the CyclePlan artifacts to the cycle directory.
-        """
+        """Saves the CyclePlan artifacts to the cycle directory."""
         cycle_dir = Path(settings.paths.templates) / f"CYCLE{cycle_id}"
         cycle_dir.mkdir(parents=True, exist_ok=True)
 

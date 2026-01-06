@@ -171,9 +171,7 @@ class JulesApiClient:
 
 # --- Service Client Implementation ---
 class JulesClient:
-    """
-    Client for interacting with the Google Cloud Code Agents API (Jules API).
-    """
+    """Client for interacting with the Google Cloud Code Agents API (Jules API)."""
 
     def __init__(self) -> None:
         self.project_id = settings.GCP_PROJECT_ID
@@ -536,8 +534,7 @@ class JulesClient:
             )
 
     async def _build_question_context(self, question: str) -> str:
-        """
-        Builds comprehensive context for answering Jules' questions.
+        """Builds comprehensive context for answering Jules' questions.
         Includes: current cycle SPEC, changed files, and their contents.
         """
         context_parts = [f"# Jules' Question\n{question}\n"]
@@ -624,6 +621,7 @@ class JulesClient:
             self._load_cycle_docs(current_cycle_id, context_parts)
 
         import json
+
         plan_steps = plan.get("steps", [])
         plan_text = json.dumps(plan_steps, indent=2)
         context_parts.append(f"# GENERATED PLAN TO REVIEW\n{plan_text}\n")

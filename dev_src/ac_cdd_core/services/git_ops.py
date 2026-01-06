@@ -9,8 +9,7 @@ from ac_cdd_core.utils import logger
 
 
 class GitManager:
-    """
-    Manages Git operations for the AC-CDD workflow.
+    """Manages Git operations for the AC-CDD workflow.
     Uses 'git' and 'gh' CLI commands.
     """
 
@@ -45,9 +44,7 @@ class GitManager:
             logger.info("Changes stashed. Use 'git stash pop' to recover them.")
 
     async def create_working_branch(self, prefix: str, branch_id: str) -> str:
-        """
-        Creates and checks out a feature branch: feature/{prefix}-{branch_id}.
-        """
+        """Creates and checks out a feature branch: feature/{prefix}-{branch_id}."""
         branch_name = f"feature/{prefix}-{branch_id}"
         logger.info(f"Switching to branch {branch_name}...")
 
@@ -66,8 +63,7 @@ class GitManager:
         return branch_name
 
     async def commit_changes(self, message: str) -> bool:
-        """
-        Stages and commits all changes.
+        """Stages and commits all changes.
         Returns True if something was committed, False if empty.
         """
         await self._run_git(["add", "."])
@@ -400,8 +396,7 @@ class GitManager:
         return pr_url
 
     async def ensure_state_branch(self) -> None:
-        """
-        Ensures the orphan branch 'ac-cdd/state' exists.
+        """Ensures the orphan branch 'ac-cdd/state' exists.
         It first checks locally, then tries to fetch from remote.
         If neither exists, it creates it cleanly without affecting the current worktree.
         """
@@ -462,8 +457,7 @@ class GitManager:
             return None
 
     async def save_state_file(self, filename: str, content: str, message: str) -> None:
-        """
-        Saves a file to the state branch using a temporary worktree.
+        """Saves a file to the state branch using a temporary worktree.
         This avoids touching the user's main working directory.
         """
         await self.ensure_state_branch()

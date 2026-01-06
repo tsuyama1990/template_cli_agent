@@ -7,8 +7,7 @@ from ac_cdd_core.state import CycleState
 
 @pytest.mark.asyncio
 async def test_audit_rejection_loop() -> None:
-    """
-    Test that the audit loop functions correctly when changes are requested.
+    """Test that the audit loop functions correctly when changes are requested.
     Verifies that the graph iterates through 3 auditors * 2 reviews each = 6 cycles.
     """
     # Mock Services

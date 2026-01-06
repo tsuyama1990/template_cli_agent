@@ -3,8 +3,7 @@ from ac_cdd_core.utils import logger
 
 
 class LLMReviewer:
-    """
-    Direct LLM Client for conducting static code reviews.
+    """Direct LLM Client for conducting static code reviews.
     Uses litellm to communicate with various LLM providers (OpenRouter, Gemini, etc.).
     """
 
@@ -24,8 +23,7 @@ class LLMReviewer:
         instruction: str,
         model: str,
     ) -> str:
-        """
-        Sends file contents and instructions to the LLM for review.
+        """Sends file contents and instructions to the LLM for review.
 
         Args:
             target_files: Dictionary mapping file paths to their content (Code to be reviewed).
@@ -35,6 +33,7 @@ class LLMReviewer:
 
         Returns:
             The raw text response from the LLM.
+
         """
         total_files = len(target_files) + len(context_docs)
         logger.info(f"LLMReviewer: preparing review for {total_files} files using model {model}")
@@ -70,10 +69,7 @@ class LLMReviewer:
     def _construct_prompt(
         self, target_files: dict[str, str], context_docs: dict[str, str], instruction: str
     ) -> str:
-        """
-        Format the prompt with strict Context/Target separation.
-        """
-
+        """Format the prompt with strict Context/Target separation."""
         # 1. Context Section (Specs)
         context_section = ""
         for name, content in context_docs.items():

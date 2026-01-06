@@ -18,9 +18,7 @@ console = Console()
 
 
 class CycleNodes(IGraphNodes):
-    """
-    Encapsulates the logic for each node in the AC-CDD workflow graph.
-    """
+    """Encapsulates the logic for each node in the AC-CDD workflow graph."""
 
     def __init__(self, sandbox_runner: SandboxRunner, jules_client: JulesClient) -> None:
         self.sandbox = sandbox_runner
@@ -108,10 +106,7 @@ class CycleNodes(IGraphNodes):
                 f"{feedback}\n\n"
                 f"Please revise your implementation to address the above feedback and create a new PR."
             )
-            await self.jules._send_message(
-                self.jules._get_session_url(session_id),
-                feedback_msg
-            )
+            await self.jules._send_message(self.jules._get_session_url(session_id), feedback_msg)
 
             # Wait for Jules to process feedback and create new PR
             result = await self.jules.wait_for_completion(session_id)
@@ -119,11 +114,14 @@ class CycleNodes(IGraphNodes):
             if result.get("status") == "success" or result.get("pr_url"):
                 return {"status": "ready_for_audit", "pr_url": result.get("pr_url")}
         except Exception as e:
-            console.print(f"[yellow]Failed to send feedback to existing session: {e}. Creating new session...[/yellow]")
+            console.print(
+                f"[yellow]Failed to send feedback to existing session: {e}. Creating new session...[/yellow]"
+            )
         else:
-            console.print("[yellow]Jules session did not produce PR after feedback. Creating new session...[/yellow]")
+            console.print(
+                "[yellow]Jules session did not produce PR after feedback. Creating new session...[/yellow]"
+            )
         return None
-
 
     async def coder_session_node(self, state: CycleState) -> dict[str, Any]:  # noqa: C901, PLR0912
         """Node for Coder Agent (Jules)."""
@@ -162,8 +160,7 @@ class CycleNodes(IGraphNodes):
             # Check if we have an existing Jules session to reuse
             if cycle_manifest and cycle_manifest.jules_session_id:
                 retry_result = await self._send_audit_feedback_to_session(
-                    cycle_manifest.jules_session_id,
-                    last_audit.feedback
+                    cycle_manifest.jules_session_id, last_audit.feedback
                 )
                 if retry_result:
                     return retry_result
@@ -201,7 +198,9 @@ class CycleNodes(IGraphNodes):
                 )
 
             if result.get("status") == "running" and result.get("session_name"):
-                console.print(f"[bold blue]Session {result['session_name']} created. Waiting for completion...[/bold blue]")
+                console.print(
+                    f"[bold blue]Session {result['session_name']} created. Waiting for completion...[/bold blue]"
+                )
                 result = await self.jules.wait_for_completion(result["session_name"])
 
             if result.get("status") == "success" or result.get("pr_url"):
@@ -253,7 +252,8 @@ class CycleNodes(IGraphNodes):
             # NOT the framework itself (dev_src/, dev_documents/)
             excluded_prefixes = ("dev_src/", "dev_documents/", ".git/", ".venv/", "venv/")
             reviewable_files = [
-                f for f in reviewable_files
+                f
+                for f in reviewable_files
                 if not any(f.startswith(prefix) for prefix in excluded_prefixes)
             ]
 

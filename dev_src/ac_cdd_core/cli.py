@@ -78,9 +78,7 @@ def gen_cycles(
         typer.Option("--session", "--id", help="Session ID (overwrites generated one)"),
     ] = None,
 ) -> None:
-    """
-    Architect Phase: Generate cycle specs based on requirements.
-    """
+    """Architect Phase: Generate cycle specs based on requirements."""
     asyncio.run(_WorkflowServiceHolder.get().run_gen_cycles(cycles, project_session_id))
 
 
@@ -98,8 +96,7 @@ def run_cycle(
     start_iter: Annotated[int, typer.Option("--start-iter", help="Initial iteration count")] = 1,
     project_session_id: Annotated[str | None, typer.Option("--session", help="Session ID")] = None,
 ) -> None:
-    """
-    Coder Phase: Implement a specific development cycle.
+    """Coder Phase: Implement a specific development cycle.
 
     By default, runs with automated code review (Committee of Auditors).
     Use --no-auto to disable automated auditing (not recommended).
@@ -123,9 +120,7 @@ def start_session(
     ] = True,
     max_retries: Annotated[int, typer.Option("--retries", help="Max audit retries")] = 3,
 ) -> None:
-    """
-    Convenience command to start an end-to-end session with planning and optional auditing.
-    """
+    """Convenience command to start an end-to-end session with planning and optional auditing."""
     asyncio.run(_WorkflowServiceHolder.get().start_session(prompt, audit_mode, max_retries))
 
 
@@ -133,9 +128,7 @@ def start_session(
 def finalize_session(
     project_session_id: Annotated[str | None, typer.Option("--session", help="Session ID")] = None,
 ) -> None:
-    """
-    Finalize a development session by creating a PR to main.
-    """
+    """Finalize a development session by creating a PR to main."""
     asyncio.run(_WorkflowServiceHolder.get().finalize_session(project_session_id))
 
 

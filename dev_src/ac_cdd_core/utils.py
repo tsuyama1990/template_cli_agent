@@ -24,8 +24,7 @@ logger = logging.getLogger("AC-CDD")
 def run_command(
     command: list[str], cwd: str | None = None, env: dict[str, str] | None = None
 ) -> None:
-    """
-    Execute a command and display output in real-time.
+    """Execute a command and display output in real-time.
     Raises CalledProcessError on error.
     """
     cmd_str = " ".join(command)
@@ -57,11 +56,9 @@ def run_command(
 
 
 def check_api_key() -> bool:
-    """
-    Checks if the necessary API keys are set in the environment.
+    """Checks if the necessary API keys are set in the environment.
     Returns True if keys are found, False otherwise.
     """
-
     load_dotenv()
 
     # Check for common API keys
@@ -79,8 +76,7 @@ def check_api_key() -> bool:
 
 
 class KeepAwake:
-    """
-    Context manager to prevent system sleep/suspension during long operations.
+    """Context manager to prevent system sleep/suspension during long operations.
     Uses 'systemd-inhibit' on Linux.
     """
 

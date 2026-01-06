@@ -5,13 +5,10 @@ from ac_cdd_core.config import settings
 
 
 class ProjectManager:
-    """
-    Manages project lifecycle operations like creating new cycles.
-    """
+    """Manages project lifecycle operations like creating new cycles."""
 
     def create_new_cycle(self, cycle_id: str) -> tuple[bool, str]:
-        """
-        Creates a new cycle directory structure.
+        """Creates a new cycle directory structure.
         Returns (success, message).
         """
         base_path = Path(settings.paths.templates) / f"CYCLE{cycle_id}"
@@ -40,9 +37,7 @@ class ProjectManager:
             return True, msg
 
     def initialize_project(self, templates_path: str) -> None:
-        """
-        Initializes the project structure.
-        """
+        """Initializes the project structure."""
         docs_dir = Path(settings.paths.documents_dir)
         docs_dir.mkdir(parents=True, exist_ok=True)
 

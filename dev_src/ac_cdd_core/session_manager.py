@@ -14,8 +14,7 @@ class SessionValidationError(Exception):
 
 
 class SessionManager:
-    """
-    Manages session persistence using a unified project manifest stored in an orphan branch.
+    """Manages session persistence using a unified project manifest stored in an orphan branch.
     No local state files are used.
     """
 
@@ -73,8 +72,7 @@ class SessionManager:
         return None
 
     async def update_cycle_state(self, cycle_id: str, **kwargs: Any) -> None:
-        """
-        Updates specific fields of a cycle and saves the manifest immediately.
+        """Updates specific fields of a cycle and saves the manifest immediately.
 
         Example: await update_cycle_state("01", status="in_progress", jules_session_id="...")
         """
@@ -106,8 +104,7 @@ class SessionManager:
 
     @staticmethod
     async def clear_session() -> None:
-        """
-        In the orphan branch model, clearing session might mean deleting the file or resetting it.
+        """In the orphan branch model, clearing session might mean deleting the file or resetting it.
         For now, we will leave it as manual git operation or implementation if needed.
         Typically we don't delete history in this model, but we might mark as archived.
         """

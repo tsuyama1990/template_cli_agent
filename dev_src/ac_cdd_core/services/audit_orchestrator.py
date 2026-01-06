@@ -14,9 +14,7 @@ console = Console()
 
 
 class AuditOrchestrator:
-    """
-    Orchestrates the interactive planning loop between Jules and PlanAuditor.
-    """
+    """Orchestrates the interactive planning loop between Jules and PlanAuditor."""
 
     def __init__(
         self,
@@ -31,9 +29,7 @@ class AuditOrchestrator:
     async def run_interactive_session(
         self, prompt: str, spec_files: dict[str, str], max_retries: int = 3
     ) -> dict[str, Any]:
-        """
-        Starts a session with plan approval requirement and manages the audit loop.
-        """
+        """Starts a session with plan approval requirement and manages the audit loop."""
         console.print(Panel("[bold cyan]Starting AI-on-AI Audit Session[/bold cyan]", expand=False))
 
         file_paths = list(spec_files.keys())

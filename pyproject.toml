@@ -88,6 +88,7 @@ select = [
     "PL",   # Pylint (comprehensive code quality checks)
     "TRY",  # tryceratops (proper exception handling)
     "RUF",  # Ruff-specific rules
+    "D",  # pydocstyle
 ]
 # S101: Allow use of assert (for tests)
 ignore = [
@@ -101,11 +102,8 @@ ignore = [
     "PLR2004", # Magic value used in comparison
     "E501",   # Line length limit (auto-fix may not work, slows development)
     "TRY003", # Exception message too long warning (too strict for AI)
-    "D",      # docstring (excluded to focus on code behavior risks. Add if needed)
-    "ANN201", # Missing return type annotation for public functions
     "N806",   # Variable should be lowercase
     "PLC0415", # Import should be at top-level
-    "BLE001", # Blind exception catch
     "PT019",  # Fixture without value injection
     "RUF003", # Ambiguous multiplication sign
     "ARG002", # Unused method argument
