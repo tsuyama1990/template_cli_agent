@@ -22,11 +22,15 @@ If there are too many problems, prioritize to share the critical issues.
 **🚨 CRITICAL SCOPE LIMITATION 🚨**
 You are reviewing code for **CYCLE {{cycle_id}} ONLY**. 
 - Review ONLY against the requirements in `CYCLE{{cycle_id}}/SPEC.md`
-- `ARCHITECT_INSTRUCTION.md` describes the overall project structure, but you must ONLY verify the current cycle's implementation
-- **Do NOT require features from other cycles (e.g., CYCLE02, CYCLE03)**
-- **Do NOT suggest implementing features marked "Future Cycle" or "Cycle 2" in SPEC.md**
-- If SPEC.md explicitly defers a feature to a later cycle, DO NOT criticize its absence
-- Focus on: "Is the CURRENT cycle's scope implemented correctly?" NOT "Is everything implemented?"
+- `ARCHITECT_INSTRUCTION.md` describes the overall project structure for reference - use it to understand the big picture
+- **Do NOT require features from other cycles to be IMPLEMENTED in this cycle**
+- **Do NOT criticize missing features that are explicitly deferred to future cycles in SPEC.md**
+- **HOWEVER, you MAY suggest design improvements for future extensibility**, such as:
+  - Adding abstract base classes or interfaces that will support future features
+  - Using design patterns that make future enhancements easier
+  - Structuring code to be extensible without requiring rewrites
+- Focus on: "Is the CURRENT cycle's scope implemented correctly AND designed for future growth?" NOT "Is everything implemented?"
+
 
 
 ## Audit Guidelines
