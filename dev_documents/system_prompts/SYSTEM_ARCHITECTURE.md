@@ -1,205 +1,201 @@
-# System Architecture: MLIP-AutoPipe
+# SYSTEM_ARCHITECTURE.md
 
 ## 1. Summary
 
-The "MLIP-AutoPipe" project is a sophisticated, automated software framework designed to address a critical bottleneck in modern materials science: the generation of high-quality training data for Machine Learning Interatomic Potentials (MLIPs). MLIPs, such as MACE and SevenNet, represent the cutting edge in computational materials modelling, offering the accuracy of quantum mechanical calculations at a fraction of the computational cost. However, the predictive power of these models is fundamentally limited by the quality and diversity of the atomic structure datasets they are trained on. Manually creating these datasets is a laborious, time-consuming, and often incomplete process that relies heavily on expert intuition. This project aims to replace these ad-hoc workflows with a robust, physics-informed, and highly automated pipeline. The core philosophy is to "remove the human expert from the loop," creating a system that enables both novices and seasoned researchers to generate superior, comprehensive training datasets with minimal effort and maximum reproducibility.
+This document outlines the system architecture for the **MLIP-AutoPipe** project, a sophisticated, automated framework for generating high-quality training data for Machine Learning Interatomic Potentials (MLIPs) such as MACE and SevenNet. The core philosophy of this project is to move beyond simple, randomised atomic structure generation and instead produce physically valid and diverse datasets that are representative of the thermodynamic phase space a material can explore. By automating the complex workflow of structure generation, simulation-based exploration, and intelligent sampling, MLIP-AutoPipe aims to significantly reduce the human effort and expertise required to develop robust and accurate MLIPs. The system is designed to be a modular, extensible, and user-friendly tool for materials scientists and computational chemists.
 
-The system is engineered to produce atomic configurations that are not only physically realistic but also strategically diverse, covering a wide swath of the potential energy surface. It moves far beyond simple random structure generation by actively simulating the thermodynamic behaviour of materials. Using a powerful combination of Molecular Dynamics (MD) and Monte Carlo (MC) simulations, the pipeline meticulously explores the accessible phase space of a material to discover a rich variety of atomic arrangements. This exploration is designed to find everything from stable, low-energy ground states to the high-energy, distorted configurations that often represent the "failure points" for a developing model. It also seeks out the crucial transition states between different material phases. By systematically and automatically collecting these scientifically valuable structures, the framework ensures that the resulting MLIP is robust, accurate, and capable of predicting material properties across a wide range of conditions, including those involving extreme temperatures, high pressures, and complex defects.
+The fundamental problem MLIP-AutoPipe addresses is the "data bottleneck" in MLIP development. High-quality MLIPs require training data that covers a wide range of atomic configurations, including not just stable, low-energy structures but also high-energy configurations, transition states, and defect structures. Manually creating such datasets is a laborious and often incomplete process. This tool automates this process through a robust pipeline architecture. The pipeline begins by generating initial "seed" structures based on user-defined physical systems (e.g., alloys, ionic crystals, interfaces). These seed structures are then subjected to an "exploration" phase, where molecular dynamics (MD) and/or Monte Carlo (MC) simulations are employed to sample a vast configuration space. This exploration is designed to uncover "hard" or "failure-prone" configurations that are crucial for improving the robustness of the MLIP.
 
-At its core, MLIP-AutoPipe is designed for modularity and extensibility, allowing it to handle a vast and growing array of physical systems. The architecture provides native support for everything from simple multi-component alloys and ionic crystals to more complex and computationally demanding systems like grain boundaries, interfaces between different materials (heterostructures), and molecules adsorbed onto surfaces. A key feature that sets it apart is its "knowledge-based" generation capability. This allows the system to infer and construct plausible crystal structures directly from a simple chemical formula (e.g., Fe3Pt), leveraging crystallographic databases and fundamental symmetry principles to create intelligent starting points for simulations. The entire end-to-end workflow is orchestrated by a central pipeline runner that manages a clear four-stage process: initial structure **Generation**, thermodynamic **Exploration**, intelligent data **Sampling**, and final, organized **Storage**. This structured, state-isolated approach guarantees reproducibility, enhances fault tolerance, and promotes a clear separation of concerns. This makes the system not only powerful but also highly maintainable and easy to extend in the future. By automating this traditionally arduous task, MLIP-AutoPipe will significantly accelerate the development and deployment of next-generation materials models, paving the way for faster discovery and design of novel materials with desired properties.
+Following the exploration phase, a "sampling" module intelligently selects a subset of the generated structures for the final training set. This is not a simple random selection; instead, it can employ advanced techniques like Farthest Point Sampling (FPS) based on structural descriptors (e.g., SOAP) to ensure maximum diversity within the dataset. Finally, the selected structures, along with their associated metadata, are stored in a structured and queryable format using an ASE (Atomic Simulation Environment) database. The entire process is orchestrated by a central pipeline runner and is highly configurable through a clear and flexible configuration system. The project will provide both a command-line interface (CLI) for automated, batch-oriented workflows and a graphical user interface (GUI) for interactive exploration and visualisation, making it accessible to a broad range of users. The final output is a ready-to-use, high-quality database of atomic structures that can be directly fed into MLIP training frameworks.
 
 ## 2. System Design Objectives
 
-The primary objective of the MLIP-AutoPipe framework is to fully automate the generation of diverse, physically-sound datasets for training MLIPs. The design is guided by several key principles and goals aimed at creating a tool that is robust, flexible, and user-friendly.
+The design of MLIP-AutoPipe is guided by several key objectives to ensure it is a powerful, reliable, and practical tool for the materials science community.
 
-**Goals:**
-1.  **Automation and Reproducibility:** The foremost goal is to create a "push-button" solution. Users should be able to define a physical system in a simple configuration file and receive a high-quality dataset without needing to manually intervene in the intermediate steps. Every stage of the pipeline, from generation to storage, must be logged and based on deterministic principles to ensure that any given experiment is fully reproducible.
-2.  **Physical Realism:** The generated structures must obey fundamental physical laws. This is achieved through rigorous validation checks, such as ensuring atoms do not overlap unrealistically. More importantly, the exploration phase uses real physical simulation techniques (MD/MC) to ensure that the generated configurations are thermodynamically accessible and representative of the material's actual behaviour.
-3.  **Structural Diversity:** A successful MLIP must be trained on a wide variety of atomic environments. The system is designed to maximise this diversity. It does this by applying volumetric strains and random "rattles" to initial structures, and by using advanced sampling techniques like Farthest Point Sampling (FPS) to select a set of structures that are maximally different from one another.
-4.  **Modularity and Extensibility:** The architecture must be modular to easily support new types of physical systems, new simulation engines, or new sampling algorithms. This is achieved through a factory pattern and a base-class inheritance structure for key components like the structure generators. Adding support for a new material type should be as simple as creating a new generator class that adheres to the established interface.
-5.  **User-Friendliness and Accessibility:** The project will cater to a wide range of users, from domain experts to students. This is accomplished by providing two primary interfaces: a powerful Command-Line Interface (CLI) for batch processing and automated workflows, and an intuitive Web User Interface (UI) for interactive exploration, visualisation, and configuration.
+**1. Physical Realism and Validity:** The primary objective is to generate structures that are physically meaningful. The system will incorporate rigorous validation checks at every stage. This includes ensuring reasonable interatomic distances, maintaining charge neutrality in ionic systems, and using simulation techniques (MD/MC) that honour the principles of statistical mechanics. The integration of physics-based constraints, such as preventing atomic overlap and ensuring appropriate cell sizes for periodic boundary conditions, is paramount. This focus on physical validity ensures that the resulting training data is not just noise, but a true representation of the material's potential energy surface.
 
-**Constraints:**
-1.  **Dependency on External Libraries:** The project will be built upon the robust foundations of the Python scientific computing ecosystem. Key dependencies will include the Atomic Simulation Environment (ASE) for representing atomic structures, Hydra for configuration management, and libraries like PyTorch for interacting with MLIP models. The design must be compatible with the data structures and conventions of these libraries.
-2.  **Computational Resources:** MD simulations are computationally intensive. The design must be mindful of resource limitations. It will incorporate parallel processing to leverage multi-core CPUs and include mechanisms to manage GPU resources carefully, especially when using PyTorch-based MLIP models in a multi-process environment.
-3.  **Platform Compatibility:** As a containerised application, the primary deployment target is Linux-based environments, which are standard in high-performance computing. While not a primary objective, the code should be written in a platform-agnostic way where possible.
+**2. Diversity and Comprehensiveness:** The framework must be capable of generating a highly diverse set of structures that thoroughly samples the relevant configuration space. This objective will be achieved through a multi-pronged approach: supporting a wide variety of initial structure generation methods, employing a hybrid MD/MC exploration engine to overcome energy barriers, and implementing intelligent sampling algorithms like FPS. The goal is to produce datasets that include not only ground-state configurations but also amorphous phases, defected structures, and high-energy states, which are critical for training robust MLIPs that can handle a wide range of simulation conditions.
 
-**Success Criteria:**
-1.  **Dataset Quality:** The ultimate measure of success is the performance of an MLIP trained on a dataset generated by the tool. A successful dataset will result in a model with low prediction errors for energies and forces, and the ability to run stable, long-duration MD simulations.
-2.  **Pipeline Completion:** The automated pipeline should run from start to finish without errors for a well-defined set of use cases, such as generating a dataset for a binary alloy.
-3.  **User Adoption:** The tool should be well-documented and easy enough to use that it becomes a preferred method for dataset generation within the target research community.
+**3. Modularity and Extensibility:** The system architecture will be highly modular to facilitate easy extension and customisation. Each stage of the pipeline (Generation, Exploration, Sampling, Storage) will be implemented as a distinct component with well-defined interfaces. This will allow users or developers to easily add new structure generators, swap out exploration algorithms, or implement novel sampling techniques without needing to overhaul the entire system. This modularity is key to the long-term viability and adaptability of the project, allowing it to incorporate new scientific methods as they emerge.
+
+**4. Automation and User-Friendliness:** A core goal is to automate the entire data generation workflow, minimising the need for manual intervention. The system will be controlled through a simple yet powerful configuration file, allowing users to define complex workflows with ease. To cater to different user needs, both a CLI for power users and automated scripting, and a Web UI for interactive use and visualisation will be developed. This dual-interface approach will lower the barrier to entry and make the tool accessible to both computational experts and experimental scientists.
+
+**5. Robustness and Reproducibility:** The framework must be robust to failures and ensure reproducibility of results. This will be achieved through features like progressive saving of simulation trajectories to prevent data loss, robust error handling to gracefully manage issues like simulation crashes ("Coulomb explosions"), and the use of version-controlled databases for storing generated data. By associating every structure with a complete set of metadata (e.g., simulation parameters, source), the system will ensure that the entire data generation process is transparent and reproducible.
 
 ## 3. System Architecture
 
-The MLIP-AutoPipe framework is designed as a sequential, four-stage pipeline orchestrated by a central `PipelineRunner`. This architecture ensures a clear and logical flow of data, with each stage responsible for a distinct task. The stages are isolated, with data being saved to disk and a checkpoint database after each major step, providing fault tolerance and the ability to resume a failed run. This design is crucial for long-running simulations, as it prevents the loss of valuable computational work in the event of a crash or interruption. Each stage consumes the output of the previous one, creating a predictable and debuggable workflow.
-
-**The Four Stages:**
-
-1.  **Generation:** This is the entry point of the pipeline and is responsible for creating the initial "seed" structures. The `Generator` component is not a single entity but a factory that selects the appropriate specialized generator (e.g., `AlloyGenerator`, `IonicGenerator`, `InterfaceGenerator`) based on the user's high-level configuration. This factory-based approach is central to the system's extensibility. These generators are programmed with domain-specific knowledge and apply a series of physical constraints and augmentations to the structures they create. Standard procedures include rigorous checks for atomic overlap to discard physically impossible configurations, automatic supercell expansion to ensure the simulation cell is larger than the potential's cutoff radius (preventing self-interaction artifacts), and the application of random perturbations (rattles) and volumetric strains. These augmentations are not random noise; they are crucial for creating an initial, diverse set of structures that provides a good starting point for the exploration phase.
-
-2.  **Exploration:** This is the computational core of the pipeline. The `Explorer` component takes the seed structures and uses them to initiate complex simulations. It employs either pure Molecular Dynamics (MD) or a more advanced hybrid MD/Monte Carlo (MD/MC) engine to simulate the material's thermodynamic behavior under user-defined conditions (e.g., temperature and pressure). This process effectively "explores" the potential energy surface of the material, generating a long trajectory of atomic configurations that represent a wide range of thermally accessible states. The explorer is engineered for robustness, incorporating advanced features like automatic ensemble switching (e.g., correctly choosing an NPT ensemble for bulk materials and an NVT ensemble for surfaces with vacuum slabs) and the dynamic mixing of a ZBL potential to handle the high-energy repulsion when atoms get too close, preventing unrealistic atomic fusions and simulation crashes at high temperatures.
-
-3.  **Sampling:** The exploration stage can produce an enormous volume of data—millions of correlated atomic configurations. The `Sampler` component’s critical role is to intelligently select a small, diverse, and representative subset of these structures that will be most effective for training an MLIP. The system supports multiple strategies. The baseline is a simple random sampling, but the true power comes from the more advanced Farthest Point Sampling (FPS). FPS uses mathematical structural descriptors (like SOAP) to map each atomic configuration to a point in a high-dimensional space. It then selects a subset of points that are maximally distant from one another, ensuring the final dataset is not redundant and covers the widest possible range of unique atomic environments.
-
-4.  **Storage:** Finally, the carefully sampled structures are passed to the `Storage` component. This module is responsible for saving the final dataset into a persistent, queryable, and standardized format. It utilizes the well-regarded ASE database format (backed by SQLite), which stores not only the atomic coordinates for each structure but also a rich set of metadata, including the calculated potential energy, atomic forces, system stress tensor, and provenance information about how the structure was generated.
-
-This entire process is configured via Hydra, allowing for flexible and powerful control over every parameter of the workflow from the command line.
-
-**Mermaid Diagram of System Architecture:**
+The MLIP-AutoPipe system is designed as a sequential pipeline composed of four main stages: Generation, Exploration, Sampling, and Storage. A central `PipelineRunner` orchestrates the flow of data between these stages, managed by a user-defined configuration.
 
 ```mermaid
 graph TD
     subgraph User Input
-        A[Config File .yaml]
+        A[Config File .yaml] --> B{PipelineRunner};
     end
 
-    subgraph PipelineRunner
-        B(Step 1: Generation)
-        C(Step 2: Exploration)
-        D(Step 3: Sampling)
-        E(Step 4: Storage)
+    subgraph Pipeline Stages
+        B -- starts --> C[Stage 1: Generation];
+        C -- Seed Structures --> D[Stage 2: Exploration];
+        D -- Trajectories --> E[Stage 3: Sampling];
+        E -- Selected Structures --> F[Stage 4: Storage];
     end
 
-    subgraph Data
-        F[Initial Structures .xyz]
-        G[Trajectory Data .xyz]
-        H[Sampled Structures .xyz]
-        I[ASE Database .db]
+    subgraph Data Flow
+        C --> G[Checkpoint: initial_structures.xyz];
+        D --> H[Checkpoint: trajectories/];
+        F --> I[Output: ASE Database .db];
     end
 
-    A --> B
-    B -- Seed Structures --> C
-    B -- Writes --> F
-    C -- Trajectory --> D
-    C -- Writes --> G
-    D -- Diverse Subset --> E
-    D -- Writes --> H
-    E -- Persists Final Data --> I
+    subgraph Components
+        C --> C1[AlloyGenerator];
+        C --> C2[IonicGenerator];
+        C --> C3[... other generators];
 
-    classDef stage fill:#f9f,stroke:#333,stroke-width:2px;
-    class B,C,D,E stage;
+        D --> D1[MD/MC Engine];
+        D1 --> D2[MLIP Calculator ASE];
+        D1 --> D3[Ensemble Switching Logic];
+
+        E --> E1[RandomSampler];
+        E --> E2[FarthestPointSampler];
+
+        F --> F1[AseDBWrapper];
+    end
+
+    style B fill:#f9f,stroke:#333,stroke-width:2px
+    style I fill:#bbf,stroke:#333,stroke-width:2px
 ```
+
+**Component Descriptions:**
+
+1.  **PipelineRunner:** The central orchestrator. It reads the user's configuration file, initialises the components for each stage, and manages the data flow from one stage to the next. It is responsible for setting up the execution environment, including parallel processing.
+
+2.  **Stage 1: Generation:**
+    *   **Generators (`BaseGenerator`, `AlloyGenerator`, etc.):** A factory pattern is used to select the appropriate generator based on the configuration. Each generator is responsible for creating a set of initial "seed" structures. They incorporate physical validation logic, such as checking for atomic overlaps and ensuring the simulation cell is sufficiently large.
+
+3.  **Stage 2: Exploration:**
+    *   **MD/MC Engine:** This is the core of the exploration stage. It takes the seed structures and runs simulations to generate diverse atomic configurations. It leverages the ASE library to interface with MLIP models (e.g., MACE). Key features include:
+        *   **Hybrid MD/MC:** Allows for combining standard MD steps with Monte Carlo moves (e.g., atom swaps) to more effectively explore the configuration space.
+        *   **Auto Ensemble Switching:** Intelligently determines whether to use an NVT or NPT ensemble based on the presence of a vacuum in the simulation cell, preventing simulation artifacts.
+        *   **Parallel Execution:** Uses a process pool to run multiple simulations in parallel, significantly speeding up the exploration process.
+
+4.  **Stage 3: Sampling:**
+    *   **Samplers (`RandomSampler`, `FarthestPointSampler`):** After exploration, this stage selects a representative subset of structures from the generated trajectories. The `FarthestPointSampler` uses structural descriptors to pick a maximally diverse set, which is more efficient for training MLIPs.
+
+5.  **Stage 4: Storage:**
+    *   **AseDBWrapper:** A dedicated module to handle all interactions with the output database. It abstracts the underlying ASE DB, providing a clean interface for writing the final selected structures and their associated metadata (energy, forces, configuration parameters). This ensures that data is stored in a structured, consistent, and queryable manner.
 
 ## 4. Design Architecture
 
-The software is designed with a clear, modular, and object-oriented structure to promote maintainability, testability, and extensibility. The project is organized into a main Python package, `mlip_autopipec`, located under the `src/` directory. This design adheres to standard Python packaging practices and follows the principle of separation of concerns, where each module has a distinct and well-defined responsibility.
+The project will be structured into a Python package named `mlip_autopipec`. The design emphasizes separation of concerns, with distinct modules for data structures, business logic, and user interfaces.
 
-**File Structure (ASCII Tree):**
+**File Structure:**
 
 ```
-src/mlip_autopipec/
-├── cli/
-│   ├── __init__.py
-│   └── main.py              # Main CLI entry point (using Click/Typer)
-├── common/
-│   ├── __init__.py
-│   └── pydantic_models.py   # Core Pydantic configuration and data models
-├── generators/
-│   ├── __init__.py
-│   ├── base.py              # BaseGenerator abstract class
-│   └── alloy.py             # Concrete implementation for alloys
-├── explorers/
-│   ├── __init__.py
-│   └── md_engine.py         # MD and hybrid MD/MC simulation engine
-├── samplers/
-│   ├── __init__.py
-│   ├── base.py              # BaseSampler abstract class
-│   └── fps.py               # Farthest Point Sampling implementation
-├── storage/
-│   ├── __init__.py
-│   └── database_manager.py  # Handles writing to the ASE database
-├── pipeline/
-│   ├── __init__.py
-│   └── orchestrator.py      # The main PipelineOrchestrator class
-├── interfaces.py            # Defines abstract interfaces for dependency injection
-├── factories.py             # Factories for creating concrete generator/sampler instances
-└── __main__.py              # Allows running the CLI with `python -m mlip_autopipec`
+.
+├── pyproject.toml
+├── src
+│   └── mlip_autopipec
+│       ├── __init__.py
+│       ├── cli.py                # Command-Line Interface (Typer)
+│       ├── config.py             # Pydantic models for configuration
+│       ├── db.py                 # Database interaction (AseDBWrapper)
+│       ├── domain               # Core data models and exceptions
+│       │   ├── __init__.py
+│       │   ├── models.py         # Pydantic models for internal data
+│       │   └── exceptions.py
+│       ├── generators           # Stage 1: Structure Generation
+│       │   ├── __init__.py
+│       │   ├── base.py
+│       │   ├── alloy.py
+│       │   └── ...
+│       ├── exploration          # Stage 2: MD/MC Exploration
+│       │   ├── __init__.py
+│       │   └── engine.py
+│       ├── sampling             # Stage 3: Sampling
+│       │   ├── __init__.py
+│       │   ├── base.py
+│       │   ├── random_sampler.py
+│       │   └── fps.py
+│       ├── pipeline.py           # Main PipelineRunner orchestrator
+│       └── services             # Business logic services
+│           ├── __init__.py
+│           └── workflow.py       # Orchestrates the pipeline stages
+└── tests
+    ├── conftest.py
+    ├── integration
+    │   └── test_pipeline.py
+    └── unit
+        ├── test_config.py
+        ├── test_generators.py
+        └── test_db.py
 ```
+
+**Data Models (`config.py`, `domain/models.py`):**
+Pydantic will be used extensively to define all configuration and internal data structures. This provides strong data validation, a clear schema, and excellent editor support. `config.py` will define the models that map directly to the user's YAML configuration file, covering everything from system definition to exploration parameters. `domain/models.py` will define the data structures used internally to pass data between components, such as a `DFTResult` object to encapsulate calculation outputs.
 
 **Class/Function Overview:**
 
-*   `cli.main`: This module implements the primary user-facing command-line interface. It will use a modern CLI library like Typer or Click to define commands and arguments. Its main responsibility is to handle user input, parse the path to the configuration file, and orchestrate the setup and execution of the pipeline. It will be responsible for instantiating the main `PipelineOrchestrator` and injecting the necessary dependencies.
+*   **`mlip_autopipec.cli:app`**: The Typer application entry point. It will parse command-line arguments and delegate to the `WorkflowOrchestrator`.
+*   **`mlip_autopipec.pipeline:PipelineRunner`**: The main class that orchestrates the four stages of the workflow.
+*   **`mlip_autopipec.services.workflow:WorkflowOrchestrator`**: A service layer that encapsulates the business logic of running the pipeline, separating it from the CLI. It will handle the setup, execution, and teardown of the `PipelineRunner`.
+*   **`mlip_autopipec.db:AseDBWrapper`**: A class dedicated to managing the connection and transactions with the ASE SQLite database, providing methods like `write_atoms` and `get_metadata`.
+*   **`mlip_autopipec.generators.base:BaseGenerator`**: An abstract base class defining the interface for all structure generators.
+*   **`mlip_autopipec.exploration.engine:ExplorationEngine`**: The class responsible for running the parallel MD/MC simulations.
+*   **`mlip_autopipec.sampling.base:BaseSampler`**: An abstract base class defining the interface for all sampling algorithms.
 
-*   `pipeline.orchestrator.PipelineOrchestrator`: This is the central coordinating class of the entire application. It is initialized with a validated configuration object and manages the execution of the four-stage pipeline. It calls the appropriate components (generators, explorers, etc.) in the correct sequence and manages the flow of data (typically file paths) between them. It is the "brain" of the operation.
-
-*   `common.pydantic_models`: This is a critical file that will contain a set of Pydantic models defining the entire structure of the user's configuration files. There will be a top-level `FullConfig` model composed of smaller, more specific models like `SystemConfig`, `ExplorationConfig`, and `SamplingConfig`. This schema-first approach provides rigorous, automatic validation of all user input, with clear error messages for mistakes, preventing a whole class of potential runtime errors.
-
-*   `generators.base.BaseStructureGenerator`: This file defines the abstract base class for all structure generators. It will specify a common interface (a `generate()` method) that all concrete generators must implement. This enforces a consistent structure across the module and is key to the factory pattern's ability to treat all generators polymorphically.
-
-*   `explorers.md_engine.MDEngine`: This class encapsulates all the complex logic for running MD and hybrid MD/MC simulations. It will be initialized with an ASE-compatible calculator (like MACE or SevenNet) and will manage the details of the simulation, such as the integrator, thermostat, barostat, and the logic for ensemble switching and potential mixing.
-
-*   `samplers.base.BaseSampler`: Similar to the generator, this defines the abstract base class for all sampling algorithms. It will define a `sample()` method that takes a trajectory and returns a list of selected `Atoms` objects.
-
-*   `storage.database_manager.DatabaseManager`: This class provides a simple, clean interface for all database operations. It will abstract away the specific details of the `ase.db` library, providing methods like `connect(path)` and `write_structures(structures)`, making the main pipeline logic cleaner and more readable.
-
-*   `factories.py`: This module implements the factory design pattern. It will contain functions like `create_generator(config)` and `create_sampler(config)`. These functions will inspect the configuration object and, based on its values (e.g., `config.sampling.method`), will instantiate and return the appropriate concrete implementation (e.g., `FarthestPointSampler`). This decouples the main application logic from the specific component implementations, making the system highly modular.
-
-**Data Models (Pydantic):**
-
-The system's configuration will be strictly defined by Pydantic models to ensure robustness. This provides a single source of truth for all settings.
-
-```python
-# Example from common/pydantic_models.py
-
-from pydantic import BaseModel, Field
-from typing import List, Dict
-
-class SystemConfig(BaseModel):
-    elements: List[str]
-    composition: Dict[str, float]
-    supercell_size: List[int] = Field(..., min_items=3, max_items=3)
-    # ... other system parameters
-
-class MDConfig(BaseModel):
-    temperature_k: float = Field(..., gt=0)
-    pressure_gpa: float
-    # ... other MD parameters
-
-class FullConfig(BaseModel):
-    system: SystemConfig
-    exploration: MDConfig
-    # ... other config sections
-```
-This schema-first approach is fundamental. It allows for automatic validation of user configuration files against a well-defined schema, providing clear, targeted error messages and preventing entire classes of runtime errors that would arise from invalid or missing parameters. It also serves as a form of machine-readable documentation for the system's capabilities.
+This layered architecture ensures that the core logic is decoupled from the user interface and data persistence, making the system easier to test, maintain, and extend.
 
 ## 5. Implementation Plan
 
-The project will be developed over two distinct cycles, building from a core functional command-line tool to an advanced, user-friendly framework.
+The project will be developed over two sequential cycles.
 
-**Cycle 1: Core CLI Pipeline and Foundational Components**
+**CYCLE 01: Core Framework and Basic Structure Generation**
 
-The primary goal of the first cycle is to deliver a functional, end-to-end command-line tool capable of generating a basic dataset for a simple physical system (e.g., a binary alloy). This cycle focuses on establishing the core architecture, data models, and the main pipeline logic. The emphasis will be on robustness and correctness over feature completeness.
+This foundational cycle focuses on establishing the core architecture, data models, and a basic, end-to-end pipeline that can generate initial structures and store them in a database. The goal is to have a functioning, albeit simple, workflow.
 
-The implementation will begin with the strict definition of all configuration parameters using Pydantic models in `common/pydantic_models.py`. This schema-first approach will dictate the required inputs for the entire system. Next, the foundational `PipelineOrchestrator` will be created, outlining the four main steps (Generate, Explore, Sample, Store) as distinct methods. The `cli/main.py` entry point will be developed to parse a Hydra configuration file and trigger the orchestrator.
+*   **Project Scaffolding:** Set up the directory structure, `pyproject.toml` with initial dependencies (Typer, Pydantic, ASE), and basic test configuration.
+*   **Configuration Models:** Implement the initial Pydantic models in `config.py` to define the structure for user configuration files. This will cover the system definition (elements, composition) and database settings.
+*   **Database Wrapper:** Develop the `AseDBWrapper` in `db.py`. It will handle connecting to, creating, and writing `ase.Atoms` objects to an SQLite database. This ensures a stable foundation for data persistence from the very beginning.
+*   **Generator Framework:** Create the `BaseGenerator` abstract class and a simple concrete implementation, `AlloyGenerator`, that can create random alloy structures based on a given composition. This includes implementing essential physical validation checks like minimum atomic distances.
+*   **Basic Pipeline:** Implement a simplified `PipelineRunner` and `WorkflowOrchestrator`. In this cycle, the pipeline will only consist of two stages: **Generation** and **Storage**. The Exploration and Sampling stages will be stubbed out or omitted.
+*   **CLI Entry Point:** Create a basic CLI using Typer in `cli.py` that can take a configuration file and a database path as input, run the simple Generation->Storage pipeline, and report success or failure.
 
-For the **Generation** stage, we will implement the `BaseStructureGenerator` abstract class and a concrete `AlloyGenerator`. This generator will be capable of creating simple alloy structures, applying necessary rattles and strains, and performing overlap checks. For the **Exploration** stage, a basic version of the `MDEngine` will be implemented. It will support standard NVT and NPT MD simulations using an ASE-compatible calculator, but will not yet include the advanced hybrid MD/MC features. In the **Sampling** stage, a simple `RandomSampler` will be created as the default method for selecting structures from the MD trajectory. Finally, the **Storage** stage will be implemented with a `DatabaseManager` that can connect to an ASE database and save the final sampled structures with their corresponding metadata. The focus is on ensuring the data flows correctly through all four stages and that the final database is correctly populated.
+**CYCLE 02: Advanced Exploration, Sampling, and UI**
 
-**Cycle 2: Advanced Exploration, Intelligent Sampling, and Web UI**
+This cycle builds upon the foundation of Cycle 01 by implementing the complex, simulation-heavy parts of the pipeline and fleshing out the user interfaces.
 
-Building on the stable foundation of Cycle 1, the second cycle will focus on implementing the advanced features that provide the core intellectual property and user-facing value of the project. This cycle will significantly enhance the quality of the generated datasets and the usability of the tool.
-
-The **Exploration** engine (`MDEngine`) will be upgraded to include the hybrid MD/MC capabilities. This involves implementing the logic for Monte Carlo moves, such as atomic swaps for alloys and vacancy hops, which are crucial for efficiently exploring the configuration space. This will also include the implementation of the "auto ensemble switching" logic, which detects vacuum slabs and applies the correct thermodynamic ensemble (NVT) to prevent simulation artifacts.
-
-Next, the **Sampling** module will be enhanced with the implementation of `FarthestPointSampler`. This requires integrating a library to compute structural descriptors (like SOAP) and implementing the FPS algorithm itself to enable intelligent, diversity-driven data selection. This is a critical step up from the simple random sampling of Cycle 1.
-
-The most significant new component in this cycle will be the development of a **Web User Interface**. This will be a separate application (e.g., using Streamlit or FastAPI with a React frontend) that provides a graphical way for users to build configuration files, launch pipeline runs, and, most importantly, visualise the atomic structures at different stages of the process. The UI will interact with the core `mlip_autopipec` package, using it as a library. This will lower the barrier to entry for new users and provide powerful interactive capabilities for experts. The backend logic will be reused from the CLI, ensuring consistency between the two interfaces.
+*   **Exploration Engine:** Develop the `ExplorationEngine` in `exploration/engine.py`. This is the most complex part of the project. It will involve:
+    *   Integrating with ASE to use MLIP calculators (e.g., MACE).
+    *   Implementing the logic for running MD simulations.
+    *   Adding support for hybrid MD/MC moves, such as atom swapping.
+    *   Developing the "Auto Ensemble Switching" logic to correctly handle bulk vs. slab systems.
+    *   Implementing robust parallel execution using `ProcessPoolExecutor`.
+*   **Advanced Sampling:** Implement the `FarthestPointSampler` in `sampling/fps.py`. This will require integrating a SOAP descriptor library to calculate structural fingerprints and implement the FPS algorithm. The `BaseSampler` interface will also be created.
+*   **Full Pipeline Integration:** Extend the `PipelineRunner` to incorporate the new Exploration and Sampling stages, creating the full four-stage pipeline.
+*   **Expanded CLI:** Enhance the CLI with more options to control the exploration and sampling parameters, providing users with full control over the workflow.
+*   **Web UI (Optional/Bonus):** If time permits, a simple Web UI could be developed using a framework like Streamlit or Gradio. This would allow users to upload a configuration, run the pipeline, and view the generated structures, making the tool more accessible.
 
 ## 6. Test Strategy
 
-A comprehensive testing strategy is essential for ensuring the correctness, robustness, and reliability of the MLIP-AutoPipe framework. The strategy will be multi-layered, encompassing unit, integration, and end-to-end testing, with a specific focus for each development cycle.
+Testing will be a critical part of the development process, with a combination of unit and integration tests to ensure correctness and robustness.
 
-**Cycle 1: Core Pipeline Validation**
+**CYCLE 01 Test Strategy:**
 
-In the first cycle, the testing focus is on validating the correctness of individual components and the integrity of the data flow through the CLI pipeline.
+*   **Unit Tests:**
+    *   **Configuration:** Test the Pydantic models in `config.py` to ensure they correctly parse valid configuration files and raise errors for invalid ones (e.g., missing required fields, incorrect types).
+    *   **Database:** Unit test the `AseDBWrapper`. This will involve using an in-memory SQLite database to test that `ase.Atoms` objects are written and read correctly, and that metadata is stored and retrieved as expected. Mocks will be used to isolate the wrapper from the actual filesystem.
+    *   **Generators:** Test the `AlloyGenerator` to verify that it produces the correct number of structures, with the specified composition, and that all generated structures pass the physical validation checks (e.g., no overlapping atoms).
+*   **Integration Tests:**
+    *   A single integration test will cover the entire Cycle 01 pipeline. It will use a temporary directory and a sample configuration file. The test will invoke the CLI, which will run the Generation->Storage pipeline. Assertions will be made on the final database, checking that it has been created and contains the correct number of structures with the expected properties. This validates that all components work together correctly.
 
-*   **Unit Testing:** Each core component will be tested in isolation. The `AlloyGenerator` will have unit tests to verify that it produces the correct number of atoms, respects the specified composition, and that its validation checks (e.g., `overlap_check`) correctly reject invalid structures. The `Pydantic` models themselves will be tested to ensure validation rules work as expected. The `DatabaseManager` will be tested using a mock database to confirm that it writes the expected data and metadata. Mocks will be heavily used to isolate components; for example, when testing the `PipelineOrchestrator`, the actual `MDEngine` will be replaced with a mock that produces a predictable, dummy trajectory file. This ensures that tests are fast and deterministic.
+**CYCLE 02 Test Strategy:**
 
-*   **Integration Testing:** The primary integration test for Cycle 1 will be an end-to-end test of the CLI. The test will invoke the command-line tool with a minimal, valid configuration file for a binary alloy. It will run the entire pipeline on a small scale (e.g., few atoms, short MD run). Assertions will be made at each stage: checking that the initial structure file is created, that a trajectory file is generated, and, most importantly, that the final ASE database contains the expected number of structures and that the metadata (energy, forces) is correctly populated. This test will not verify the scientific accuracy of the simulation but will confirm that all the components are wired together correctly and that data is not lost or corrupted between stages.
-
-**Cycle 2: Advanced Features and UI Testing**
-
-The testing strategy for Cycle 2 expands to cover the new, more complex features and the user-facing web application.
-
-*   **Unit Testing:** The new advanced components will have dedicated unit tests. The logic for the hybrid MD/MC moves in the `MDEngine` will be tested to ensure atoms are swapped correctly and that invalid moves (e.g., those violating charge constraints) are rejected. The `FarthestPointSampler` will be a key focus.. It will be tested with a known set of input vectors to ensure the algorithm correctly selects the points that are farthest apart, validating the core selection logic. For the Web UI, unit tests will be written for backend API endpoints, mocking the core pipeline logic to ensure the API handles requests and returns responses correctly.
-
-*   **Integration and End-to-End Testing:** An integration test will be added for the advanced CLI workflow, specifically enabling the hybrid MD/MC and FPS options and verifying that the resulting dataset in the database is consistent with the settings. The most critical new test will be an end-to-end test for the Web UI. We will use a browser automation framework like Playwright or Selenium. The test script will automate the process of a user opening the web page, filling out the configuration form, clicking the "Run" button, and then verifying that the UI updates to show that the process has completed and that the expected output (e.g., a downloadable database file or a visualisation of a final structure) is present. This test ensures that the entire user-facing workflow is functional, from browser interaction to backend processing.
+*   **Unit Tests:**
+    *   **Exploration Engine:** This will be the most challenging component to test. Unit tests will focus on individual functions within the engine. For example, the "Auto Ensemble Switching" logic will be tested by creating mock `ase.Atoms` objects with and without a vacuum and asserting that the correct simulation ensemble is chosen. The core MD simulation loop will not be unit tested directly, as this would be too complex. Instead, we will rely on integration tests. External dependencies like the MLIP calculator will be heavily mocked.
+    *   **Samplers:** Test the `RandomSampler` to ensure it selects the correct number of frames. Test the `FarthestPointSampler` with a small, deterministic set of pre-calculated descriptors to verify that the algorithm selects the expected "farthest" points.
+*   **Integration Tests:**
+    *   The main integration test will be expanded to cover the full four-stage pipeline. It will run a very short MD simulation on a simple system using a fast, classical potential like EMT (Effective Medium Theory) instead of a slow MLIP. This will allow the test to run quickly in a CI environment. The test will assert that:
+        1.  Initial structures are generated.
+        2.  Trajectory files are created during exploration.
+        3.  The sampling step reduces the number of structures.
+        4.  The final database contains the sampled structures.
+    *   CLI functionality will be tested to ensure all new options are parsed and handled correctly. This ensures the user-facing part of the application works as intended.

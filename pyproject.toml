@@ -20,6 +20,10 @@ dependencies = [
     "litellm>=1.80.11",
     "typer",
     "rich",
+    "pyyaml",
+    "ase",
+    "dscribe",
+    "scipy"
 ]
 
 [tool.uv]
@@ -27,6 +31,7 @@ environments = ["sys_platform == 'linux'"]
 
 [project.scripts]
 ac-cdd = "ac_cdd_core.cli:app"
+mlip-autopipec = "mlip_autopipec.cli:app"
 
 [dependency-groups]
 dev = [
@@ -84,7 +89,7 @@ select = [
     "TRY",  # tryceratops (proper exception handling)
     "RUF",  # Ruff-specific rules
 ]
-# S101: Allow use of assert (for tests)
+
 ignore = [
     "ANN101", # Type hint for self is unnecessary (deprecated)
     "ANN002", # Type hint for *args can be omitted
@@ -111,19 +116,17 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["S101"]
+"tests/**/*.py" = ["S101"]  # Allow assert in tests
 
 [tool.ruff.lint.mccabe]
-max-complexity = 10 # Exceeding this prompts function splitting (prevent AI long functions)
+max-complexity = 10  # Exceeding this prompts function splitting (prevent AI long functions)
 
 [tool.ruff.lint.flake8-annotations]
-suppress-dummy-args = true # Arguments starting with _ do not require type hints
-
+suppress-dummy-args = true  # Arguments starting with _ do not require type hints
 
 [tool.pytest.ini_options]
 addopts = "--cov=dev_src --cov=src --cov-report=term-missing"
 testpaths = ["tests"]
-
 
 [tool.mypy]
 strict = true
