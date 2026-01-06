@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ase import Atoms
+
     from mlip_autopipec.config.models import SamplingConfig
 
 logger = logging.getLogger(__name__)
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 class RandomSampler:
     """A sampler that selects a random subset of structures."""
 
-    def __init__(self, config: SamplingConfig):
+    def __init__(self, config: SamplingConfig) -> None:
         """
         Initialise the RandomSampler.
 

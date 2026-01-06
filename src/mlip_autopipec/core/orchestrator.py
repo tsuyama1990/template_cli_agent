@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class PipelineRunner:
     """The main orchestrator for the MLIP-AutoPipe pipeline."""
 
-    def __init__(self, config: FullConfig):
+    def __init__(self, config: FullConfig) -> None:
         """
         Initialise the PipelineRunner.
 
@@ -44,7 +44,8 @@ class PipelineRunner:
         structures = sampler.sample(structures)
 
         # 4. Storage
-        db_path = Path(f"{self.config.project_name}.db")
+        sanitized_name = Path(self.config.project_name).name
+        db_path = Path(f"{sanitized_name}.db")
         with AseDBWrapper(db_path) as db:
             db.write_structures(structures)
 

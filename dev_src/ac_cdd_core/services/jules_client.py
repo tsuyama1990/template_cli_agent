@@ -624,6 +624,7 @@ class JulesClient:
             self._load_cycle_docs(current_cycle_id, context_parts)
 
         import json
+
         plan_steps = plan.get("steps", [])
         plan_text = json.dumps(plan_steps, indent=2)
         context_parts.append(f"# GENERATED PLAN TO REVIEW\n{plan_text}\n")

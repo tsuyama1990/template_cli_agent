@@ -30,6 +30,7 @@ environments = ["sys_platform == 'linux'"]
 
 [project.scripts]
 ac-cdd = "ac_cdd_core.cli:app"
+mlip-autopipec = "mlip_autopipec.cli:app"
 
 [dependency-groups]
 dev = [

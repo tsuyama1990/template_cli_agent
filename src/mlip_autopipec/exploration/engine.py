@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ase import Atoms
+
     from mlip_autopipec.config.models import ExplorationConfig
 
 logger = logging.getLogger(__name__)
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 class MDExplorer:
     """A placeholder for the molecular dynamics exploration engine."""
 
-    def __init__(self, config: ExplorationConfig):
+    def __init__(self, config: ExplorationConfig) -> None:
         """
         Initialise the MDExplorer.
 

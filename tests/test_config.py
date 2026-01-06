@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 import yaml
 from pydantic import ValidationError
@@ -5,7 +7,7 @@ from pydantic import ValidationError
 from mlip_autopipec.config.models import FullConfig
 
 
-def test_valid_config(tmp_path):
+def test_valid_config(tmp_path: Path) -> None:
     """Test that a valid configuration file is loaded correctly."""
     config_content = """
 project_name: test_project
@@ -23,7 +25,7 @@ sampling:
     config_file = tmp_path / "config.yaml"
     config_file.write_text(config_content)
 
-    with open(config_file, "r") as f:
+    with config_file.open("r") as f:
         raw_config = yaml.safe_load(f)
     config = FullConfig.model_validate(raw_config)
 
@@ -37,7 +39,7 @@ sampling:
     assert config.sampling.fraction == 0.5
 
 
-def test_invalid_composition_sum():
+def test_invalid_composition_sum() -> None:
     """Test that a validation error is raised for invalid composition sum."""
     raw_config = {
         "project_name": "test",
@@ -49,7 +51,7 @@ def test_invalid_composition_sum():
         FullConfig.model_validate(raw_config)
 
 
-def test_mismatched_elements():
+def test_mismatched_elements() -> None:
     """Test that a validation error is raised for mismatched elements."""
     raw_config = {
         "project_name": "test",
@@ -61,7 +63,7 @@ def test_mismatched_elements():
         FullConfig.model_validate(raw_config)
 
 
-def test_negative_temperature():
+def test_negative_temperature() -> None:
     """Test that a validation error is raised for negative temperature."""
     raw_config = {
         "project_name": "test",
@@ -71,3 +73,50 @@ def test_negative_temperature():
     }
     with pytest.raises(ValidationError):
         FullConfig.model_validate(raw_config)
+
+
+def test_empty_elements_list() -> None:
+    """Test that a validation error is raised for an empty elements list."""
+    raw_config = {
+        "project_name": "test",
+        "system": {"elements": [], "composition": {}, "lattice": "fcc", "num_structures": 1},
+        "exploration": {"temperature": 300},
+        "sampling": {"method": "random", "fraction": 0.1},
+    }
+    with pytest.raises(ValidationError):
+        FullConfig.model_validate(raw_config)
+
+
+def test_zero_num_structures() -> None:
+    """Test that a validation error is raised for zero num_structures."""
+    raw_config = {
+        "project_name": "test",
+        "system": {"elements": ["Fe"], "composition": {"Fe": 1.0}, "lattice": "fcc", "num_structures": 0},
+        "exploration": {"temperature": 300},
+        "sampling": {"method": "random", "fraction": 0.1},
+    }
+    with pytest.raises(ValidationError):
+        FullConfig.model_validate(raw_config)
+
+
+def test_invalid_sampling_fraction() -> None:
+    """Test validation error for sampling fraction outside the (0, 1] range."""
+    # Case 1: fraction > 1
+    raw_config_over = {
+        "project_name": "test",
+        "system": {"elements": ["Fe"], "composition": {"Fe": 1.0}, "lattice": "fcc", "num_structures": 1},
+        "exploration": {"temperature": 300},
+        "sampling": {"method": "random", "fraction": 1.1},
+    }
+    with pytest.raises(ValidationError):
+        FullConfig.model_validate(raw_config_over)
+
+    # Case 2: fraction == 0
+    raw_config_zero = {
+        "project_name": "test",
+        "system": {"elements": ["Fe"], "composition": {"Fe": 1.0}, "lattice": "fcc", "num_structures": 1},
+        "exploration": {"temperature": 300},
+        "sampling": {"method": "random", "fraction": 0.0},
+    }
+    with pytest.raises(ValidationError):
+        FullConfig.model_validate(raw_config_zero)

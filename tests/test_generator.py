@@ -2,7 +2,7 @@ from mlip_autopipec.config.models import SystemConfig
 from mlip_autopipec.generators.alloy import AlloyGenerator
 
 
-def test_alloy_generator_count_and_composition():
+def test_alloy_generator_count_and_composition() -> None:
     """Test that the AlloyGenerator produces the correct number and composition of structures."""
     config = SystemConfig(
         elements=["Fe", "Pt"],
@@ -23,7 +23,7 @@ def test_alloy_generator_count_and_composition():
         assert abs(num_pt / total_atoms - 0.5) < 0.1
 
 
-def test_physical_validity():
+def test_physical_validity() -> None:
     """Test that the generated structures are physically valid (no overlapping atoms)."""
     config = SystemConfig(
         elements=["Fe", "Pt"],
@@ -35,6 +35,6 @@ def test_physical_validity():
     structures = generator.generate()
 
     for atoms in structures:
-        distances = atoms.get_all_distances(mic=True)
+        distances = atoms.get_all_distances(mic=True)  # type: ignore[no-untyped-call]
         min_distance = distances[distances > 0].min()
         assert min_distance > 1.0

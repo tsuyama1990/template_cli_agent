@@ -4,7 +4,7 @@ from mlip_autopipec.config.models import FullConfig
 from mlip_autopipec.core.orchestrator import PipelineRunner
 
 
-def test_pipeline_runner_orchestration():
+def test_pipeline_runner_orchestration() -> None:
     """Test that the PipelineRunner calls components in the correct order."""
     config_dict = {
         "project_name": "test_project",
