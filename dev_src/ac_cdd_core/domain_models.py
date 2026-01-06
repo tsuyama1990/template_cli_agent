@@ -161,3 +161,22 @@ class PlanAuditResult(BaseModel):
     status: Literal["APPROVED", "REJECTED"]
     reason: str
     feedback: str | None = Field(default="", description="Mandatory if REJECTED")
+
+
+class CommitteeDecision(BaseModel):
+    """Represents the decision made by the auditor committee."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["retry_fix", "next_auditor", "cycle_approved", "cycle_failed"]
+    reason: str
+
+
+class JulesSessionResult(BaseModel):
+    """Result from a Jules session operation."""
+
+    model_config = ConfigDict(extra="allow")
+
+    session_name: str
+    status: str
+    pr_url: str | None = None

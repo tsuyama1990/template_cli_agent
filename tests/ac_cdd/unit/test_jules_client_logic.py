@@ -23,10 +23,11 @@ class TestJulesClientLogic(unittest.IsolatedAsyncioTestCase):
             self.client.credentials = MagicMock()
             self.client._get_headers = MagicMock(return_value={})
             self.client.credentials.token = "mock_token"  # noqa: S105
+        self.client.git = AsyncMock()
 
-            # FIX: Add api_client mock which is now used by wait_for_completion
-            self.client.api_client = MagicMock()
-            self.client.api_client.api_key = "mock_key"
+        # Add api_client mock which is now used by wait_for_completion
+        self.client.api_client = MagicMock()
+        self.client.api_client.api_key = "mock_key"
 
     def tearDown(self) -> None:
         self.auth_patcher.stop()
@@ -46,11 +47,10 @@ class TestJulesClientLogic(unittest.IsolatedAsyncioTestCase):
         session_id = "sessions/123"
         activity_id = "sessions/123/activities/456"
 
-        # Initial Load
         self.client.list_activities = MagicMock(return_value=[])
         self.client._send_message = AsyncMock()
 
-        # Responses
+        # --- Mock HTTP Responses ---
         r_session_completed = MagicMock()
         r_session_completed.status_code = 200
         r_session_completed.json.return_value = {"state": "COMPLETED", "outputs": []}
@@ -72,27 +72,26 @@ class TestJulesClientLogic(unittest.IsolatedAsyncioTestCase):
         r_acts_empty.status_code = 200
         r_acts_empty.json.return_value = {"activities": []}
 
-        # Sequence:
-        # Iteration 1:
-        # 1. get(session) -> COMPLETED
-        # 2. get(activities) (Check Inquiry) -> FOUND Question
-        #    -> Sends Reply, Sleeps, Continues
-        # Iteration 2:
-        # 3. get(session) -> SUCCEEDED w/ PR
-        # 4. get(activities) (Check Inquiry) -> Empty (No new questions)
-        #    -> Falls through to Success Check -> Returns PR
-
+        # --- Execution Trace (Number of GET calls) ---
+        # Loop 1:
+        # 1. GET session -> COMPLETED
+        # 2. GET activities (inquiry check) -> Question found, inquiry_processed=True
+        # 3. GET activities (success check fallback) -> No PR found, loop continues
+        # 4. GET activities (log count)
+        # Loop 2:
+        # 5. GET session -> SUCCEEDED with PR in outputs. Returns immediately.
         mock_client.get.side_effect = [
-            r_session_completed,
-            r_acts_question,
-            r_acts_empty,  # For log_activities_count
-            r_session_success,
-            r_acts_empty,
+            r_session_completed,  # 1
+            r_acts_question,  # 2
+            r_acts_empty,  # 3
+            r_acts_empty,  # 4
+            r_session_success,  # 5
         ]
 
         result = await self.client.wait_for_completion(session_id)
 
         self.client._send_message.assert_called_once()
+        assert "pr_url" in result, "Result dictionary should contain 'pr_url'"
         assert result["pr_url"] == "http://github.com/pr/1"
 
     @patch("asyncio.sleep", return_value=None)
@@ -102,6 +101,7 @@ class TestJulesClientLogic(unittest.IsolatedAsyncioTestCase):
     ) -> None:
         """
         Verify that existing activities are IGNORED and do not trigger a reply.
+        The loop should terminate early on COMPLETED state because no new inquiry is processed.
         """
         mock_client = AsyncMock()
         mock_httpx_cls.return_value.__aenter__.return_value = mock_client
@@ -114,10 +114,9 @@ class TestJulesClientLogic(unittest.IsolatedAsyncioTestCase):
                 {"name": old_activity_id, "agentMessaged": {"agentMessage": "Old Question"}}
             ]
         )
-
         self.client._send_message = AsyncMock()
 
-        # Responses
+        # --- Mock HTTP Responses ---
         r_session_completed = MagicMock()
         r_session_completed.status_code = 200
         r_session_completed.json.return_value = {"state": "COMPLETED", "outputs": []}
@@ -130,42 +129,27 @@ class TestJulesClientLogic(unittest.IsolatedAsyncioTestCase):
             ]
         }
 
-        r_session_success = MagicMock()
-        r_session_success.status_code = 200
-        r_session_success.json.return_value = {
-            "state": "SUCCEEDED",
-            "outputs": [{"pullRequest": {"url": "http://github.com/pr/1"}}],
-        }
-
         r_acts_empty = MagicMock()
         r_acts_empty.status_code = 200
         r_acts_empty.json.return_value = {"activities": []}
 
-        r_acts_logging = MagicMock()
-        r_acts_logging.status_code = 200
-        r_acts_logging.json.return_value = {"activities": []}
-
-        # Sequence:
-        # Iteration 1:
-        # 1. get(session) -> COMPLETED
-        # 2. get(activities) (Check Inquiry) -> Old Activity (Ignored)
-        #    -> Logic: if duplicate, continue (skip rest of loop)
-        # Iteration 2:
-        # 3. get(session) -> SUCCEEDED
-        # 4. get(activities) (Check Inquiry) -> Empty
-        #    -> Success Check -> Returns PR
-
+        # --- Execution Trace (Number of GET calls) ---
+        # Loop 1:
+        # 1. GET session -> COMPLETED
+        # 2. GET activities (inquiry check) -> Old activity found, inquiry_processed=False
+        # 3. GET activities (success check fallback) -> No PR found.
+        #    -> Loop terminates because (state==COMPLETED and not inquiry_processed) is true.
         mock_client.get.side_effect = [
-            r_session_completed,
-            r_acts_old,
-            r_acts_logging,  # For log_activities_count
-            r_session_success,
-            r_acts_empty,
+            r_session_completed,  # 1
+            r_acts_old,  # 2
+            r_acts_empty,  # 3
         ]
 
-        await self.client.wait_for_completion(session_id)
+        result = await self.client.wait_for_completion(session_id)
 
         self.client._send_message.assert_not_called()
+        assert "pr_url" not in result
+        assert result["status"] == "success"
 
 
 if __name__ == "__main__":

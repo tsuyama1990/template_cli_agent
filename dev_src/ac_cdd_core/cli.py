@@ -1,4 +1,5 @@
 import asyncio
+import os
 import shutil
 from typing import Annotated
 
@@ -13,6 +14,14 @@ from rich.console import Console
 
 app = typer.Typer(help="AC-CDD: AI-Native Cycle-Based Contract-Driven Development Environment")
 console = Console()
+
+
+@app.callback()
+def main_callback(ctx: typer.Context) -> None:
+    """Main callback to set up global state or context."""
+    # This is a good place for setting up logging, context, etc.
+    # For now, it's a placeholder.
+    pass
 
 
 class _WorkflowServiceHolder:
@@ -81,7 +90,15 @@ def gen_cycles(
     """
     Architect Phase: Generate cycle specs based on requirements.
     """
-    asyncio.run(_WorkflowServiceHolder.get().run_gen_cycles(cycles, project_session_id))
+    try:
+        asyncio.run(_WorkflowServiceHolder.get().run_gen_cycles(cycles, project_session_id))
+    except Exception as e:
+        # This is the global exception handler.
+        console.print("[bold red]An unexpected error occurred.[/bold red]")
+        if os.environ.get("DEBUG"):
+            raise  # Reraise for a full traceback in debug mode
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(code=1) from e
 
 
 @app.command()
@@ -104,15 +121,23 @@ def run_cycle(
     By default, runs with automated code review (Committee of Auditors).
     Use --no-auto to disable automated auditing (not recommended).
     """
-    asyncio.run(
-        _WorkflowServiceHolder.get().run_cycle(
-            cycle_id=cycle_id,
-            resume=resume,
-            auto=auto,
-            start_iter=start_iter,
-            project_session_id=project_session_id,
+    try:
+        asyncio.run(
+            _WorkflowServiceHolder.get().run_cycle(
+                cycle_id=cycle_id,
+                resume=resume,
+                auto=auto,
+                start_iter=start_iter,
+                project_session_id=project_session_id,
+            )
         )
-    )
+    except Exception as e:
+        # This is the global exception handler.
+        console.print("[bold red]An unexpected error occurred.[/bold red]")
+        if os.environ.get("DEBUG"):
+            raise  # Reraise for a full traceback in debug mode
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(code=1) from e
 
 
 @app.command()

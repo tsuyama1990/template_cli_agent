@@ -20,6 +20,7 @@ import google.auth
 import httpx
 from ac_cdd_core.agents import manager_agent
 from ac_cdd_core.config import settings
+from ac_cdd_core.domain_models import JulesSessionResult
 from ac_cdd_core.services.git_ops import GitManager
 from ac_cdd_core.session_manager import SessionManager
 from ac_cdd_core.utils import logger
@@ -194,11 +195,12 @@ class JulesClient:
             self.credentials = None
 
         self.manager_agent = manager_agent
-        
+
         # Import PlanAuditor for plan approval (separate from manager_agent for questions)
         from ac_cdd_core.services.plan_auditor import PlanAuditor
+
         self.plan_auditor = PlanAuditor()
-        
+
         api_key_to_use = settings.JULES_API_KEY
         if not api_key_to_use and self.credentials:
             api_key_to_use = self.credentials.token
@@ -239,16 +241,15 @@ class JulesClient:
         files: list[str] | None = None,
         require_plan_approval: bool = False,
         **extra: Any,
-    ) -> dict[str, Any]:
+    ) -> JulesSessionResult:
         """Orchestrates the Jules session."""
         if self.api_client.api_key == "dummy_jules_key" and not self._is_httpx_mocked():
             logger.info("Test Mode: Simulating Jules Session run.")
-            return {
-                "session_name": f"sessions/dummy-{session_id}",
-                "pr_url": "https://github.com/dummy/repo/pull/1",
-                "status": "success",
-                "cycles": ["01", "02"],
-            }
+            return JulesSessionResult(
+                session_name=f"sessions/dummy-{session_id}",
+                pr_url="https://github.com/dummy/repo/pull/1",
+                status="success",
+            )
 
         if not self.api_client.api_key and "PYTEST_CURRENT_TEST" not in os.environ:
             errmsg = "Missing JULES_API_KEY or ADC credentials."
@@ -274,12 +275,15 @@ class JulesClient:
         # Session persistence is handled by the caller (graph_nodes.py)
 
         if require_plan_approval:
-            return {"session_name": session_name, "status": "running"}
+            return JulesSessionResult(session_name=session_name, status="running")
 
         logger.info(f"Session created: {session_name}. Waiting for PR creation...")
-        result = await self.wait_for_completion(session_name, require_plan_approval=False)
-        result["session_name"] = session_name
-        return result
+        result_dict = await self.wait_for_completion(session_name, require_plan_approval=False)
+        return JulesSessionResult(
+            session_name=session_name,
+            status=result_dict.get("status", "unknown"),
+            pr_url=result_dict.get("pr_url"),
+        )
 
     async def _prepare_git_context(self) -> tuple[str, str, str]:
         try:
@@ -357,21 +361,24 @@ class JulesClient:
                 emsg = f"Network error creating session: {e}"
                 raise JulesSessionError(emsg) from e
 
-    async def continue_session(self, session_name: str, prompt: str) -> dict[str, Any]:
+    async def continue_session(self, session_name: str, prompt: str) -> JulesSessionResult:
         """Continues an existing session."""
         if self.api_client.api_key == "dummy_jules_key" and not self._is_httpx_mocked():
-            return {
-                "session_name": session_name,
-                "pr_url": "https://github.com/dummy/repo/pull/2",
-                "status": "success",
-            }
+            return JulesSessionResult(
+                session_name=session_name,
+                pr_url="https://github.com/dummy/repo/pull/2",
+                status="success",
+            )
 
         logger.info(f"Continuing Session {session_name} with info...")
         await self._send_message(session_name, prompt)
         logger.info(f"Waiting for Jules to process feedback for {session_name}...")
-        result = await self.wait_for_completion(session_name)
-        result["session_name"] = session_name
-        return result
+        result_dict = await self.wait_for_completion(session_name)
+        return JulesSessionResult(
+            session_name=session_name,
+            status=result_dict.get("status", "unknown"),
+            pr_url=result_dict.get("pr_url"),
+        )
 
     async def _check_for_inquiry(
         self, client: httpx.AsyncClient, session_url: str, processed_ids: set[str]
@@ -449,12 +456,17 @@ class JulesClient:
                     if data:
                         state = data.get("state")
                         logger.info(f"Jules session state: {state}")
-                        await self._process_inquiries(
-                            client, session_url, state, processed_activity_ids,
-                            plan_rejection_count, max_plan_rejections, require_plan_approval
+                        inquiry_processed = await self._process_inquiries(
+                            client,
+                            session_url,
+                            state,
+                            processed_activity_ids,
+                            plan_rejection_count,
+                            max_plan_rejections,
+                            require_plan_approval,
                         )
                         success_result = await self._check_success_state(
-                            client, session_url, data, state
+                            client, session_url, data, state, inquiry_processed
                         )
                         if success_result:
                             return success_result
@@ -663,6 +675,7 @@ class JulesClient:
             self._load_cycle_docs(current_cycle_id, context_parts)
 
         import json
+
         plan_steps = plan.get("steps", [])
         plan_text = json.dumps(plan_steps, indent=2)
         context_parts.append(f"# GENERATED PLAN TO REVIEW\n{plan_text}\n")
@@ -676,15 +689,19 @@ class JulesClient:
         return intro + "\n".join(context_parts)
 
     async def _handle_plan_approval(
-        self, client: httpx.AsyncClient, session_url: str, processed_ids: set[str],
-        rejection_count: list[int], max_rejections: int
-    ) -> None:
-        """Handles automated plan review and approval."""
+        self,
+        client: httpx.AsyncClient,
+        session_url: str,
+        processed_ids: set[str],
+        rejection_count: list[int],
+        max_rejections: int,
+    ) -> bool:
+        """Handles automated plan review and approval. Returns True if a plan was handled."""
         session_name = "sessions/" + session_url.split("/sessions/")[-1]
 
         result = await self._fetch_pending_plan(client, session_url, processed_ids)
         if not result:
-            return
+            return False
 
         plan, plan_id = result
         self.console.print(f"\n[bold magenta]Plan Approval Requested:[/bold magenta] {plan_id}")
@@ -696,7 +713,7 @@ class JulesClient:
             )
             await self.approve_plan(session_name, plan_id)
             processed_ids.add(plan_id)
-            return
+            return True
 
         full_context = await self._build_plan_review_context(plan)
 
@@ -716,11 +733,20 @@ class JulesClient:
             processed_ids.add(plan_id)
         except Exception as e:
             logger.error(f"Plan audit failed: {e}")
+            return False
+        else:
+            return True
 
     async def _process_inquiries(
-        self, client: httpx.AsyncClient, session_url: str, state: str, processed_ids: set[str],
-        rejection_count: list[int], max_rejections: int, require_plan_approval: bool = True
-    ) -> None:
+        self,
+        client: httpx.AsyncClient,
+        session_url: str,
+        state: str,
+        processed_ids: set[str],
+        rejection_count: list[int],
+        max_rejections: int,
+        require_plan_approval: bool = True,
+    ) -> bool:
         active_states = [
             "AWAITING_USER_FEEDBACK",
             "AWAITING_USER_INPUT",
@@ -734,17 +760,21 @@ class JulesClient:
             "RUNNING",
         ]
         if state not in active_states:
-            return
+            return False
 
+        inquiry_processed = False
         # Always check for plan approval first (if enabled)
-        # This ensures we catch it even if the state string is different than expected
         if require_plan_approval:
-            await self._handle_plan_approval(client, session_url, processed_ids, rejection_count, max_rejections)
+            plan_handled = await self._handle_plan_approval(
+                client, session_url, processed_ids, rejection_count, max_rejections
+            )
+            if plan_handled:
+                inquiry_processed = True
 
-        # Then handle regular inquiries (skip already processed activities)
+        # Then handle regular inquiries
         inquiry = await self._check_for_inquiry(client, session_url, processed_ids)
         if not inquiry:
-            return
+            return inquiry_processed
 
         question, act_id = inquiry
         if act_id and act_id not in processed_ids:
@@ -777,9 +807,16 @@ class JulesClient:
                 )
                 await self._send_message(session_url, fallback_msg)
                 processed_ids.add(act_id)
+            return True
+        return inquiry_processed
 
     async def _check_success_state(  # noqa: C901
-        self, client: httpx.AsyncClient, session_url: str, data: dict[str, Any], state: str
+        self,
+        client: httpx.AsyncClient,
+        session_url: str,
+        data: dict[str, Any],
+        state: str,
+        inquiry_was_processed: bool = False,
     ) -> dict[str, Any] | None:
         if state not in ["SUCCEEDED", "COMPLETED"]:
             return None
@@ -804,7 +841,9 @@ class JulesClient:
                         pr_url = pr_data.get("url")
                         if pr_url:
                             self.console.print(f"\n[bold green]PR Created: {pr_url}[/bold green]")
-                            logger.info(f"Found PR in activities (not in session outputs): {pr_url}")
+                            logger.info(
+                                f"Found PR in activities (not in session outputs): {pr_url}"
+                            )
                             return {"pr_url": pr_url, "status": "success", "raw": data}
         except Exception as e:
             logger.debug(f"Failed to check activities for PR: {e}")
@@ -812,6 +851,13 @@ class JulesClient:
         if state == "SUCCEEDED":
             self.console.print("[yellow]Session Succeeded but NO PR found.[/yellow]")
             return {"status": "success", "raw": data}
+
+        # If the state is COMPLETED and no inquiry was processed in this loop iteration,
+        # then it's a terminal state.
+        if state == "COMPLETED" and not inquiry_was_processed:
+            self.console.print("[yellow]Session Completed but NO PR found. Terminating.[/yellow]")
+            return {"status": "success", "raw": data}
+
         return None
 
     def _check_failure_state(self, data: dict[str, Any], state: str) -> None:
@@ -912,7 +958,8 @@ class JulesClient:
             async with asyncio.timeout(timeout_seconds):
                 while True:
                     activities = self.list_activities(session_id_path)
-                    for activity in activities:
+                    # Reverse to process newest first
+                    for activity in reversed(activities):
                         if target_type in activity:
                             return activity
                     await self._sleep(interval)

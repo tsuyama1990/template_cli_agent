@@ -131,7 +131,7 @@ ignore_missing_imports = true
 
 
 [tool.hatch.build.targets.wheel]
-packages = ["dev_src/ac_cdd_core", "src/mlip_autopipec"]
+packages = ["dev_src/ac_cdd_core"]
 
 [tool.bandit]
 exclude_dirs = ["tests", ".venv"]

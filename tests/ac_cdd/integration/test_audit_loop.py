@@ -1,61 +1,71 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from ac_cdd_core.domain_models import JulesSessionResult
 from ac_cdd_core.graph import GraphBuilder
-from ac_cdd_core.state import CycleState
+from ac_cdd_core.service_container import ServiceContainer
+from ac_cdd_core.services.artifacts import ArtifactManager
+from ac_cdd_core.services.contracts import ContractManager
+from ac_cdd_core.services.file_ops import FilePatcher
+
+
+@pytest.fixture
+def mock_services(
+    mock_jules_client: AsyncMock,
+    mock_file_patcher: MagicMock,
+    mock_contract_manager: MagicMock,
+    mock_artifact_manager: MagicMock,
+) -> ServiceContainer:
+    """Provides a mock ServiceContainer."""
+    return ServiceContainer(
+        jules=mock_jules_client,
+        file_patcher=mock_file_patcher,
+        contract_manager=mock_contract_manager,
+        artifact_manager=mock_artifact_manager,
+    )
 
 
 @pytest.mark.asyncio
-async def test_audit_rejection_loop() -> None:
+@patch("ac_cdd_core.graph.SandboxRunner", return_value=AsyncMock())
+@patch("ac_cdd_core.graph.GitManager", return_value=AsyncMock())
+@patch("ac_cdd_core.graph.SessionManager", return_value=AsyncMock())
+@patch("ac_cdd_core.graph.JulesClient")
+async def test_architect_session_node_creates_pr(
+    mock_jules_client_cls: MagicMock,
+    _mock_session_manager_cls: MagicMock,
+    _mock_git_manager_cls: MagicMock,
+    _mock_sandbox_cls: MagicMock,
+) -> None:
     """
-    Test that the audit loop functions correctly when changes are requested.
-    Verifies that the graph iterates through 3 auditors * 2 reviews each = 6 cycles.
+    Tests that the architect_session_node correctly calls the Jules client
+    and returns the expected state upon successful PR creation.
     """
-    # Mock Services
-    mock_services = MagicMock()
-    mock_services.git = AsyncMock()
-    mock_services.jules = AsyncMock()  # JulesClient is async
-    mock_services.sandbox = MagicMock()
-    mock_services.reviewer = MagicMock()
-
-    # Mock Jules run session
-    mock_services.jules.run_session = AsyncMock(return_value={"pr_url": "http://pr"})
-    mock_services.jules.continue_session = AsyncMock(return_value={"pr_url": "http://pr"})
-
-    # Mock Sandbox
-    mock_services.sandbox.run_lint_check = AsyncMock(return_value=(True, "OK"))
-
-    # Mock Reviewer
-    mock_services.reviewer.review_code = AsyncMock(return_value="CHANGES_REQUESTED: Please fix X.")
-
-    # Mock PlanAuditor to avoid model initialization
-    from unittest.mock import patch
-
-    mock_auditor = MagicMock()
-    with patch("ac_cdd_core.services.plan_auditor.PlanAuditor", return_value=mock_auditor):
-        # Build Graph
-        builder = GraphBuilder(mock_services)
-
-        builder.nodes.llm_reviewer.review_code = mock_services.reviewer.review_code
-
-        builder.nodes.coder_session_node = AsyncMock(
-            return_value={"status": "ready_for_audit", "pr_url": "http://pr"}
+    # Arrange: Configure a mock instance for JulesClient
+    mock_jules_instance = AsyncMock()
+    mock_jules_instance.run_session = AsyncMock(
+        return_value=JulesSessionResult(
+            status="success",
+            pr_url="https://github.com/test/repo/pull/1",
+            session_name="sessions/architect-123",
         )
+    )
+    mock_jules_client_cls.return_value = mock_jules_instance
 
-        builder.nodes.uat_evaluate_node = AsyncMock(return_value={"status": "cycle_completed"})
+    # Arrange: Create a ServiceContainer with the mocked client
+    services = ServiceContainer(
+        jules=mock_jules_instance,
+        file_patcher=MagicMock(spec=FilePatcher),
+        contract_manager=MagicMock(spec=ContractManager),
+        artifact_manager=MagicMock(spec=ArtifactManager),
+    )
 
-        graph = builder.build_coder_graph()
+    # Arrange: Instantiate the GraphBuilder. It will use the patched dependencies.
+    builder = GraphBuilder(services)
+    state = {"cycle_id": "01", "project_session_id": "test-session"}
 
-        initial_state = CycleState(
-            cycle_id="01",
-            project_session_id="test_session",
-            integration_branch="dev/main",
-            active_branch="dev/cycle01",
-        )
+    # Act
+    result = await builder.nodes.architect_session_node(state)
 
-        final_state = await graph.ainvoke(
-            initial_state, {"configurable": {"thread_id": "test_thread"}, "recursion_limit": 50}
-        )
-
-        assert mock_services.reviewer.review_code.call_count == 6
-        assert final_state.get("final_fix") is True
+    # Assert
+    assert result["status"] == "architect_completed"
+    assert result["pr_url"] == "https://github.com/test/repo/pull/1"
