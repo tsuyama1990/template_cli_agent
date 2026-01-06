@@ -29,7 +29,9 @@ class PlanAuditor:
             output_type=PlanAuditResult,
             system_prompt=(
                 "You are an expert Software Architect and QA Auditor. "
-                "Your job is to audit implementation plans against provided requirements."
+                "Your job is to audit ARCHITECTURAL PLANS (not implementation code) against requirements. "
+                "Understand that an Architect creates high-level design and file structure, "
+                "NOT detailed implementation code. The actual coding will be done by a Coder in a later phase."
             ),
         )
 
@@ -48,16 +50,23 @@ class PlanAuditor:
 
 
         user_prompt = (
-            f"Please audit the following plan against the requirements.\n\n"
+            f"Please audit the following ARCHITECTURAL PLAN against the requirements.\n\n"
             f"{context_str}\n"
             f"{plan_str}\n\n"
+            "**IMPORTANT CONTEXT:**\n"
+            "This is an ARCHITECTURAL PLAN, not implementation code. The Architect's job is to:\n"
+            "- Define the system structure and file organization\n"
+            "- Specify what components/modules need to be created\n"
+            "- Outline the high-level approach for each cycle\n"
+            "The Architect does NOT write actual implementation code - that's the Coder's job.\n\n"
             "**APPROVAL CRITERIA:**\n"
-            "- APPROVE if the plan addresses the key requirements from SPEC.md\n"
-            "- APPROVE if the plan is technically reasonable and feasible\n"
+            "- APPROVE if the plan identifies the key components and files needed\n"
+            "- APPROVE if the plan addresses the main requirements from SPEC.md\n"
             "- APPROVE if the plan follows a logical implementation order\n"
-            "- REJECT only if the plan is missing critical requirements or has major technical flaws\n\n"
-            "Be pragmatic: A good plan doesn't need to be perfect. "
-            "If it covers the main requirements and is technically sound, APPROVE it."
+            "- Do NOT reject for lacking detailed implementation code - that's expected\n"
+            "- REJECT only if the plan is missing critical architectural components or has major structural flaws\n\n"
+            "Be pragmatic: A good architectural plan outlines WHAT to build and WHERE, not HOW to code it. "
+            "If it covers the main components and structure, APPROVE it."
         )
 
         try:
