@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from ac_cdd_core.domain_models import CycleManifest, ProjectManifest
-from ac_cdd_core.session_manager import SessionManager
+from ac_cdd_core.services.session_manager import SessionManager
 
 
 @pytest.mark.asyncio
@@ -11,8 +11,8 @@ class TestSessionResume:
     def manager(self) -> SessionManager:
         return SessionManager()
 
-    @patch("ac_cdd_core.session_manager.SessionManager.load_manifest")
-    @patch("ac_cdd_core.session_manager.SessionManager.save_manifest")
+    @patch("ac_cdd_core.services.session_manager.SessionManager.load_manifest")
+    @patch("ac_cdd_core.services.session_manager.SessionManager.save_manifest")
     async def test_update_session_active_cycle(
         self, mock_save: AsyncMock, mock_load: AsyncMock, manager: SessionManager
     ) -> None:
@@ -30,7 +30,7 @@ class TestSessionResume:
         assert manifest.cycles[0].status == "in_progress"
         mock_save.assert_awaited_once()
 
-    @patch("ac_cdd_core.session_manager.SessionManager.load_manifest")
+    @patch("ac_cdd_core.services.session_manager.SessionManager.load_manifest")
     async def test_resume_jules_session_no_id_found(
         self, mock_load: AsyncMock, manager: SessionManager
     ) -> None:
@@ -54,7 +54,7 @@ class TestSessionResume:
         # The original test likely tested a "resume_session" method if it existed, or just data retrieval.
         # Since I refactored SessionManager, I just verify get_cycle works.
 
-    @patch("ac_cdd_core.session_manager.SessionManager.load_manifest")
+    @patch("ac_cdd_core.services.session_manager.SessionManager.load_manifest")
     async def test_resume_jules_session_auto_load(
         self, mock_load: AsyncMock, manager: SessionManager
     ) -> None:

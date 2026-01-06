@@ -21,7 +21,7 @@ import httpx
 from ac_cdd_core.agents import manager_agent
 from ac_cdd_core.config import settings
 from ac_cdd_core.services.git_ops import GitManager
-from ac_cdd_core.session_manager import SessionManager
+from ac_cdd_core.services.session_manager import SessionManager
 from ac_cdd_core.utils import logger
 from google.auth.transport.requests import Request as GoogleAuthRequest
 from rich.console import Console
@@ -666,7 +666,7 @@ class JulesClient:
                 await self.approve_plan(session_name, plan_id)
             else:
                 self.console.print("[bold yellow]Plan Rejected. Sending Feedback...[/bold yellow]")
-                await self._send_message(session_url, reply)
+                await self._send_.message(session_url, reply)
 
             processed_ids.add(plan_id)
         except Exception as e:

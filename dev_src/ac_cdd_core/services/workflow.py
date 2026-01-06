@@ -9,7 +9,7 @@ from ac_cdd_core.service_container import ServiceContainer
 from ac_cdd_core.services.audit_orchestrator import AuditOrchestrator
 from ac_cdd_core.services.git_ops import GitManager
 from ac_cdd_core.services.jules_client import JulesClient
-from ac_cdd_core.session_manager import SessionManager
+from ac_cdd_core.services.session_manager import SessionManager
 from ac_cdd_core.state import CycleState
 from ac_cdd_core.utils import KeepAwake, logger
 from langchain_core.runnables import RunnableConfig

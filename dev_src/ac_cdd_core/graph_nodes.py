@@ -11,8 +11,10 @@ from .sandbox import SandboxRunner
 from .services.audit_orchestrator import AuditOrchestrator
 from .services.jules_client import JulesClient
 from .services.llm_reviewer import LLMReviewer
-from .session_manager import SessionManager
+from .services.session_manager import SessionManager
 from .state import CycleState
+from .services.coder_service import CoderService
+
 
 console = Console()
 
@@ -22,9 +24,10 @@ class CycleNodes(IGraphNodes):
     Encapsulates the logic for each node in the AC-CDD workflow graph.
     """
 
-    def __init__(self, sandbox_runner: SandboxRunner, jules_client: JulesClient) -> None:
+    def __init__(self, sandbox_runner: SandboxRunner, jules_client: JulesClient, coder_service: CoderService) -> None:
         self.sandbox = sandbox_runner
         self.jules = jules_client
+        self.coder_service = coder_service
         # Dependency injection for sub-services could be improved by passing them in,
         # but for now we construct them with the injected clients.
         self.audit_orchestrator = AuditOrchestrator(jules_client, sandbox_runner)
@@ -125,101 +128,10 @@ class CycleNodes(IGraphNodes):
         return None
 
 
-    async def coder_session_node(self, state: CycleState) -> dict[str, Any]:  # noqa: C901, PLR0912
-        """Node for Coder Agent (Jules)."""
-        cycle_id = state.get("cycle_id")
-        iteration = state.get("iteration_count")
-
-        # Resume Logic using SessionManager
-        mgr = SessionManager()
-        cycle_manifest = await mgr.get_cycle(cycle_id)
-
-        # 1. Try Resume if session ID exists
-        if cycle_manifest and cycle_manifest.jules_session_id and state.get("resume_mode", False):
-            try:
-                console.print(
-                    f"[bold blue]Resuming Jules Session: {cycle_manifest.jules_session_id}[/bold blue]"
-                )
-                result = await self.jules.wait_for_completion(cycle_manifest.jules_session_id)
-
-                # Check outcome
-                if result.get("status") == "success" or result.get("pr_url"):
-                    return {"status": "ready_for_audit", "pr_url": result.get("pr_url")}
-                console.print("[yellow]Resume incomplete or failed. Restarting session...[/yellow]")
-            except Exception as e:
-                console.print(f"[yellow]Resume failed: {e}. Starting new session.[/yellow]")
-
-        console.print(
-            f"[bold green]Starting Coder Session for Cycle {cycle_id} "
-            f"(Iteration {iteration})...[/bold green]"
-        )
-
-        instruction = settings.get_template("CODER_INSTRUCTION.md").read_text()
-        instruction = instruction.replace("{{cycle_id}}", str(cycle_id))
-
-        last_audit = state.get("audit_result")
-        if state.get("status") == "retry_fix" and last_audit and last_audit.feedback:
-            # Check if we have an existing Jules session to reuse
-            if cycle_manifest and cycle_manifest.jules_session_id:
-                retry_result = await self._send_audit_feedback_to_session(
-                    cycle_manifest.jules_session_id,
-                    last_audit.feedback
-                )
-                if retry_result:
-                    return retry_result
-            else:
-                console.print(
-                    "[bold yellow]Injecting Audit Feedback into Coder Prompt...[/bold yellow]"
-                )
-                instruction += f"\n\n# PREVIOUS AUDIT FEEDBACK (MUST FIX)\n{last_audit.feedback}"
-
-        target_files = settings.get_target_files()
-        context_files = settings.get_context_files()
-
-        try:
-            # Generate a unique logical ID for the session request
-            # But the actual Jules session ID will be returned by the API
-            timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M")
-            session_req_id = f"coder-cycle-{cycle_id}-iter-{iteration}-{timestamp}"
-
-            # Start new session
-            # IMPORTANT: We use require_plan_approval=True to get the session ID early if needed
-            # but usually run_session returns after session is created/completed.
-
-            result = await self.jules.run_session(
-                session_id=session_req_id,
-                prompt=instruction,
-                target_files=target_files,
-                context_files=context_files,
-                require_plan_approval=True,
-            )
-
-            # 2. Persist Session ID IMMEDIATELY for Hot Resume
-            if result.get("session_name"):
-                await mgr.update_cycle_state(
-                    cycle_id, jules_session_id=result["session_name"], status="in_progress"
-                )
-
-            if result.get("status") == "running" and result.get("session_name"):
-                console.print(f"[bold blue]Session {result['session_name']} created. Waiting for completion...[/bold blue]")
-                result = await self.jules.wait_for_completion(result["session_name"])
-
-            if result.get("status") == "success" or result.get("pr_url"):
-                return {"status": "ready_for_audit", "pr_url": result.get("pr_url")}
-
-            # If we returned early (e.g. for approval), we might need to handle it.
-            # But CycleNodes expects to finish the cycle work.
-
-            # For now, just persisting what we got.
-
-        except Exception as e:
-            console.print(f"[red]Coder Session Failed: {e}[/red]")
-            return {"status": "failed", "error": str(e)}
-        else:
-            if result.get("status") == "failed":
-                return {"status": "failed", "error": result.get("error")}
-            # If successful but no PR (unexpected)
-            return {"status": "failed", "error": "Jules failed to produce PR"}
+    async def coder_session_node(self, state: CycleState) -> dict[str, Any]:
+        cycle_id = state["cycle_id"]
+        resume_mode = state.get("resume_mode", False)
+        return await self.coder_service.run_coder_session(cycle_id, resume_mode)
 
     async def auditor_node(self, state: CycleState) -> dict[str, Any]:
         """Node for Auditor Agent (Aider/LLM)."""

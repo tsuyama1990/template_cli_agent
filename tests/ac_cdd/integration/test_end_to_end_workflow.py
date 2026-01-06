@@ -60,6 +60,34 @@ class TestEndToEndWorkflow:
         workflow.builder.cleanup.assert_awaited()
 
     @patch("ac_cdd_core.services.workflow.SessionManager")
+    @patch("ac_cdd_core.services.workflow.GitManager")
+    @patch("ac_cdd_core.services.workflow.ensure_api_key")
+    async def test_gen_cycles_failure_workflow(
+        self,
+        mock_auth: MagicMock,
+        mock_git_cls: MagicMock,
+        mock_sm_cls: MagicMock,
+        workflow: WorkflowService,
+    ) -> None:
+        # Setup Graph Mock to simulate failure
+        mock_graph = AsyncMock()
+        mock_graph.ainvoke.return_value = {
+            "status": "architect_failed",
+            "error": "Simulated graph failure",
+        }
+        workflow.builder.build_architect_graph.return_value = mock_graph
+
+        # Mock cleanup
+        workflow.builder.cleanup = AsyncMock()
+
+        # Execute and assert that an exception is raised
+        with pytest.raises(Exception, match="Architect session failed"):
+            await workflow.run_gen_cycles(cycles=2, project_session_id=None)
+
+        # Verify cleanup is still called
+        workflow.builder.cleanup.assert_awaited()
+
+    @patch("ac_cdd_core.services.workflow.SessionManager")
     @patch("ac_cdd_core.services.workflow.ensure_api_key")
     async def test_full_run_cycle_workflow(
         self, mock_auth: MagicMock, mock_sm_cls: MagicMock, workflow: WorkflowService

@@ -10,6 +10,8 @@ from .sandbox import SandboxRunner
 from .service_container import ServiceContainer
 from .services.jules_client import JulesClient
 from .state import CycleState
+from .services.coder_service import CoderService
+from .services.session_manager import SessionManager
 
 
 class GraphBuilder:
@@ -22,8 +24,11 @@ class GraphBuilder:
         # Use jules from services, fallback to direct instantiation if None
         self.jules = services.jules if services.jules else JulesClient()
 
+        self.session_manager = SessionManager()
+        self.coder_service = CoderService(self.jules, self.session_manager)
+
         # Inject dependencies into CycleNodes
-        self.nodes: IGraphNodes = CycleNodes(self.sandbox, self.jules)
+        self.nodes: IGraphNodes = CycleNodes(self.sandbox, self.jules, self.coder_service)
 
     async def cleanup(self) -> None:
         """Cleanup resources, specifically the sandbox."""
