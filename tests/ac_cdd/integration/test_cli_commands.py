@@ -56,14 +56,14 @@ def test_run_cycle_command(mock_dependencies: None) -> None:
 
 def test_run_cycle_command_handles_exception(mock_dependencies: None) -> None:
     """Tests that the CLI's global exception handler catches errors gracefully."""
-    mock_workflow = MagicMock()
-    mock_workflow.run_cycle = AsyncMock(side_effect=Exception("Workflow failed"))
-    with patch("ac_cdd_core.cli._WorkflowServiceHolder.get", return_value=mock_workflow):
+    error_message = "A critical workflow error occurred."
+    with patch("asyncio.run", side_effect=Exception(error_message)):
         result = runner.invoke(app, ["run-cycle", "--id", "01"])
 
     assert result.exit_code == 1
-    assert result.exception is not None
-    assert "Workflow failed" in str(result.exception)
+    assert "An unexpected error occurred" in result.stdout
+    assert error_message in result.stdout
+    assert "Traceback" not in result.stdout
 
 
 def test_finalize_session_command(mock_dependencies: None) -> None:
