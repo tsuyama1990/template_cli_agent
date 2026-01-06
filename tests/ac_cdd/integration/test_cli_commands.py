@@ -29,10 +29,6 @@ def test_init_command(mock_dependencies: None) -> None:
         mock_mgr.load_manifest = AsyncMock(return_value=None)
         mock_mgr.git.ensure_state_branch = AsyncMock()
 
-        # We need to ensure the async loop runs correctly.
-        # The CLI calls asyncio.run(_init_state()).
-        # _init_state instantiates SessionManager.
-
         result = runner.invoke(app, ["init"])
         assert result.exit_code == 0
         assert "Initialization Complete" in result.stdout
@@ -56,6 +52,18 @@ def test_run_cycle_command(mock_dependencies: None) -> None:
         mock_workflow.run_cycle.assert_awaited_once_with(
             cycle_id="01", resume=False, auto=True, start_iter=1, project_session_id=None
         )
+
+
+def test_run_cycle_command_handles_exception(mock_dependencies: None) -> None:
+    """Tests that the CLI's global exception handler catches errors gracefully."""
+    mock_workflow = MagicMock()
+    mock_workflow.run_cycle = AsyncMock(side_effect=Exception("Workflow failed"))
+    with patch("ac_cdd_core.cli._WorkflowServiceHolder.get", return_value=mock_workflow):
+        result = runner.invoke(app, ["run-cycle", "--id", "01"])
+
+    assert result.exit_code == 1
+    assert result.exception is not None
+    assert "Workflow failed" in str(result.exception)
 
 
 def test_finalize_session_command(mock_dependencies: None) -> None:

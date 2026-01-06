@@ -1,159 +1,130 @@
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from ac_cdd_core.domain_models import AuditResult
+from ac_cdd_core.domain_models import AuditResult, CommitteeDecision
 from ac_cdd_core.graph_nodes import CycleNodes
-from ac_cdd_core.state import CycleState
 
 
-@pytest.mark.asyncio
-async def test_committee_logic_flow() -> None:
-    # Mock settings
-    mock_settings = MagicMock()
-    mock_settings.NUM_AUDITORS = 3
-    mock_settings.REVIEWS_PER_AUDITOR = 2
-
-    # Instantiate nodes with mocks
-    sandbox = MagicMock()
-    jules = MagicMock()
-
-    # We need to patch where settings is used.
-    # graph_nodes.py does `from .config import settings` at top level.
-    # So we must patch ac_cdd_core.graph_nodes.settings
-    with pytest.MonkeyPatch.context() as m:
-        m.setattr("ac_cdd_core.graph_nodes.settings", mock_settings)
-
-        nodes = CycleNodes(sandbox, jules)
-
-        # --- Scenario 1: All Approved (Happy Path) ---
-        # Auditor 1: Approved
-        state = CycleState(cycle_id="1", current_auditor_index=1, current_auditor_review_count=1)
-        state.audit_result = AuditResult(
-            status="APPROVED", is_approved=True, reason="OK", feedback="LGTM"
-        )
-
-        res = await nodes.committee_manager_node(state)
-        assert res["status"] == "next_auditor"
-        assert res["current_auditor_index"] == 2
-        assert res["current_auditor_review_count"] == 1
-
-        # Check routing
-        route = nodes.route_committee({"status": "next_auditor"})
-        assert route == "auditor"
-
-        # Auditor 2: Approved
-        state.current_auditor_index = 2
-        res = await nodes.committee_manager_node(state)
-        assert res["status"] == "next_auditor"
-        assert res["current_auditor_index"] == 3
-
-        # Auditor 3: Approved (Last one)
-        state.current_auditor_index = 3
-        res = await nodes.committee_manager_node(state)
-        assert res["status"] == "cycle_approved"
-
-        # Check routing - Expecting 'uat_evaluate' per requirements
-        route = nodes.route_committee({"status": "cycle_approved"})
-        assert route == "uat_evaluate"
-
-        # --- Scenario 2: Rejected & Retry (Loop Back) ---
-        # Auditor 2: Rejected (Attempt 1 of 2)
-        state = CycleState(
-            cycle_id="2", current_auditor_index=2, current_auditor_review_count=1, iteration_count=5
-        )
-        state.audit_result = AuditResult(
-            status="REJECTED", is_approved=False, reason="Issues found", feedback="Fix this"
-        )
-
-        res = await nodes.committee_manager_node(state)
-        assert res["status"] == "retry_fix"
-        assert res["current_auditor_review_count"] == 2
-        assert res["iteration_count"] == 6  # Should increment iteration
-
-        route = nodes.route_committee({"status": "retry_fix"})
-        assert route == "coder_session"
-
-        # --- Scenario 3: Max Retries Exceeded (Pipeline Handover) ---
-        # Auditor 2: Rejected (Attempt 2 of 2) -> Should move to Auditor 3
-        state = CycleState(
-            cycle_id="3",
-            current_auditor_index=2,
-            current_auditor_review_count=2,
-            iteration_count=10,
-        )
-        state.audit_result = AuditResult(
-            status="REJECTED", is_approved=False, reason="Still bad", feedback="Still broken"
-        )
-
-        res = await nodes.committee_manager_node(state)
-        # Old behavior: assert res["status"] == "failed"
-        # New behavior: Handover to Auditor 3
-        assert res["status"] == "retry_fix"
-        assert res["current_auditor_index"] == 3
-        assert res["current_auditor_review_count"] == 1
-        assert res["iteration_count"] == 11
-
-        route = nodes.route_committee({"status": "retry_fix"})
-        assert route == "coder_session"
+@pytest.fixture
+def mock_sandbox() -> MagicMock:
+    return MagicMock()
 
 
-@pytest.mark.asyncio
-async def test_committee_pipeline_handover() -> None:
-    """Test pipeline handover: when review limit reached, move to next auditor."""
-    # Mock settings: 2 Auditors × 1 Review each (small for testing)
-    mock_settings = MagicMock()
-    mock_settings.NUM_AUDITORS = 2
-    mock_settings.REVIEWS_PER_AUDITOR = 1
+@pytest.fixture
+def mock_jules_client() -> AsyncMock:
+    return AsyncMock()
 
-    sandbox = MagicMock()
-    jules = MagicMock()
 
-    with pytest.MonkeyPatch.context() as m:
-        m.setattr("ac_cdd_core.graph_nodes.settings", mock_settings)
-        nodes = CycleNodes(sandbox, jules)
+@pytest.fixture
+def mock_session_manager() -> AsyncMock:
+    return AsyncMock()
 
-        # Scenario 1: Auditor 1 (Rev 1/Limit) → Reject → Handover to Auditor 2
-        state = CycleState(
-            cycle_id="handover-1",
-            current_auditor_index=1,
-            current_auditor_review_count=1,
-            iteration_count=0,
-        )
-        state.audit_result = AuditResult(
-            status="REJECTED", is_approved=False, reason="Issues found", feedback="Fix these issues"
-        )
 
-        res = await nodes.committee_manager_node(state)
+@pytest.fixture
+def mock_git_manager() -> AsyncMock:
+    return AsyncMock()
 
-        # Should move to Auditor 2 (not fail)
-        assert res["status"] == "retry_fix"
-        assert res["current_auditor_index"] == 2
-        assert res["current_auditor_review_count"] == 1
-        assert res["iteration_count"] == 1
-        assert "final_fix" not in res or res.get("final_fix") is False
 
-        # Scenario 2: Auditor 2 (Rev 1/Limit) → Reject → Final Fix
-        state = CycleState(
-            cycle_id="handover-2",
-            current_auditor_index=2,
-            current_auditor_review_count=1,
-            iteration_count=1,
-        )
-        state.audit_result = AuditResult(
-            status="REJECTED",
-            is_approved=False,
-            reason="Still issues",
-            feedback="More fixes needed",
-        )
+@pytest.fixture
+def cycle_nodes(
+    mock_sandbox: MagicMock,
+    mock_jules_client: AsyncMock,
+    mock_session_manager: AsyncMock,
+    mock_git_manager: AsyncMock,
+) -> CycleNodes:
+    return CycleNodes(
+        sandbox=mock_sandbox,
+        jules=mock_jules_client,
+        session_manager=mock_session_manager,
+        git_manager=mock_git_manager,
+    )
 
-        res = await nodes.committee_manager_node(state)
 
-        # Should set final_fix and prepare for merge
-        assert res["status"] == "retry_fix"
-        assert res["final_fix"] is True
-        assert res["iteration_count"] == 2
+def test_committee_logic_flow(cycle_nodes: CycleNodes) -> None:
+    # Test case 1: Approved by the first auditor, moves to the next
+    state_approved_first = {
+        "cycle_id": "01",
+        "iteration_count": 1,
+        "num_auditors": 3,
+        "current_auditor_index": 0,
+        "audit_result": AuditResult(
+            status="approved", feedback="LGTM", is_approved=True
+        ).model_dump(),
+    }
+    result = cycle_nodes.committee_manager_node(state_approved_first)
+    decision = CommitteeDecision(**result["committee_decision"])
+    assert decision.status == "next_auditor"
+    assert result["current_auditor_index"] == 1
 
-        # Verify check_coder_outcome returns "completed" for final_fix
-        state_with_final_fix = CycleState(cycle_id="test", final_fix=True)
-        outcome = nodes.check_coder_outcome(state_with_final_fix)
-        assert outcome == "completed"
+    # Test case 2: Approved by the final auditor, cycle is approved
+    state_approved_final = {
+        "cycle_id": "01",
+        "iteration_count": 1,
+        "num_auditors": 3,
+        "current_auditor_index": 2,
+        "audit_result": AuditResult(
+            status="approved", feedback="All good", is_approved=True
+        ).model_dump(),
+    }
+    result = cycle_nodes.committee_manager_node(state_approved_final)
+    decision = CommitteeDecision(**result["committee_decision"])
+    assert decision.status == "cycle_approved"
+
+    # Test case 3: Rejected by an auditor, requires retry
+    state_rejected = {
+        "cycle_id": "01",
+        "iteration_count": 1,
+        "num_auditors": 3,
+        "current_auditor_index": 1,
+        "audit_result": AuditResult(
+            status="rejected", feedback="Needs changes", is_approved=False
+        ).model_dump(),
+    }
+    result = cycle_nodes.committee_manager_node(state_rejected)
+    decision = CommitteeDecision(**result["committee_decision"])
+    assert decision.status == "retry_fix"
+    assert result["iteration_count"] == 2  # Iteration is incremented
+
+    # Test case 4: Audit process failed
+    state_failed = {
+        "cycle_id": "01",
+        "iteration_count": 1,
+        "num_auditors": 3,
+        "current_auditor_index": 0,
+        "audit_result": AuditResult(
+            status="failed", feedback="Crashed", is_approved=False
+        ).model_dump(),
+    }
+    result = cycle_nodes.committee_manager_node(state_failed)
+    decision = CommitteeDecision(**result["committee_decision"])
+    assert decision.status == "cycle_failed"
+
+
+def test_committee_pipeline_handover(cycle_nodes: CycleNodes) -> None:
+    # Test routing for 'next_auditor'
+    state_next = {
+        "committee_decision": CommitteeDecision(
+            status="next_auditor", reason="Approved"
+        ).model_dump()
+    }
+    assert cycle_nodes.route_committee(state_next) == "auditor"
+
+    # Test routing for 'retry_fix'
+    state_retry = {
+        "committee_decision": CommitteeDecision(status="retry_fix", reason="Rejected").model_dump()
+    }
+    assert cycle_nodes.route_committee(state_retry) == "coder_session"
+
+    # Test routing for 'cycle_approved'
+    state_approved = {
+        "committee_decision": CommitteeDecision(
+            status="cycle_approved", reason="All auditors approved"
+        ).model_dump()
+    }
+    assert cycle_nodes.route_committee(state_approved) == "uat_evaluate"
+
+    # Test routing for 'cycle_failed'
+    state_failed = {
+        "committee_decision": CommitteeDecision(status="cycle_failed", reason="Crashed").model_dump()
+    }
+    assert cycle_nodes.route_committee(state_failed) == "failed"

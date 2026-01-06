@@ -20,6 +20,7 @@ import google.auth
 import httpx
 from ac_cdd_core.agents import manager_agent
 from ac_cdd_core.config import settings
+from ac_cdd_core.domain_models import JulesSessionResult
 from ac_cdd_core.services.git_ops import GitManager
 from ac_cdd_core.session_manager import SessionManager
 from ac_cdd_core.utils import logger
@@ -240,16 +241,15 @@ class JulesClient:
         files: list[str] | None = None,
         require_plan_approval: bool = False,
         **extra: Any,
-    ) -> dict[str, Any]:
+    ) -> JulesSessionResult:
         """Orchestrates the Jules session."""
         if self.api_client.api_key == "dummy_jules_key" and not self._is_httpx_mocked():
             logger.info("Test Mode: Simulating Jules Session run.")
-            return {
-                "session_name": f"sessions/dummy-{session_id}",
-                "pr_url": "https://github.com/dummy/repo/pull/1",
-                "status": "success",
-                "cycles": ["01", "02"],
-            }
+            return JulesSessionResult(
+                session_name=f"sessions/dummy-{session_id}",
+                pr_url="https://github.com/dummy/repo/pull/1",
+                status="success",
+            )
 
         if not self.api_client.api_key and "PYTEST_CURRENT_TEST" not in os.environ:
             errmsg = "Missing JULES_API_KEY or ADC credentials."
@@ -275,12 +275,15 @@ class JulesClient:
         # Session persistence is handled by the caller (graph_nodes.py)
 
         if require_plan_approval:
-            return {"session_name": session_name, "status": "running"}
+            return JulesSessionResult(session_name=session_name, status="running")
 
         logger.info(f"Session created: {session_name}. Waiting for PR creation...")
-        result = await self.wait_for_completion(session_name, require_plan_approval=False)
-        result["session_name"] = session_name
-        return result
+        result_dict = await self.wait_for_completion(session_name, require_plan_approval=False)
+        return JulesSessionResult(
+            session_name=session_name,
+            status=result_dict.get("status", "unknown"),
+            pr_url=result_dict.get("pr_url"),
+        )
 
     async def _prepare_git_context(self) -> tuple[str, str, str]:
         try:
@@ -358,21 +361,24 @@ class JulesClient:
                 emsg = f"Network error creating session: {e}"
                 raise JulesSessionError(emsg) from e
 
-    async def continue_session(self, session_name: str, prompt: str) -> dict[str, Any]:
+    async def continue_session(self, session_name: str, prompt: str) -> JulesSessionResult:
         """Continues an existing session."""
         if self.api_client.api_key == "dummy_jules_key" and not self._is_httpx_mocked():
-            return {
-                "session_name": session_name,
-                "pr_url": "https://github.com/dummy/repo/pull/2",
-                "status": "success",
-            }
+            return JulesSessionResult(
+                session_name=session_name,
+                pr_url="https://github.com/dummy/repo/pull/2",
+                status="success",
+            )
 
         logger.info(f"Continuing Session {session_name} with info...")
         await self._send_message(session_name, prompt)
         logger.info(f"Waiting for Jules to process feedback for {session_name}...")
-        result = await self.wait_for_completion(session_name)
-        result["session_name"] = session_name
-        return result
+        result_dict = await self.wait_for_completion(session_name)
+        return JulesSessionResult(
+            session_name=session_name,
+            status=result_dict.get("status", "unknown"),
+            pr_url=result_dict.get("pr_url"),
+        )
 
     async def _check_for_inquiry(
         self, client: httpx.AsyncClient, session_url: str, processed_ids: set[str]

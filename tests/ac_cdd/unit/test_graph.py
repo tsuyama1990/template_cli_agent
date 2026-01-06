@@ -1,112 +1,205 @@
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from ac_cdd_core.domain_models import JulesSessionResult
 from ac_cdd_core.graph import GraphBuilder
 from ac_cdd_core.service_container import ServiceContainer
+from ac_cdd_core.services.artifacts import ArtifactManager
+from ac_cdd_core.services.contracts import ContractManager
+from ac_cdd_core.services.file_ops import FilePatcher
 from ac_cdd_core.state import CycleState
-from langgraph.graph.state import CompiledStateGraph
 
 
 @pytest.fixture
-def mock_sandbox() -> MagicMock:
-    sandbox = MagicMock()
-    # Mock run_command to return success tuple
-    sandbox.run_command = AsyncMock(return_value=("PASS", "", 0))
-    return sandbox
+def mock_sandbox_runner() -> AsyncMock:
+    return AsyncMock()
 
 
 @pytest.fixture
-def mock_jules() -> MagicMock:
-    client = MagicMock()
-    # Mock methods used in graph nodes
-    client.start_architect_session = AsyncMock(return_value={"status": "success"})
-
-    async def mock_run_session(*args: Any, **kwargs: Any) -> dict[str, Any]:
-        return {
-            "status": "success",
-            "pr_url": "http://pr",
-            "session_name": kwargs.get("session_id", "sess-123"),
-        }
-
-    client.run_session = AsyncMock(side_effect=mock_run_session)
-    client.continue_session = AsyncMock(return_value={"status": "success", "pr_url": "http://pr"})
-    return client
+def mock_jules_client() -> AsyncMock:
+    return AsyncMock()
 
 
 @pytest.fixture
-def services(mock_sandbox: MagicMock, mock_jules: MagicMock) -> ServiceContainer:
-    # GraphBuilder now expects a ServiceContainer, not raw clients.
-    container = ServiceContainer.default()
-    # We replace the real instances with our mocks
-    container.sandbox = mock_sandbox
-    container.jules = mock_jules
-    return container
+def mock_session_manager() -> AsyncMock:
+    return AsyncMock()
 
 
 @pytest.fixture
-def graph_builder(services: ServiceContainer) -> GraphBuilder:
-    # Updated GraphBuilder signature: (services)
-    return GraphBuilder(services)
+def mock_git_manager() -> AsyncMock:
+    return AsyncMock()
+
+
+@pytest.fixture
+def mock_file_patcher() -> MagicMock:
+    return MagicMock(spec=FilePatcher)
+
+
+@pytest.fixture
+def mock_contract_manager() -> MagicMock:
+    return MagicMock(spec=ContractManager)
+
+
+@pytest.fixture
+def mock_artifact_manager() -> MagicMock:
+    return MagicMock(spec=ArtifactManager)
+
+
+@pytest.fixture
+def mock_services(
+    mock_jules_client: AsyncMock,
+    mock_file_patcher: MagicMock,
+    mock_contract_manager: MagicMock,
+    mock_artifact_manager: MagicMock,
+) -> ServiceContainer:
+    return ServiceContainer(
+        jules=mock_jules_client,
+        file_patcher=mock_file_patcher,
+        contract_manager=mock_contract_manager,
+        artifact_manager=mock_artifact_manager,
+    )
 
 
 @pytest.mark.asyncio
-async def test_architect_graph_structure(graph_builder: GraphBuilder) -> None:
-    """Test that architect graph is built correctly."""
-    graph = graph_builder.build_architect_graph()
-    assert isinstance(graph, CompiledStateGraph)
+@patch("ac_cdd_core.graph.SandboxRunner")
+@patch("ac_cdd_core.graph.GitManager")
+@patch("ac_cdd_core.graph.SessionManager")
+@patch("ac_cdd_core.graph.JulesClient")
+async def test_graph_builder_initialization(
+    mock_jules_cls: MagicMock,
+    mock_session_manager_cls: MagicMock,
+    mock_git_manager_cls: MagicMock,
+    mock_sandbox_cls: MagicMock,
+) -> None:
+    """Tests that GraphBuilder initializes its components correctly."""
+    mock_jules_instance = mock_jules_cls.return_value
+    mock_session_manager_instance = mock_session_manager_cls.return_value
+    mock_git_manager_instance = mock_git_manager_cls.return_value
+    # Use AsyncMock for the instance so its methods are awaitable
+    mock_sandbox_instance = AsyncMock()
+    mock_sandbox_cls.return_value = mock_sandbox_instance
 
+    services = ServiceContainer(
+        jules=mock_jules_instance,
+        file_patcher=MagicMock(spec=FilePatcher),
+        contract_manager=MagicMock(spec=ContractManager),
+        artifact_manager=MagicMock(spec=ArtifactManager),
+    )
+    builder = GraphBuilder(services)
 
-@pytest.mark.asyncio
-async def test_coder_graph_structure(graph_builder: GraphBuilder) -> None:
-    """Test that coder graph is built correctly."""
-    graph = graph_builder.build_coder_graph()
-    assert isinstance(graph, CompiledStateGraph)
+    assert builder.sandbox == mock_sandbox_instance
+    assert builder.jules == mock_jules_instance
+    assert builder.session_manager == mock_session_manager_instance
+    assert builder.git_manager == mock_git_manager_instance
+
+    # Test cleanup
+    await builder.cleanup()
+    mock_sandbox_instance.cleanup.assert_awaited_once()
 
 
 @pytest.mark.asyncio
 async def test_architect_graph_execution(
-    graph_builder: GraphBuilder, mock_jules: MagicMock
+    mock_services: ServiceContainer, mock_jules_client: AsyncMock
 ) -> None:
-    """Test architect graph execution flow."""
-    graph = graph_builder.build_architect_graph()
-    initial_state = CycleState(cycle_id="00", session_id="test-session")
+    """Tests that the architect graph executes the main node."""
+    # Arrange
+    mock_jules_client.run_session.return_value = JulesSessionResult(
+        status="success",
+        session_name="test-session",
+        pr_url="http://github.com/pr/1",
+    )
+    initial_state = CycleState(cycle_id="01")
+    config = {"configurable": {"thread_id": "test-thread"}}
 
-    config = {"configurable": {"thread_id": "1"}}
+    with patch("ac_cdd_core.graph.CycleNodes", spec=True) as mock_cycle_nodes_cls:
+        mock_nodes_instance = mock_cycle_nodes_cls.return_value
+        mock_nodes_instance.architect_session_node.return_value = {
+            "status": "architect_completed",
+            "pr_url": "http://github.com/pr/1",
+        }
 
-    result = await graph.ainvoke(initial_state, config)
+        builder = GraphBuilder(mock_services)
+        graph = builder.build_architect_graph()
 
-    # In CycleNodes.architect_session_node, we return {"status": "architect_completed"}
-    # This should merge into CycleState.
-    assert result["status"] == "architect_completed"
+        # Act
+        result_state = await graph.ainvoke(initial_state.model_dump(), config=config)
 
-    # Verify project_session_id has timestamp (session_id in state maps to project_session_id in logic)
-    # Actually CycleNodes updates 'project_session_id' key in returned dict
-    assert result["project_session_id"].startswith("architect-cycle-00-")
+        # Assert
+        mock_nodes_instance.architect_session_node.assert_awaited_once()
+        # Verify that the node was called with the correct state object
+        call_args, _ = mock_nodes_instance.architect_session_node.await_args
+        assert isinstance(call_args[0], CycleState)
+        assert call_args[0].cycle_id == "01"
+        assert result_state["status"] == "architect_completed"
 
 
 @pytest.mark.asyncio
-async def test_coder_graph_execution(services: ServiceContainer, mock_jules: MagicMock) -> None:
-    """Test coder graph execution flow."""
-    initial_state = CycleState(cycle_id="01", iteration_count=0)
+async def test_coder_graph_full_flow(
+    mock_services: ServiceContainer, mock_jules_client: AsyncMock
+) -> None:
+    """Tests a simplified happy path of the coder graph."""
+    initial_state = CycleState(cycle_id="01", iteration_count=1)
+    config = {"configurable": {"thread_id": "test-thread"}}
 
-    with (
-        patch("ac_cdd_core.graph_nodes.AuditOrchestrator") as mock_audit_cls,
-        patch("ac_cdd_core.graph_nodes.LLMReviewer") as mock_reviewer_cls,
-    ):
-        # Mock Auditor (for older flow if used)
-        mock_audit_instance = mock_audit_cls.return_value
-        mock_audit_instance.run_audit = AsyncMock(return_value=MagicMock(status="approved"))
+    with patch("ac_cdd_core.graph.CycleNodes", spec=True) as mock_cycle_nodes_cls:
+        mock_nodes = mock_cycle_nodes_cls.return_value
+        # Mock node behaviors
+        mock_nodes.coder_session_node.return_value = {"status": "ready_for_audit"}
+        mock_nodes.check_coder_outcome.return_value = "ready_for_audit"
+        mock_nodes.auditor_node.return_value = {"status": "approved"}
+        mock_nodes.committee_manager_node.return_value = {"status": "cycle_approved"}
+        mock_nodes.route_committee.return_value = "uat_evaluate"
+        mock_nodes.uat_evaluate_node.return_value = {"status": "cycle_completed"}
 
-        # Mock Reviewer (for new flow: auditor_node)
-        mock_reviewer_instance = mock_reviewer_cls.return_value
-        mock_reviewer_instance.review_code = AsyncMock(return_value="NO ISSUES FOUND")
-
-        builder = GraphBuilder(services)
+        builder = GraphBuilder(mock_services)
         graph = builder.build_coder_graph()
 
-        config = {"configurable": {"thread_id": "1"}}
-        # We need to assign result to satisfy F841 or simply await it
-        _ = await graph.ainvoke(initial_state, config)
+        # Act
+        result_state = await graph.ainvoke(initial_state.model_dump(), config=config)
 
-        # Ideally we should assert something about the result, but preserving existing behavior
+        # Assert
+        mock_nodes.coder_session_node.assert_awaited_once()
+        mock_nodes.auditor_node.assert_awaited_once()
+        mock_nodes.committee_manager_node.assert_called_once()
+        mock_nodes.uat_evaluate_node.assert_awaited_once()
+        assert result_state["status"] == "cycle_completed"
+
+
+@pytest.mark.asyncio
+async def test_coder_graph_retry_loop(
+    mock_services: ServiceContainer, mock_jules_client: AsyncMock
+) -> None:
+    """Tests the retry loop between coder and auditor."""
+    initial_state = CycleState(cycle_id="01", iteration_count=1)
+    config = {"configurable": {"thread_id": "test-thread"}}
+
+    with patch("ac_cdd_core.graph.CycleNodes", spec=True) as mock_cycle_nodes_cls:
+        mock_nodes = mock_cycle_nodes_cls.return_value
+        # Mock node behaviors to simulate one rejection, then approval
+        mock_nodes.coder_session_node.side_effect = [
+            {"status": "ready_for_audit"},  # First call
+            {"status": "ready_for_audit"},  # Second call after retry
+        ]
+        mock_nodes.check_coder_outcome.return_value = "ready_for_audit"
+        mock_nodes.auditor_node.side_effect = [
+            {"status": "rejected"},
+            {"status": "approved"},
+        ]
+        mock_nodes.committee_manager_node.side_effect = [
+            {"status": "retry_fix"},
+            {"status": "cycle_approved"},
+        ]
+        mock_nodes.route_committee.side_effect = ["coder_session", "uat_evaluate"]
+        mock_nodes.uat_evaluate_node.return_value = {"status": "cycle_completed"}
+
+        builder = GraphBuilder(mock_services)
+        graph = builder.build_coder_graph()
+
+        # Act
+        await graph.ainvoke(initial_state.model_dump(), config=config)
+
+        # Assert
+        assert mock_nodes.coder_session_node.await_count == 2
+        assert mock_nodes.auditor_node.await_count == 2
+        assert mock_nodes.committee_manager_node.call_count == 2
+        mock_nodes.uat_evaluate_node.assert_awaited_once()
