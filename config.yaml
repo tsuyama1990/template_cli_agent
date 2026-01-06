@@ -1,0 +1,11 @@
+project_name: FePt_Alloy_UAT
+system:
+  elements: [Fe, Pt]
+  composition: {Fe: 0.5, Pt: 0.5}
+  lattice: fcc
+  num_structures: 10
+exploration:
+  temperature: 500.0
+sampling:
+  method: random
+  fraction: 0.8

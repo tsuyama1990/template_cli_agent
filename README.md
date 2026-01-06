@@ -182,6 +182,41 @@ ac-cdd finalize-session
 
 Creates a **final Pull Request** from integration branch to `main`.
 
+---
+
+## MLIP-AutoPipe Usage
+
+The `mlip-autopipec` tool, built using the AC-CDD framework, is a command-line application for generating Machine Learning Interatomic Potential (MLIP) training data.
+
+### Running the Pipeline
+
+1.  **Create a Configuration File:**
+    Create a `config.yaml` file in your project root. This file defines the parameters for the data generation pipeline.
+
+    **Example `config.yaml`:**
+    ```yaml
+    project_name: FePt_Alloy
+    system:
+      elements: [Fe, Pt]
+      composition: {Fe: 0.5, Pt: 0.5}
+      lattice: fcc
+      num_structures: 100
+    exploration:
+      temperature: 500.0
+    sampling:
+      method: random
+      fraction: 0.8
+    ```
+
+2.  **Run the CLI:**
+    Execute the pipeline from your terminal using the following command:
+    ```bash
+    mlip-autopipec --config config.yaml
+    ```
+    The tool will then generate the specified structures and save them to an ASE database file (e.g., `FePt_Alloy.db`).
+
+---
+
 ## Contributing
 
 If you want to modify the AC-CDD framework itself:
