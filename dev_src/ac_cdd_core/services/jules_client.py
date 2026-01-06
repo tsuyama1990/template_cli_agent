@@ -443,7 +443,9 @@ class JulesClient:
                         await self._process_inquiries(
                             client, session_url, state, processed_activity_ids
                         )
-                        success_result = self._check_success_state(data, state)
+                        success_result = await self._check_success_state(
+                            client, session_url, data, state
+                        )
                         if success_result:
                             return success_result
                         self._check_failure_state(data, state)
@@ -729,16 +731,36 @@ class JulesClient:
                 await self._send_message(session_url, fallback_msg)
                 processed_ids.add(act_id)
 
-    def _check_success_state(self, data: dict[str, Any], state: str) -> dict[str, Any] | None:
+    async def _check_success_state(  # noqa: C901
+        self, client: httpx.AsyncClient, session_url: str, data: dict[str, Any], state: str
+    ) -> dict[str, Any] | None:
         if state not in ["SUCCEEDED", "COMPLETED"]:
             return None
 
+        # First check session outputs
         for output in data.get("outputs", []):
             if "pullRequest" in output:
                 pr_url = output["pullRequest"].get("url")
                 if pr_url:
                     self.console.print(f"\n[bold green]PR Created: {pr_url}[/bold green]")
                     return {"pr_url": pr_url, "status": "success", "raw": data}
+
+        # Fallback: check activities for PR (sometimes PR is in activities but not outputs)
+        try:
+            act_url = f"{session_url}/activities"
+            act_resp = await client.get(act_url, headers=self._get_headers(), timeout=10.0)
+            if act_resp.status_code == httpx.codes.OK:
+                activities = act_resp.json().get("activities", [])
+                for activity in activities:
+                    if "pullRequest" in activity:
+                        pr_data = activity.get("pullRequest", {})
+                        pr_url = pr_data.get("url")
+                        if pr_url:
+                            self.console.print(f"\n[bold green]PR Created: {pr_url}[/bold green]")
+                            logger.info(f"Found PR in activities (not in session outputs): {pr_url}")
+                            return {"pr_url": pr_url, "status": "success", "raw": data}
+        except Exception as e:
+            logger.debug(f"Failed to check activities for PR: {e}")
 
         if state == "SUCCEEDED":
             self.console.print("[yellow]Session Succeeded but NO PR found.[/yellow]")
