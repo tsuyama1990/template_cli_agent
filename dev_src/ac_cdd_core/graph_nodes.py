@@ -92,7 +92,40 @@ class CycleNodes(IGraphNodes):
             }
         return {"status": "architect_failed", "error": result.get("error")}
 
-    async def coder_session_node(self, state: CycleState) -> dict[str, Any]:
+    async def _send_audit_feedback_to_session(
+        self, session_id: str, feedback: str
+    ) -> dict[str, Any] | None:
+        """Send audit feedback to existing Jules session and wait for new PR.
+
+        Returns result dict if successful, None if should create new session.
+        """
+        console.print(
+            f"[bold yellow]Sending Audit Feedback to existing Jules session: {session_id}[/bold yellow]"
+        )
+        try:
+            feedback_msg = (
+                f"# AUDIT FEEDBACK - PLEASE ADDRESS THESE ISSUES\n\n"
+                f"{feedback}\n\n"
+                f"Please revise your implementation to address the above feedback and create a new PR."
+            )
+            await self.jules._send_message(
+                self.jules._get_session_url(session_id),
+                feedback_msg
+            )
+
+            # Wait for Jules to process feedback and create new PR
+            result = await self.jules.wait_for_completion(session_id)
+
+            if result.get("status") == "success" or result.get("pr_url"):
+                return {"status": "ready_for_audit", "pr_url": result.get("pr_url")}
+        except Exception as e:
+            console.print(f"[yellow]Failed to send feedback to existing session: {e}. Creating new session...[/yellow]")
+        else:
+            console.print("[yellow]Jules session did not produce PR after feedback. Creating new session...[/yellow]")
+        return None
+
+
+    async def coder_session_node(self, state: CycleState) -> dict[str, Any]:  # noqa: C901, PLR0912
         """Node for Coder Agent (Jules)."""
         cycle_id = state.get("cycle_id")
         iteration = state.get("iteration_count")
@@ -126,10 +159,19 @@ class CycleNodes(IGraphNodes):
 
         last_audit = state.get("audit_result")
         if state.get("status") == "retry_fix" and last_audit and last_audit.feedback:
-            console.print(
-                "[bold yellow]Injecting Audit Feedback into Coder Prompt...[/bold yellow]"
-            )
-            instruction += f"\n\n# PREVIOUS AUDIT FEEDBACK (MUST FIX)\n{last_audit.feedback}"
+            # Check if we have an existing Jules session to reuse
+            if cycle_manifest and cycle_manifest.jules_session_id:
+                retry_result = await self._send_audit_feedback_to_session(
+                    cycle_manifest.jules_session_id,
+                    last_audit.feedback
+                )
+                if retry_result:
+                    return retry_result
+            else:
+                console.print(
+                    "[bold yellow]Injecting Audit Feedback into Coder Prompt...[/bold yellow]"
+                )
+                instruction += f"\n\n# PREVIOUS AUDIT FEEDBACK (MUST FIX)\n{last_audit.feedback}"
 
         target_files = settings.get_target_files()
         context_files = settings.get_context_files()
