@@ -248,9 +248,18 @@ class CycleNodes(IGraphNodes):
                 f for f in changed_file_paths if Path(f).suffix in reviewable_extensions
             ]
 
+            # CRITICAL: Filter out framework/dev files - only review application code
+            # The Auditor should only review what Jules was asked to create (src/, tests/)
+            # NOT the framework itself (dev_src/, dev_documents/)
+            excluded_prefixes = ("dev_src/", "dev_documents/", ".git/", ".venv/", "venv/")
+            reviewable_files = [
+                f for f in reviewable_files
+                if not any(f.startswith(prefix) for prefix in excluded_prefixes)
+            ]
+
             if not reviewable_files:
                 console.print(
-                    "[yellow]Warning: No reviewable files found in changes. Using fallback.[/yellow]"
+                    "[yellow]Warning: No reviewable application files found in changes. Using fallback.[/yellow]"
                 )
                 # Fallback to static configuration
                 reviewable_files = settings.get_target_files()
