@@ -20,6 +20,8 @@ dependencies = [
     "litellm>=1.80.11",
     "typer",
     "rich",
+    "ase",
+    "pyyaml",
 ]
 
 [tool.uv]
