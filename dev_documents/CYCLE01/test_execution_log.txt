@@ -1,0 +1,74 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0
+rootdir: /app
+configfile: pyproject.toml
+plugins: langsmith-0.4.59, hypothesis-6.148.7, anyio-4.12.0, cov-7.0.0, logfire-4.16.0, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 14 items
+
+tests/integration/test_cli_workflow.py s                                 [  7%]
+tests/unit/common/test_pydantic_models.py .......                        [ 57%]
+tests/unit/generators/test_alloy_generator.py ..                         [ 71%]
+tests/unit/pipeline/test_orchestrator.py ..                              [ 85%]
+tests/unit/samplers/test_random_sampler.py ..                            [100%]
+
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.12-final-0 _______________
+
+Name                                                 Stmts   Miss  Cover   Missing
+----------------------------------------------------------------------------------
+dev_src/__init__.py                                      0      0   100%
+dev_src/ac_cdd_core/__init__.py                          0      0   100%
+dev_src/ac_cdd_core/agents.py                           66     66     0%   1-134
+dev_src/ac_cdd_core/cli.py                              76     76     0%   1-178
+dev_src/ac_cdd_core/config.py                          178    178     0%   1-279
+dev_src/ac_cdd_core/contracts/__init__.py                0      0   100%
+dev_src/ac_cdd_core/domain_models.py                    89     89     0%   1-163
+dev_src/ac_cdd_core/error_messages.py                    7      7     0%   4-18
+dev_src/ac_cdd_core/graph.py                            40     40     0%   1-89
+dev_src/ac_cdd_core/graph_nodes.py                     183    183     0%   1-390
+dev_src/ac_cdd_core/hash_utils.py                       25     25     0%   1-30
+dev_src/ac_cdd_core/interfaces.py                        5      5     0%   1-19
+dev_src/ac_cdd_core/messages.py                         50     50     0%   3-155
+dev_src/ac_cdd_core/process_runner.py                   23     23     0%   1-50
+dev_src/ac_cdd_core/sandbox.py                         118    118     0%   1-191
+dev_src/ac_cdd_core/service_container.py                18     18     0%   1-22
+dev_src/ac_cdd_core/services/__init__.py                 5      5     0%   1-6
+dev_src/ac_cdd_core/services/artifacts.py               14     14     0%   1-28
+dev_src/ac_cdd_core/services/audit_orchestrator.py      72     72     0%   1-140
+dev_src/ac_cdd_core/services/contracts.py               26     26     0%   1-43
+dev_src/ac_cdd_core/services/file_ops.py               103    103     0%   1-159
+dev_src/ac_cdd_core/services/git_ops.py                275    275     0%   1-504
+dev_src/ac_cdd_core/services/jules_client.py           580    580     0%   1-883
+dev_src/ac_cdd_core/services/llm_reviewer.py            26     26     0%   1-90
+dev_src/ac_cdd_core/services/plan_auditor.py            24     24     0%   1-66
+dev_src/ac_cdd_core/services/project.py                 32     32     0%   1-62
+dev_src/ac_cdd_core/services/workflow.py               138    138     0%   1-245
+dev_src/ac_cdd_core/session_manager.py                  65     65     0%   3-108
+dev_src/ac_cdd_core/state.py                            62     62     0%   1-98
+dev_src/ac_cdd_core/tools.py                            21     21     0%   1-48
+dev_src/ac_cdd_core/utils.py                            58     58     0%   1-136
+dev_src/ac_cdd_core/validators.py                       41     41     0%   3-86
+src/mlip_autopipec/__init__.py                           0      0   100%
+src/mlip_autopipec/cli/__init__.py                       0      0   100%
+src/mlip_autopipec/cli/main.py                          69     46    33%   43-56, 82-131, 135
+src/mlip_autopipec/common/__init__.py                    0      0   100%
+src/mlip_autopipec/common/exceptions.py                  6      0   100%
+src/mlip_autopipec/common/pydantic_models.py            19      0   100%
+src/mlip_autopipec/explorers/__init__.py                 0      0   100%
+src/mlip_autopipec/explorers/md_engine.py               37     21    43%   36-38, 51-82, 86, 95
+src/mlip_autopipec/factories.py                         19     13    32%   32-38, 54-63
+src/mlip_autopipec/generators/__init__.py                0      0   100%
+src/mlip_autopipec/generators/alloy.py                  49      5    90%   75-76, 89, 111-114
+src/mlip_autopipec/generators/base.py                    5      0   100%
+src/mlip_autopipec/interfaces.py                         4      0   100%
+src/mlip_autopipec/pipeline/__init__.py                  0      0   100%
+src/mlip_autopipec/pipeline/orchestrator.py             65     23    65%   24-25, 28-29, 62, 64-67, 77, 79-82, 89, 92-95, 101-104
+src/mlip_autopipec/samplers/__init__.py                  0      0   100%
+src/mlip_autopipec/samplers/base.py                      5      0   100%
+src/mlip_autopipec/samplers/random.py                   30      8    73%   28-29, 53-57, 61-66
+src/mlip_autopipec/storage/__init__.py                   0      0   100%
+src/mlip_autopipec/storage/database_manager.py          31     21    32%   27-28, 32-37, 50-65
+----------------------------------------------------------------------------------
+TOTAL                                                 2759   2557     7%
+======================== 13 passed, 1 skipped in 2.52s =========================

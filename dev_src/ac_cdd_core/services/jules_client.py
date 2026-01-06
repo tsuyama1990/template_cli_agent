@@ -629,6 +629,7 @@ class JulesClient:
             self._load_cycle_docs(current_cycle_id, context_parts)
 
         import json
+
         plan_steps = plan.get("steps", [])
         plan_text = json.dumps(plan_steps, indent=2)
         context_parts.append(f"# GENERATED PLAN TO REVIEW\n{plan_text}\n")
@@ -757,7 +758,9 @@ class JulesClient:
                         pr_url = pr_data.get("url")
                         if pr_url:
                             self.console.print(f"\n[bold green]PR Created: {pr_url}[/bold green]")
-                            logger.info(f"Found PR in activities (not in session outputs): {pr_url}")
+                            logger.info(
+                                f"Found PR in activities (not in session outputs): {pr_url}"
+                            )
                             return {"pr_url": pr_url, "status": "success", "raw": data}
         except Exception as e:
             logger.debug(f"Failed to check activities for PR: {e}")
