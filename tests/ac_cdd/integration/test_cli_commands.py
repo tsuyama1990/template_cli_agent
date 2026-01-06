@@ -43,6 +43,18 @@ def test_gen_cycles_command(mock_dependencies: None) -> None:
         mock_workflow.run_gen_cycles.assert_awaited_once_with(3, None)
 
 
+def test_gen_cycles_command_handles_exception(mock_dependencies: None) -> None:
+    """Tests that the gen-cycles command handles exceptions gracefully."""
+    error_message = "A critical generation error occurred."
+    with patch("asyncio.run", side_effect=Exception(error_message)):
+        result = runner.invoke(app, ["gen-cycles", "--cycles", "3"])
+
+    assert result.exit_code == 1
+    assert "An unexpected error occurred" in result.stdout
+    assert error_message in result.stdout
+    assert "Traceback" not in result.stdout
+
+
 def test_run_cycle_command(mock_dependencies: None) -> None:
     mock_workflow = MagicMock()
     mock_workflow.run_cycle = AsyncMock()

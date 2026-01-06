@@ -90,7 +90,15 @@ def gen_cycles(
     """
     Architect Phase: Generate cycle specs based on requirements.
     """
-    asyncio.run(_WorkflowServiceHolder.get().run_gen_cycles(cycles, project_session_id))
+    try:
+        asyncio.run(_WorkflowServiceHolder.get().run_gen_cycles(cycles, project_session_id))
+    except Exception as e:
+        # This is the global exception handler.
+        console.print("[bold red]An unexpected error occurred.[/bold red]")
+        if os.environ.get("DEBUG"):
+            raise  # Reraise for a full traceback in debug mode
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(code=1) from e
 
 
 @app.command()
