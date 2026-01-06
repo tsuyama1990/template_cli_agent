@@ -2,6 +2,7 @@ from datetime import datetime
 
 import pytest
 from ac_cdd_core.domain_models import CycleManifest, ProjectManifest
+from pydantic import ValidationError
 
 
 class TestProjectManifest:
@@ -36,9 +37,17 @@ class TestProjectManifest:
     def test_manifest_validation(self) -> None:
         """Test validation rules."""
         # Missing required fields
-        with pytest.raises(ValueError, match="Field required"):
+        with pytest.raises(ValidationError):
             ProjectManifest(project_session_id="only-id")
 
         # Invalid cycle status
-        with pytest.raises(ValueError, match="Input should be"):
+        with pytest.raises(ValidationError):
             CycleManifest(id="01", status="invalid_status")
+
+    def test_manifest_validation_empty_strings(self) -> None:
+        """Test that empty strings are not allowed for key fields."""
+        with pytest.raises(ValidationError):
+            ProjectManifest(project_session_id="", integration_branch="dev/main")
+
+        with pytest.raises(ValidationError):
+            ProjectManifest(project_session_id="test", integration_branch="")

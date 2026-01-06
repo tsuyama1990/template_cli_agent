@@ -17,6 +17,7 @@ async def test_audit_rejection_loop() -> None:
     mock_services.jules = AsyncMock()  # JulesClient is async
     mock_services.sandbox = MagicMock()
     mock_services.reviewer = MagicMock()
+    mock_services.session = AsyncMock()
 
     # Mock Jules run session
     mock_services.jules.run_session = AsyncMock(return_value={"pr_url": "http://pr"})
@@ -57,5 +58,6 @@ async def test_audit_rejection_loop() -> None:
             initial_state, {"configurable": {"thread_id": "test_thread"}, "recursion_limit": 50}
         )
 
+        mock_services.session.start_session.assert_called_once()
         assert mock_services.reviewer.review_code.call_count == 6
         assert final_state.get("final_fix") is True

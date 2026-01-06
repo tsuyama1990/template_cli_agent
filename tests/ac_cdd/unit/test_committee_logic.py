@@ -1,3 +1,4 @@
+"""Tests for the committee of auditors logic in the coder graph."""
 from unittest.mock import MagicMock
 
 import pytest
@@ -8,6 +9,10 @@ from ac_cdd_core.state import CycleState
 
 @pytest.mark.asyncio
 async def test_committee_logic_flow() -> None:
+    """
+    Tests the core logic of the committee manager node, including approval,
+    rejection, retry, and handover to the next auditor.
+    """
     # Mock settings
     mock_settings = MagicMock()
     mock_settings.NUM_AUDITORS = 3

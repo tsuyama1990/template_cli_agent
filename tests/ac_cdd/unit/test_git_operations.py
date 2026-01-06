@@ -219,3 +219,13 @@ async def test_get_changed_files(git_manager: GitManager) -> None:
         assert len(files) == 5
         assert "file1.py" in files
         assert "file5.py" in files
+
+
+@pytest.mark.asyncio
+async def test_git_command_failure(git_manager: GitManager) -> None:
+    """Test that a failing git command is handled gracefully."""
+    with patch.object(git_manager.runner, "run_command", new_callable=AsyncMock) as mock_run:
+        mock_run.side_effect = RuntimeError("Git command failed")
+
+        with pytest.raises(RuntimeError):
+            await git_manager.ensure_clean_state()

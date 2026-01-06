@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from ac_cdd_core.domain_models import PlanAuditResult
 from ac_cdd_core.services.plan_auditor import PlanAuditor
+from pydantic import ValidationError
 
 
 @pytest.fixture
@@ -55,3 +56,13 @@ async def test_audit_plan_rejected(plan_auditor: PlanAuditor, mock_agent: MagicM
 
     assert result.status == "REJECTED"
     assert result.feedback == "Fix it"
+
+
+def test_plan_audit_result_validation():
+    """Test that PlanAuditResult raises an error if feedback is missing on rejection."""
+    with pytest.raises(ValidationError) as excinfo:
+        PlanAuditResult(status="REJECTED", reason="Bad plan", feedback="")
+    assert "Feedback is required when the plan is rejected" in str(excinfo.value)
+
+    # This should pass
+    PlanAuditResult(status="REJECTED", reason="Bad plan", feedback="Fix it")
