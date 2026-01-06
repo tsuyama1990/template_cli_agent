@@ -21,6 +21,13 @@ dependencies = [
     "litellm>=1.80.11",
     "typer",
     "rich",
+    "ase",
+    "scipy",
+    "dscribe",
+    "streamlit",
+    "py3Dmol",
+    "numba>=0.58.0",
+    "llvmlite>=0.41.0",
 ]
 
 [tool.uv]
