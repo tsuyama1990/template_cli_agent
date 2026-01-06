@@ -8,7 +8,7 @@ from ac_cdd_core.messages import SuccessMessages, ensure_api_key
 from ac_cdd_core.service_container import ServiceContainer
 from ac_cdd_core.services.audit_orchestrator import AuditOrchestrator
 from ac_cdd_core.services.git_ops import GitManager
-from ac_cdd_core.services.jules_client import JulesClient
+from ac_cdd_core.services.jules_client import JulesClient, JulesTimeoutError
 from ac_cdd_core.session_manager import SessionManager
 from ac_cdd_core.state import CycleState
 from ac_cdd_core.utils import KeepAwake, logger
@@ -154,6 +154,10 @@ class WorkflowService:
 
             if final_state.get("error"):
                 console.print(f"[red]Cycle {cycle_id} Failed:[/red] {final_state['error']}")
+                if manifest:
+                    await mgr.update_cycle_state(
+                        cycle_id, status="failed", last_error=final_state["error"]
+                    )
                 sys.exit(1)
 
             console.print(SuccessMessages.cycle_complete(cycle_id, f"{int(cycle_id) + 1:02}"))
@@ -162,6 +166,12 @@ class WorkflowService:
             if manifest:
                 await mgr.update_cycle_state(cycle_id, status="completed")
 
+        except JulesTimeoutError as e:
+            console.print(f"[bold red]Cycle {cycle_id} timed out.[/bold red]")
+            logger.error(f"Cycle timed out: {e}")
+            if manifest:
+                await mgr.update_cycle_state(cycle_id, status="failed", last_error=str(e))
+            sys.exit(1)
         except Exception:
             console.print(f"[bold red]Cycle {cycle_id} execution failed.[/bold red]")
             logger.exception("Cycle execution failed")

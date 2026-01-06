@@ -1,7 +1,7 @@
 # tests/integration/test_cli_pipeline.py
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import pytest
 import yaml

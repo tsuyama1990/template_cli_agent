@@ -4,6 +4,7 @@ Factory functions for creating various components of the pipeline.
 This pattern decouples the main orchestrator from the concrete implementations,
 making it easy to add new generators or samplers in the future.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

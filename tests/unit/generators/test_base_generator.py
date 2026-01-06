@@ -23,7 +23,12 @@ def mock_config() -> FullConfig:
             "composition": {"H": 1.0},
             "supercell_size": [1, 1, 1],
         },
-        "exploration": {"temperature_k": 300, "pressure_gpa": 0, "timestep_fs": 1.0, "n_steps": 100},
+        "exploration": {
+            "temperature_k": 300,
+            "pressure_gpa": 0,
+            "timestep_fs": 1.0,
+            "n_steps": 100,
+        },
         "sampling": {"n_samples": 1},
         "db_path": "test.db",
     }

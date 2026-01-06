@@ -48,7 +48,12 @@ def test_full_config_valid() -> None:
             "composition": {"Si": 1.0},
             "supercell_size": [2, 2, 2],
         },
-        "exploration": {"temperature_k": 300, "pressure_gpa": 0, "timestep_fs": 1.0, "n_steps": 100},
+        "exploration": {
+            "temperature_k": 300,
+            "pressure_gpa": 0,
+            "timestep_fs": 1.0,
+            "n_steps": 100,
+        },
         "sampling": {"method": "random", "n_samples": 50},
         "db_path": "test.db",
     }
@@ -66,7 +71,12 @@ def test_full_config_forbids_extra_fields() -> None:
             "composition": {"Si": 1.0},
             "supercell_size": [2, 2, 2],
         },
-        "exploration": {"temperature_k": 300, "pressure_gpa": 0, "timestep_fs": 1.0, "n_steps": 100},
+        "exploration": {
+            "temperature_k": 300,
+            "pressure_gpa": 0,
+            "timestep_fs": 1.0,
+            "n_steps": 100,
+        },
         "sampling": {"method": "random", "n_samples": 50},
         "db_path": "test.db",
         "some_extra_field": "not_allowed",

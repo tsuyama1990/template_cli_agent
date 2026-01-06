@@ -16,7 +16,12 @@ def alloy_config() -> FullConfig:
             "composition": {"Fe": 0.5, "Pt": 0.5},
             "supercell_size": [2, 2, 2],
         },
-        "exploration": {"temperature_k": 300, "pressure_gpa": 0, "timestep_fs": 1.0, "n_steps": 100},
+        "exploration": {
+            "temperature_k": 300,
+            "pressure_gpa": 0,
+            "timestep_fs": 1.0,
+            "n_steps": 100,
+        },
         "sampling": {"n_samples": 1},
     }
     return FullConfig.model_validate(config_dict)

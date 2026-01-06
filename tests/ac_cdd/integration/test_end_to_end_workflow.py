@@ -2,6 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from ac_cdd_core.domain_models import ProjectManifest
+from ac_cdd_core.services.jules_client import JulesTimeoutError
 from ac_cdd_core.services.workflow import WorkflowService
 
 
@@ -112,3 +113,38 @@ class TestEndToEndWorkflow:
         )
 
         mock_mgr.load_manifest.assert_awaited()
+
+    @patch("ac_cdd_core.services.workflow.SessionManager")
+    @patch("ac_cdd_core.services.workflow.ensure_api_key")
+    async def test_run_cycle_failure_due_to_timeout(
+        self, mock_auth: MagicMock, mock_sm_cls: MagicMock, workflow: WorkflowService
+    ) -> None:
+        """Test that run_cycle handles a JulesTimeoutError gracefully."""
+        # Setup Graph Mock to raise a timeout error
+        mock_graph = AsyncMock()
+        timeout_error = JulesTimeoutError("Session timed out")
+        mock_graph.ainvoke.side_effect = timeout_error
+        workflow.builder.build_coder_graph.return_value = mock_graph
+
+        # Setup SessionManager Mock
+        mock_mgr = mock_sm_cls.return_value
+        manifest = ProjectManifest(project_session_id="p1", integration_branch="dev/p1")
+        mock_mgr.load_manifest = AsyncMock(return_value=manifest)
+        mock_mgr.update_cycle_state = AsyncMock()
+
+        # Setup Cleanup
+        workflow.builder.cleanup = AsyncMock()
+
+        # Execute and verify that SystemExit is raised
+        with pytest.raises(SystemExit) as excinfo:
+            await workflow.run_cycle(
+                "01", resume=False, auto=True, start_iter=1, project_session_id=None
+            )
+
+        # Verify
+        assert excinfo.value.code == 1
+        mock_graph.ainvoke.assert_called_once()
+        mock_mgr.update_cycle_state.assert_awaited_with(
+            "01", status="failed", last_error=str(timeout_error)
+        )
+        workflow.builder.cleanup.assert_awaited()

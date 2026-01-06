@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 CycleStatus = Literal["planned", "in_progress", "review_fix", "completed", "failed"]
 
@@ -28,8 +28,8 @@ class ProjectManifest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    project_session_id: str
-    integration_branch: str
+    project_session_id: str = Field(..., min_length=1)
+    integration_branch: str = Field(..., min_length=1)
     cycles: list[CycleManifest] = Field(default_factory=list)
     last_updated: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
@@ -161,3 +161,10 @@ class PlanAuditResult(BaseModel):
     status: Literal["APPROVED", "REJECTED"]
     reason: str
     feedback: str | None = Field(default="", description="Mandatory if REJECTED")
+
+    @model_validator(mode="after")
+    def check_feedback_on_rejection(self) -> "PlanAuditResult":
+        if self.status == "REJECTED" and not self.feedback:
+            error_msg = "Feedback is required when the plan is rejected."
+            raise ValueError(error_msg)
+        return self

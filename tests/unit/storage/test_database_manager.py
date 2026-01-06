@@ -1,8 +1,7 @@
 # tests/unit/storage/test_database_manager.py
-import os
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import pytest
 from ase import Atoms

@@ -433,7 +433,7 @@ class JulesClient:
         async with httpx.AsyncClient() as client:
             while True:
                 if asyncio.get_event_loop().time() - start_time > self.timeout:
-                    tmsg = "Timed out waiting for Jules to complete."
+                    tmsg = f"Timed out waiting for Jules to complete session: {session_name}"
                     raise JulesTimeoutError(tmsg)
 
                 try:
