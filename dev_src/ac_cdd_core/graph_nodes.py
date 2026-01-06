@@ -264,8 +264,13 @@ class CycleNodes(IGraphNodes):
                 console.print(
                     "[yellow]Warning: No reviewable application files found in changes. Using fallback.[/yellow]"
                 )
-                # Fallback to static configuration
-                reviewable_files = settings.get_target_files()
+                # Fallback to static configuration (also apply filtering)
+                all_target_files = settings.get_target_files()
+                excluded_prefixes_fallback = ("tests/ac_cdd/",)  # Framework tests
+                reviewable_files = [
+                    f for f in all_target_files
+                    if not any(f.startswith(prefix) for prefix in excluded_prefixes_fallback)
+                ]
             else:
                 console.print(f"[dim]Auditor: Reviewing {len(reviewable_files)} code files[/dim]")
 
