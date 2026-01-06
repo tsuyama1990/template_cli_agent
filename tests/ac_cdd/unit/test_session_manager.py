@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from ac_cdd_core.domain_models import ProjectManifest
-from ac_cdd_core.session_manager import SessionManager
+from ac_cdd_core.services.session_manager import SessionManager, SessionValidationError
 
 
 @pytest.mark.asyncio
@@ -112,8 +112,6 @@ class TestSessionManager:
         mock_read.return_value = (
             '{"project_session_id": "p1", "integration_branch": "dev/p1", "cycles": []}'
         )
-
-        from ac_cdd_core.session_manager import SessionValidationError
 
         with pytest.raises(SessionValidationError):
             await manager.update_cycle_state("01", status="in_progress")

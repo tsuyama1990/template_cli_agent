@@ -8,7 +8,7 @@ from ac_cdd_core.config import settings
 from ac_cdd_core.messages import SuccessMessages
 from ac_cdd_core.services.project import ProjectManager
 from ac_cdd_core.services.workflow import WorkflowService
-from ac_cdd_core.session_manager import SessionManager
+from ac_cdd_core.services.session_manager import SessionManager
 from rich.console import Console
 
 app = typer.Typer(help="AC-CDD: AI-Native Cycle-Based Contract-Driven Development Environment")

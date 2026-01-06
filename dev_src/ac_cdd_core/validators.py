@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 
 from ac_cdd_core.services.git_ops import GitManager
-from ac_cdd_core.session_manager import SessionManager
+from ac_cdd_core.services.session_manager import SessionManager
 from ac_cdd_core.utils import logger
 
 
