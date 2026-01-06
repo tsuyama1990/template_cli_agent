@@ -6,10 +6,9 @@ from rich.console import Console
 
 from .config import settings
 from .domain_models import AuditResult
-from .interfaces import IGraphNodes
+from .interfaces import IGraphNodes, IJulesClient, ISessionManager
 from .sandbox import SandboxRunner
 from .services.audit_orchestrator import AuditOrchestrator
-from .services.jules_client import JulesClient
 from .services.llm_reviewer import LLMReviewer
 from .session_manager import SessionManager
 from .state import CycleState
@@ -22,9 +21,15 @@ class CycleNodes(IGraphNodes):
     Encapsulates the logic for each node in the AC-CDD workflow graph.
     """
 
-    def __init__(self, sandbox_runner: SandboxRunner, jules_client: JulesClient) -> None:
+    def __init__(
+        self,
+        sandbox_runner: SandboxRunner,
+        jules_client: IJulesClient,
+        session_manager: ISessionManager | None = None,
+    ) -> None:
         self.sandbox = sandbox_runner
         self.jules = jules_client
+        self.session_manager = session_manager or SessionManager()
         # Dependency injection for sub-services could be improved by passing them in,
         # but for now we construct them with the injected clients.
         self.audit_orchestrator = AuditOrchestrator(jules_client, sandbox_runner)
@@ -108,7 +113,7 @@ class CycleNodes(IGraphNodes):
                 f"{feedback}\n\n"
                 f"Please revise your implementation to address the above feedback and create a new PR."
             )
-            await self.jules._send_message(self.jules._get_session_url(session_id), feedback_msg)
+            await self.jules.send_message_to_session(session_id, feedback_msg)
 
             # Wait for Jules to process feedback and create new PR
             result = await self.jules.wait_for_completion(session_id)
@@ -131,8 +136,7 @@ class CycleNodes(IGraphNodes):
         iteration = state.get("iteration_count")
 
         # Resume Logic using SessionManager
-        mgr = SessionManager()
-        cycle_manifest = await mgr.get_cycle(cycle_id)
+        cycle_manifest = await self.session_manager.get_cycle(cycle_id)
 
         # 1. Try Resume if session ID exists
         if cycle_manifest and cycle_manifest.jules_session_id and state.get("resume_mode", False):
@@ -195,7 +199,7 @@ class CycleNodes(IGraphNodes):
 
             # 2. Persist Session ID IMMEDIATELY for Hot Resume
             if result.get("session_name"):
-                await mgr.update_cycle_state(
+                await self.session_manager.update_cycle_state(
                     cycle_id, jules_session_id=result["session_name"], status="in_progress"
                 )
 

@@ -20,8 +20,6 @@ dependencies = [
     "litellm>=1.80.11",
     "typer",
     "rich",
-    "pyyaml",
-    "ase",
 ]
 
 [tool.uv]
@@ -29,7 +27,6 @@ environments = ["sys_platform == 'linux'"]
 
 [project.scripts]
 ac-cdd = "ac_cdd_core.cli:app"
-mlip-autopipec = "mlip_autopipec.cli.main:app"
 
 [dependency-groups]
 dev = [
