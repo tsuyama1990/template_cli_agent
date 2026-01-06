@@ -21,6 +21,9 @@ dependencies = [
     "litellm>=1.80.11",
     "typer",
     "rich",
+    "ase",
+    "numpy",
+    "pyyaml",
 ]
 
 [tool.uv]
@@ -28,6 +31,7 @@ environments = ["sys_platform == 'linux'"]
 
 [project.scripts]
 ac-cdd = "ac_cdd_core.cli:app"
+mlip-autopipec = "mlip_autopipec.cli:app"
 
 [dependency-groups]
 dev = [
@@ -136,4 +140,4 @@ packages = ["dev_src/ac_cdd_core", "src/mlip_autopipec"]
 
 [tool.bandit]
 exclude_dirs = ["tests", ".venv"]
-targets = ["dev_src"]
+targets = ["dev_src", "src"]
