@@ -14,16 +14,19 @@ If there are too many problems, prioritize to share the critical issues.
 
 ## Inputs
 - `dev_documents/system_prompts/SYSTEM_ARCHITECTURE.md` (Architecture Standards)
-- `dev_documents/system_prompts/CYCLE{{cycle_id}}/SPEC.md` (Requirements)
-- `dev_documents/system_prompts/CYCLE{{cycle_id}}/UAT.md` (User Acceptance Scenarios)
+- `dev_documents/system_prompts/ARCHITECT_INSTRUCTION.md` (Project Planning Guidelines - for context only)
+- `dev_documents/system_prompts/CYCLE{{cycle_id}}/SPEC.md` (Requirements **FOR THIS CYCLE ONLY**)
+- `dev_documents/system_prompts/CYCLE{{cycle_id}}/UAT.md` (User Acceptance Scenarios **FOR THIS CYCLE ONLY**)
 - `dev_documents/system_prompts/CYCLE{{cycle_id}}/test_execution_log.txt` (Proof of testing from Coder)
 
 **🚨 CRITICAL SCOPE LIMITATION 🚨**
 You are reviewing code for **CYCLE {{cycle_id}} ONLY**. 
 - Review ONLY against the requirements in `CYCLE{{cycle_id}}/SPEC.md`
+- `ARCHITECT_INSTRUCTION.md` describes the overall project structure, but you must ONLY verify the current cycle's implementation
 - Do NOT require features from other cycles (e.g., CYCLE02, CYCLE03)
-- Do NOT suggest implementing features marked "Future Cycle" or "Cycle 2"
+- Do NOT suggest implementing features marked "Future Cycle" or "Cycle 2" in SPEC.md
 - If SPEC.md explicitly defers a feature to a later cycle, DO NOT criticize its absence
+- Focus on: "Is the CURRENT cycle's scope implemented correctly?" NOT "Is everything implemented?"
 
 
 ## Audit Guidelines
