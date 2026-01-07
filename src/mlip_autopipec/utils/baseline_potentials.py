@@ -1,38 +1,38 @@
+
 import numpy as np
 from ase.atoms import Atoms
 from ase.calculators.lj import LennardJones
 
 
-def get_lj_potential(atoms: Atoms) -> float:
+def calculate_lj_potential(atoms: Atoms) -> tuple[float, np.ndarray]:
     """
-    Calculates the potential energy of a system using the Lennard-Jones potential.
+    Calculates the potential energy and forces for a given Atoms object
+    using the Lennard-Jones potential as implemented in ASE.
 
-    Note: This uses default ASE parameters for Argon (Ar). It serves as a
-    simple, fast baseline for the Delta Learning demonstration. For a real
-    scientific application, element-specific parameters would be required.
+    Note: ASE's LJ calculator uses default parameters (sigma=1.0, epsilon=1.0)
+    for element pairs if not specified. This is a simple baseline for the
+    purpose of demonstrating Delta Learning. A real implementation might use
+    more sophisticated or fitted parameters.
 
     Args:
-        atoms: The `ase.Atoms` object.
+        atoms: The ASE Atoms object.
 
     Returns:
-        The total potential energy in eV.
+        A tuple containing:
+        - The total potential energy in eV.
+        - The forces on each atom as a NumPy array.
     """
-    # Using default ASE LJ parameters which are for Argon
-    calc = LennardJones()
-    atoms.calc = calc
-    return atoms.get_potential_energy()
+    # Detach any existing calculator to avoid interference
+    atoms.calc = None
 
-def get_lj_forces(atoms: Atoms) -> np.ndarray:
-    """
-    Calculates the atomic forces of a system using the Lennard-Jones potential.
+    # Use ASE's built-in LennardJones calculator
+    calculator = LennardJones()
+    atoms.calc = calculator
 
-    Args:
-        atoms: The `ase.Atoms` object.
+    energy = atoms.get_potential_energy()
+    forces = atoms.get_forces()
 
-    Returns:
-        A numpy array of forces on each atom.
-    """
-    # Ensure a calculator is attached from the potential function first
-    if not atoms.calc:
-        get_lj_potential(atoms)
-    return atoms.get_forces()
+    # Clean up by detaching the calculator
+    atoms.calc = None
+
+    return energy, forces

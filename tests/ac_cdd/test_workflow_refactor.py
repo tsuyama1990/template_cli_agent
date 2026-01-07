@@ -1,8 +1,11 @@
 
-import pytest
 from unittest.mock import AsyncMock, patch
-from ac_cdd_config import config
+
+import pytest
 from ac_cdd_core.graph import GraphBuilder
+
+from ac_cdd_config import config
+
 
 def test_config_update():
     """Verify SandboxConfig loads with new install_cmd."""
