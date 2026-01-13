@@ -75,13 +75,20 @@ def _get_openrouter_api_key() -> str:
 def get_model(model_name: str) -> Model | str:
     """
     Parses the model name and returns an OpenAIModel with appropriate settings
-    if it is an OpenRouter model.
+    if it is an OpenRouter model. It includes a specific fallback for Claude
+    models to use OpenRouter by default.
     """
+    # Fallback for Claude models to default to OpenRouter
+    if "claude" in model_name and "/" not in model_name:
+        model_name = f"openrouter/anthropic/{model_name}"
+        logger.debug(f"Defaulting Claude model to use OpenRouter: {model_name}")
+
     if model_name.startswith("openrouter/"):
+        # Strip the prefix to get the actual model name for the provider
         real_model_name = model_name.replace("openrouter/", "", 1)
         api_key = _get_openrouter_api_key()
 
-        # OpenAIChatModel requires env var for OpenRouter if using provider="openrouter"
+        # OpenAIChatModel requires the API key to be in the environment
         os.environ["OPENROUTER_API_KEY"] = api_key
 
         return OpenAIChatModel(
@@ -89,7 +96,7 @@ def get_model(model_name: str) -> Model | str:
             provider="openrouter",
         )
 
-    # If gemini/ prefix exists, or just return the string (let PydanticAI handle it)
+    # Handle gemini prefix if present, otherwise let PydanticAI handle it
     if model_name.startswith("gemini/"):
         return model_name.replace("gemini/", "", 1)
 
